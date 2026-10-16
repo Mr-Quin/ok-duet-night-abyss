@@ -15,6 +15,7 @@ SECTION_Y = 0.027
 
 LEVELS = [20, 30, 40, 50, 55, 60, 65, 70, 75]
 LEVEL_X = 0.075
+LEVEL_STEP = 0.0731
 
 
 def load_atlas(path=None):
@@ -41,13 +42,13 @@ def level_positions(scr):
             nums = [int(n) for n in re.findall(r'\d\d', i['t']) if int(n) in LEVELS]
             if len(nums) == 1:
                 pts.append((LEVELS.index(nums[0]), i['y']))
-    if len(pts) < 2:
+    # OCR sometimes misreads a label (55 as 50), so fit only the labels that agree on the fixed spacing
+    offsets = [y - k * LEVEL_STEP for k, y in pts]
+    inliers = max(([o for o in offsets if abs(o - ref) < 0.015] for ref in offsets), key=len, default=[])
+    if len(inliers) < 2:
         return {}
-    (i0, y0), (i1, y1) = min(pts), max(pts)
-    if i1 == i0:
-        return {}
-    step = (y1 - y0) / (i1 - i0)
-    return {lv: y0 + (k - i0) * step for k, lv in enumerate(LEVELS)}
+    top = sorted(inliers)[len(inliers) // 2]
+    return {lv: top + k * LEVEL_STEP for k, lv in enumerate(LEVELS)}
 
 
 def selected_level(scr, levels):
