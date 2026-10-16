@@ -17,7 +17,10 @@ class OkScriptBackend(Backend):
 
     def ocr(self, img):
         h, w = img.shape[:2]
-        boxes = self.task.ocr(frame=img, target_height=self.ocr_height, threshold=self.threshold)
+        # target_height is absolute, so scale it to this image: a full frame shrinks to ocr_height,
+        # an enlarged crop keeps its enlargement
+        target = int(h * self.ocr_height / self.task.height)
+        boxes = self.task.ocr(frame=img, target_height=target, threshold=self.threshold)
         return [{'t': b.name.strip(), 'x': (b.x + b.width / 2) / w, 'y': (b.y + b.height / 2) / h}
                 for b in boxes if b.name and b.name.strip()]
 
