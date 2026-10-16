@@ -139,7 +139,8 @@ def classify(scr, atlas):
                                 'nothing_earned': bool(find(T.NO_REWARD))}
     # the commission-manual popup between rounds also has a start-screen button, so it goes first
     if find(T.MANUAL_SKIP) and find('Space'):
-        return 'manual_popup', {}
+        # before a run the popup has 取消 next to 开始挑战; between rounds it has a single confirm button
+        return 'manual_popup', {'before_run': bool(find(T.CANCEL))}
     if scr.find_any(T.START):
         return 'start', start_info(scr)
     hud = (0, 0.15, 0.3, 0.45)

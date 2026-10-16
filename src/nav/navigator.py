@@ -199,6 +199,10 @@ class Navigator:
         return self.wait_in_run()
 
     def on_manual_popup(self, scr, info):
+        if info.get('before_run'):
+            self.log('  closing the commission-manual popup; no run has started')
+            self.b.key('esc')
+            return False
         return self.wait_in_run()
 
     def wait_in_run(self):
