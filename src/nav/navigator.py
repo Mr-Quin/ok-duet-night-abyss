@@ -22,6 +22,7 @@ import re
 import time
 
 from src.nav import screens as S
+from src.nav.backend import Screen
 from src.nav import text_zh as T
 
 
@@ -356,6 +357,9 @@ class Navigator:
         """Select the 夜航手册 level, then the row, then press its 前往."""
         g, st = self.goal, self.row_state
         book = g.get('book') or g.get('lv')
+        if not info.get('levels'):
+            column = Screen(scr.img, self.b.ocr_region(scr, *S.LEVEL_COLUMN))
+            info['levels'] = S.level_positions(column)
         y = (info.get('levels') or {}).get(book)
         if y is None:
             result = self.wait(3)

@@ -75,6 +75,13 @@ class Backend:
         img = self.frame()
         return Screen(img, self.ocr(img))
 
+    def ocr_region(self, scr, x0, y0, x1, y1, scale=2.0):
+        """OCR one part of a frame, enlarged; small labels that full-frame OCR misses read fine this way."""
+        H, W = scr.img.shape[:2]
+        crop = scr.img[int(y0 * H):int(y1 * H), int(x0 * W):int(x1 * W)]
+        crop = cv2.resize(crop, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
+        return [dict(i, x=x0 + i['x'] * (x1 - x0), y=y0 + i['y'] * (y1 - y0)) for i in self.ocr(crop)]
+
     def dump(self, folder, name):
         """Save the current frame and its OCR items, for looking into a failure afterwards."""
         os.makedirs(folder, exist_ok=True)

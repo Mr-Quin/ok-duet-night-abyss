@@ -16,6 +16,7 @@ SECTION_Y = 0.027
 LEVELS = [20, 30, 40, 50, 55, 60, 65, 70, 75]
 LEVEL_X = 0.075
 LEVEL_STEP = 0.0731
+LEVEL_COLUMN = (0.03, 0.15, 0.11, 0.95)
 
 
 def load_atlas(path=None):
