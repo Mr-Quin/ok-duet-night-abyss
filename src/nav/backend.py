@@ -3,6 +3,8 @@
 Positions are fractions of the game client in both directions, so nothing here depends on
 the capture resolution.
 """
+import json
+import os
 import time
 
 import cv2
@@ -72,6 +74,17 @@ class Backend:
     def read(self):
         img = self.frame()
         return Screen(img, self.ocr(img))
+
+    def dump(self, folder, name):
+        """Save the current frame and its OCR items, for looking into a failure afterwards."""
+        os.makedirs(folder, exist_ok=True)
+        scr = self.read()
+        stem = os.path.join(folder, name)
+        with open(stem + '.png', 'wb') as f:
+            f.write(cv2.imencode('.png', scr.img)[1].tobytes())
+        with open(stem + '.json', 'w', encoding='utf-8') as f:
+            json.dump(scr.items, f, ensure_ascii=False, indent=1)
+        return stem
 
     def thumb(self):
         img = self.frame()

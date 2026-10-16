@@ -66,7 +66,8 @@ class PlanTask(Auto65ArtifactTask_Fast):
         self.set_check_monthly_card()
         plan = parse_plan(self.config.get("计划", ""))
         runner = PlanRunner(OkScriptBackend(self), DefenceStart(self), log=self.log_info, nav_log=self.log_debug,
-                            rows_path=os.path.join('configs', 'nav_rows.json'))
+                            rows_path=os.path.join('configs', 'nav_rows.json'),
+                            dump_dir=os.path.join('screenshots', 'nav'))
         try:
             results = runner.run(plan)
         except TaskDisabledException:

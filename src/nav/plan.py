@@ -36,8 +36,9 @@ def parse_plan(text):
 
 
 class PlanRunner:
-    def __init__(self, backend, gameplay, log=print, nav_log=None, rows_path=None, mode=T.MISSIONS[8]):
+    def __init__(self, backend, gameplay, log=print, nav_log=None, rows_path=None, mode=T.MISSIONS[8], dump_dir=None):
         self.b, self.gameplay, self.say = backend, gameplay, log
+        self.dump_dir = dump_dir
         self.nav_log = nav_log or (lambda msg: None)
         self.rows_path = rows_path
         self.mode = mode
@@ -90,6 +91,8 @@ class PlanRunner:
                 results.append((book, row, 'ok', time.time() - t0))
             except NavError as e:
                 self.say('  FAILED: %s' % e)
+                if self.dump_dir:
+                    self.say('  screen saved to %s' % self.b.dump(self.dump_dir, time.strftime('fail_%Y%m%d_%H%M%S')))
                 results.append((book, row, 'failed: %s' % e, time.time() - t0))
                 break
         for book, row, status, dt in results:
