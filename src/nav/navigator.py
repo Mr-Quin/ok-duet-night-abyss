@@ -476,7 +476,10 @@ class Navigator:
             self.unsure = 0
             state = tuple(self.trace[log_len:])
             seen[state] = seen.get(state, 0) + 1
-            if seen[state] >= 3:
+            if seen[state] >= 4:
                 raise NavError('stuck repeating: %s' % ' / '.join(state))
             self.b.settle(before)
+            if seen[state] >= 2:
+                # the game sometimes ignores input while it hitches; give it longer before trying again
+                self.b.sleep(1.5 * (seen[state] - 1))
         return False
