@@ -4,7 +4,7 @@ import time
 from qfluentwidgets import FluentIcon
 
 from ok import TaskDisabledException
-from src.nav.okscript import OkScriptBackend
+from src.nav.okscript import OkScriptBackend, ROWS_PATH
 from src.nav.plan import Gameplay, PlanRunner, parse_plan
 from src.tasks.AutoDefence import AutoDefence
 from src.tasks.CommissionsTask import Mission
@@ -55,6 +55,8 @@ class PlanTask(Auto65ArtifactTask_Fast):
         super().__init__(*args, **kwargs)
         self.name = "夜航手册计划"
         self.description = "从任意界面出发，按计划依次刷夜航手册扼守"
+        for key in ("自动导航", "夜航手册等级", "夜航手册行"):
+            self.default_config.pop(key, None)
         self.default_config.update({"计划": "30,0,3; 65,2,3"})
         self.config_description.update({
             "计划": "每项: 夜航手册等级, 第几行(从0开始)或名字, 轮次(0 只导航不开打); 用分号分隔",
@@ -66,7 +68,7 @@ class PlanTask(Auto65ArtifactTask_Fast):
         self.set_check_monthly_card()
         plan = parse_plan(self.config.get("计划", ""))
         runner = PlanRunner(OkScriptBackend(self), DefenceStart(self), log=self.log_info, nav_log=lambda msg: self.log_info('    nav: ' + msg),
-                            rows_path=os.path.join('configs', 'nav_rows.json'),
+                            rows_path=ROWS_PATH,
                             dump_dir=os.path.join('screenshots', 'nav'))
         try:
             results = runner.run(plan)

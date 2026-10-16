@@ -8,6 +8,10 @@ from src.tasks.CommissionsTask import CommissionsTask, Mission
 from src.tasks.BaseCombatTask import BaseCombatTask
 
 from src.tasks.AutoDefence import AutoDefence
+from src.nav import text_zh as T
+from src.nav.navigator import Navigator
+from src.nav.okscript import OkScriptBackend, ROWS_PATH
+from src.nav.screens import classify, load_atlas
 
 logger = Logger.get_logger(__name__)
 
@@ -31,6 +35,17 @@ class Auto65ArtifactTask_Fast(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         for key in keys_to_delete:
             self.default_config.pop(key, None)
 
+        self.default_config.update({
+            "自动导航": True,
+            "夜航手册等级": 65,
+            "夜航手册行": "0",
+        })
+        self.config_description.update({
+            "自动导航": "不在副本里时，从当前界面自动导航到夜航手册的扼守关卡",
+            "夜航手册等级": "30 或 65",
+            "夜航手册行": "第几行(从0开始)，或关卡名的一部分",
+        })
+
         self.action_timeout = 10
 
     def run(self):
@@ -40,7 +55,11 @@ class Auto65ArtifactTask_Fast(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         self.set_check_monthly_card()
         try:
             _to_do_task = self.get_task_by_class(AutoDefence)
-            _to_do_task.config_external_movement(self.walk_to_aim, self.config)
+            auto_nav = self.config.get("自动导航", False)
+            _to_do_task.config_external_movement(self.walk_to_aim, self.config,
+                                                 recover=self.return_to_mission if auto_nav else None)
+            if auto_nav and not self.in_team():
+                self.navigate_to_mission()
             original_info_set = _to_do_task.info_set
             _to_do_task.info_set = self.info_set
             return _to_do_task.do_run()
@@ -125,6 +144,25 @@ class Auto65ArtifactTask_Fast(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
     #             _skill_time = 0
     #         # 短暂休眠
     #         self.sleep(0.2)
+
+    def mission_goal(self):
+        book = int(self.config.get("夜航手册等级", 65))
+        row = str(self.config.get("夜航手册行", "0")).strip()
+        return {'screen': 'start', 'via': T.TABS[1], 'book': book, 'row': int(row) if row.isdigit() else row,
+                'mode': T.MISSIONS[8], 'lv': book}
+
+    def navigate_to_mission(self):
+        goal = self.mission_goal()
+        self.log_info(f"导航到夜航手册 Lv.{goal['book']} 第 {goal['row']} 行")
+        nav = Navigator(OkScriptBackend(self), goal, log=self.log_debug, rows_path=ROWS_PATH)
+        if not nav.run():
+            raise Exception("无法导航到关卡")
+
+    def return_to_mission(self):
+        screen, _ = classify(OkScriptBackend(self).read(), load_atlas())
+        if screen in ('commission', 'book', 'world', 'main_menu'):
+            self.log_info(f"停在 {screen}，重新导航到关卡")
+            self.navigate_to_mission()
 
     def walk_to_aim(self, delay=0):
         """

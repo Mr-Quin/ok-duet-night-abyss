@@ -1,9 +1,12 @@
 """Navigator backend on top of an ok-script task."""
+import os
+
 from src.nav.backend import Backend
 
 # where the cursor waits between clicks: hovered tabs and rows are highlighted much like
 # selected ones, which would fool the selection checks
 PARK = (0.97, 0.5)
+ROWS_PATH = os.path.join('configs', 'nav_rows.json')
 
 
 class OkScriptBackend(Backend):

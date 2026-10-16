@@ -30,6 +30,7 @@ class AutoDefence(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
 
         self.quick_assist_task = QuickAssistTask(self)
         self.external_movement = _default_movement
+        self.external_recover = None
         self._external_config = None
         self._merged_config_cache = None
         self.skill_tick = self.create_skill_ticker()
@@ -50,7 +51,8 @@ class AutoDefence(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         self._base_config = value
         self._merged_config_cache = None
 
-    def config_external_movement(self, func: Callable, config: dict):
+    def config_external_movement(self, func: Callable, config: dict, recover: Callable = None):
+        self.external_recover = recover
         if callable(func):
             self.external_movement = func
         else:
@@ -63,6 +65,7 @@ class AutoDefence(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         self.move_mouse_to_safe_position(save_current_pos=False)
         self.set_check_monthly_card()
         self.external_movement = _default_movement
+        self.external_recover = None
         try:
             return self.do_run()
         except TaskDisabledException:
@@ -78,12 +81,21 @@ class AutoDefence(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         if self.external_movement is not _default_movement and self.in_team():
             self.open_in_mission_menu()
 
+        idle_since = None
         while True:
             if self.in_team():
                 if self.move_on_begin():
                     self.handle_in_mission()
 
             _status = self.handle_mission_interface(stop_func=self.stop_func)
+            # nothing to act on outside a run, e.g. back on the commission list after a failed walk
+            if _status is False and self.external_recover and not self.in_team():
+                idle_since = idle_since or time.time()
+                if time.time() - idle_since > 20:
+                    self.external_recover()
+                    idle_since = None
+            else:
+                idle_since = None
             if _status == Mission.START:
                 self.wait_until(self.in_team, time_out=30)
                 self.init_all()
