@@ -378,6 +378,14 @@ class Navigator:
         names = [r['name'] for r in listed]
         row = g.get('row', 0)
         known = self.rows.get('names/%d' % book, [])
+        # the row list refreshes a moment after the level ring moves; rows read too early belong to the old level
+        stale = names and any(k != 'names/%d' % book and k.startswith('names/') and v[:1] == names[:1]
+                              for k, v in self.rows.items())
+        if S.selected_level(scr, info['levels']) != book or stale:
+            if self.wait(4) is None:
+                return None
+            st.pop('level', None)
+            return False
         named_here = isinstance(row, str) and any(row in n for n in names)
         if st['names'] is None:
             if names and known and names[0] == known[0]:
