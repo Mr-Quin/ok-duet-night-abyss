@@ -124,7 +124,7 @@ def classify(scr, atlas):
     find = scr.find
     # in-run screens first: the dungeon HUD also has the Lv bar the world check looks for
     if find(T.EXIT_CONFIRM):
-        return 'exit_confirm', {'cancel': (find(T.CANCEL) or [None])[0]}
+        return 'exit_confirm', {'cancel': (find(T.CANCEL) or [None])[0], 'confirm': (find(T.CONFIRM) or [None])[-1]}
     if find(T.RESULT) and scr.find_any(T.RESULT_BUTTONS):
         return 'result', {}
     if find(T.RETREAT) and find(T.CONTINUE):
@@ -134,14 +134,18 @@ def classify(scr, atlas):
         return 'round_dialog', {'retreat': find(T.RETREAT, exact=True) or find(T.RETREAT),
                                 'auto': (int(auto.group(1)), int(auto.group(2))) if auto else None}
     if find(T.GIVE_UP) and find(T.RESUME):
-        return 'dungeon_menu', {'resume': find(T.RESUME)[0]}
+        # the in-run menu lists what the run has earned so far, or 无奖励 when nothing yet
+        return 'dungeon_menu', {'resume': find(T.RESUME)[0], 'give_up': find(T.GIVE_UP)[0],
+                                'nothing_earned': bool(find(T.NO_REWARD))}
     # the commission-manual popup between rounds also has a start-screen button, so it goes first
     if find(T.MANUAL_SKIP) and find('Space'):
         return 'manual_popup', {}
     if scr.find_any(T.START):
         return 'start', start_info(scr)
-    if any(find(t, (0, 0.15, 0.3, 0.4)) for t in T.ROUND_HUD):
-        return 'dungeon', {}
+    hud = (0, 0.15, 0.3, 0.45)
+    if any(find(t, hud) for t in T.ROUND_HUD):
+        m = next((re.search(T.ROUND_NOW, i['t']) for i in find(T.ROUND_HUD[0], hud) if re.search(T.ROUND_NOW, i['t'])), None)
+        return 'dungeon', {'round': int(m.group(1)) if m else None, 'to_objective': bool(find(T.TO_OBJECTIVE, hud))}
 
     top = (0, 0, 1, 0.06)
     in_book = len([t for t in T.BOOK_MARKERS if find(t, top)]) >= 2 or find(T.BOOK_TITLE, top)

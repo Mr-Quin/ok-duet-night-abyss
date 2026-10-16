@@ -77,10 +77,12 @@ def start_matches(info, goal):
 
 
 class Navigator:
-    def __init__(self, backend, goal, log=print, in_dungeon=False, atlas=None, rows_path=None):
+    def __init__(self, backend, goal, log=print, in_dungeon=False, atlas=None, rows_path=None, leave='now'):
         # in_dungeon: the caller knows a run is in progress, so unreadable frames (combat effects over
-        # the HUD) mean "still in the run", never a menu to back out of
-        self.b, self.goal, self.in_dungeon = backend, goal, in_dungeon
+        # the HUD) mean "still in the run", never a menu to back out of.
+        # leave: how to get out of a run found on the way. 'after_rounds' lets the game's auto rounds
+        # finish; 'now' leaves at the first point where nothing earned is lost.
+        self.b, self.goal, self.in_dungeon, self.leave = backend, goal, in_dungeon, leave
         self.route = route(goal)
         self.trace = []
 
@@ -95,7 +97,9 @@ class Navigator:
         self.entered_row = None
         self.unsure = 0
         self.dungeon_waits = 0
-        self.after_result = False
+        self.loading = False
+        self.giving_up = False
+        self.idle_since = None
 
     def _load_rows(self):
         if not self.rows_path:
@@ -141,7 +145,7 @@ class Navigator:
     # screens of a run in progress
 
     def on_round_dialog(self, scr, info):
-        if info['auto'] and info['auto'][0] < info['auto'][1]:
+        if self.leave == 'after_rounds' and info['auto'] and info['auto'][0] < info['auto'][1]:
             # auto rounds still running; the game continues by itself after the countdown
             return self.wait_in_run()
         self.log('  retreating after round %s' % (info['auto'],))
@@ -150,11 +154,16 @@ class Navigator:
 
     def on_result(self, scr, info):
         self.log('  leaving the result screen')
-        self.after_result = True
+        self.loading = True
         self.b.key('esc')
         return False
 
     def on_exit_confirm(self, scr, info):
+        if self.giving_up and info['confirm']:
+            self.log('  confirming: the run has earned nothing yet')
+            self.click(info['confirm'])
+            self.giving_up, self.in_dungeon, self.loading = False, False, True
+            return False
         self.log('  cancelling the exit confirmation')
         if info['cancel']:
             self.click(info['cancel'])
@@ -163,15 +172,34 @@ class Navigator:
         return False
 
     def on_dungeon_menu(self, scr, info):
+        if self.giving_up and info['nothing_earned']:
+            self.log('  giving up: the run has earned nothing yet')
+            self.click(info['give_up'])
+            return False
+        if self.giving_up:
+            self.log('  the run has earned something; waiting for the round to end instead')
+        self.giving_up = False
         self.log('  resuming from the in-run menu')
         self.click(info['resume'])
         return False
 
     def on_dungeon(self, scr, info):
+        # before the first wave nobody is fighting: either we want out now, or whatever was meant to
+        # walk to the objective has stopped. Giving up then loses nothing, and the in-run menu says so.
+        if info.get('to_objective'):
+            self.idle_since = self.idle_since or time.time()
+            if self.leave == 'now' or time.time() - self.idle_since > 45:
+                self.log('  run not started (round %s); opening the menu to leave' % info.get('round'))
+                self.giving_up, self.idle_since = True, None
+                self.b.key('esc')
+                return False
+        else:
+            self.idle_since = None
         # rounds finish on their own; wait for the round dialog or the result screen
         return self.wait_in_run()
 
-    on_manual_popup = on_dungeon
+    def on_manual_popup(self, scr, info):
+        return self.wait_in_run()
 
     def wait_in_run(self):
         self.dungeon_waits += 1
@@ -180,7 +208,7 @@ class Navigator:
         raise NavError('still in the run after waiting; not giving it up automatically')
 
     def on_unknown(self, scr, info):
-        if self.after_result and self.dungeon_waits < 400:
+        if self.loading and self.dungeon_waits < 400:
             # the loading screen after a run shows tips and art, nothing recognisable
             self.dungeon_waits += 1
             return None

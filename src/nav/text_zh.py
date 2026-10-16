@@ -38,6 +38,10 @@ GIVE_UP = '放弃挑战'
 RESUME = '继续游戏'
 MANUAL_SKIP = '不使用'
 ROUND_HUD = ('当前轮次', '波次')
+ROUND_NOW = r'当前轮次\s*[:：]?\s*(\d+)'
+TO_OBJECTIVE = '前往目标点'
+NO_REWARD = '无奖励'
+CONFIRM = '确定'
 
 # pages reached from a book section: name -> (section, button text)
 PAGE_ENTRY = {'迷津': ('歧路足音', GO), 'boss_map': ('梦魔残声', GO_CHALLENGE)}

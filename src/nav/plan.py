@@ -86,7 +86,7 @@ class PlanRunner:
         else:
             raise NavError('gameplay could not start the run')
         t1 = time.time()
-        self.navigate({'screen': 'world'}, in_dungeon=True).run(max_steps=60)
+        self.navigate({'screen': 'world'}, in_dungeon=True, leave='after_rounds').run(max_steps=60)
         self.say('  rounds finished, back in the world after %.0fs' % (time.time() - t1))
 
     def run(self, plan):
