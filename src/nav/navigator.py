@@ -132,7 +132,7 @@ class Navigator:
                 self.in_dungeon = False
             elif screen in ('unknown', 'other_menu', 'start', 'world', 'menu', 'page'):
                 screen, info = 'dungeon', {}
-        shown = {k: v for k, v in info.items() if k not in ('levels', 'tiers', 'retreat', 'resume', 'cancel')}
+        shown = {k: v for k, v in info.items() if k not in ('levels', 'tiers', 'retreat', 'resume', 'cancel', 'confirm', 'give_up')}
         self.log('%s %s' % (screen, shown))
 
         handler = getattr(self, 'on_' + screen, None)
@@ -216,9 +216,11 @@ class Navigator:
             # the loading screen after a run shows tips and art, nothing recognisable
             self.dungeon_waits += 1
             return None
-        return self.on_other_menu(scr, info)
+        return self.back_out(scr, info)
 
-    def on_other_menu(self, scr, info):
+    on_other_menu = on_unknown
+
+    def back_out(self, scr, info):
         # often a screen still fading in; give it a moment before backing out
         if self.wait(2) is None:
             return None
