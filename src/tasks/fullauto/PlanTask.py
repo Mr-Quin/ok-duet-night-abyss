@@ -57,7 +57,7 @@ class PlanTask(Auto65ArtifactTask_Fast):
         self.description = "从任意界面出发，按计划依次刷夜航手册扼守"
         self.default_config.update({"计划": "30,0,3; 65,2,3"})
         self.config_description.update({
-            "计划": "每项: 夜航手册等级, 第几行(从0开始)或名字, 轮次; 用分号分隔",
+            "计划": "每项: 夜航手册等级, 第几行(从0开始)或名字, 轮次(0 只导航不开打); 用分号分隔",
         })
 
     def run(self):
@@ -65,7 +65,7 @@ class PlanTask(Auto65ArtifactTask_Fast):
         self.move_mouse_to_safe_position(save_current_pos=False)
         self.set_check_monthly_card()
         plan = parse_plan(self.config.get("计划", ""))
-        runner = PlanRunner(OkScriptBackend(self), DefenceStart(self), log=self.log_info, nav_log=self.log_debug,
+        runner = PlanRunner(OkScriptBackend(self), DefenceStart(self), log=self.log_info, nav_log=lambda msg: self.log_info('    nav: ' + msg),
                             rows_path=os.path.join('configs', 'nav_rows.json'),
                             dump_dir=os.path.join('screenshots', 'nav'))
         try:

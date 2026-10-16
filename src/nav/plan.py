@@ -25,7 +25,10 @@ class Gameplay:
 
 
 def parse_plan(text):
-    """'30,0,3; 65,守护野蜂,3' -> [(30, 0, 3), (65, '守护野蜂', 3)]: book level, row, rounds."""
+    """'30,0,3; 65,守护野蜂,3' -> [(30, 0, 3), (65, '守护野蜂', 3)]: book level, row, rounds.
+
+    0 rounds only navigates to the start screen and back, without starting a run.
+    """
     items = []
     for part in text.replace('；', ';').split(';'):
         if not part.strip():
@@ -71,6 +74,10 @@ class PlanRunner:
             self.say('navigating to 夜航手册 Lv.%d row %s' % (book, row))
             if not self.navigate(goal).run():
                 raise NavError('could not reach the start screen')
+            if rounds == 0:
+                self.say('  start screen reached after %.1fs; 0 rounds, leaving' % (time.time() - t0))
+                self.navigate({'screen': 'world'}).run()
+                return
             self.set_auto_rounds(rounds)
             self.say('  start screen reached, auto rounds %d, %.1fs' % (rounds, time.time() - t0))
             if self.gameplay.start_run():
