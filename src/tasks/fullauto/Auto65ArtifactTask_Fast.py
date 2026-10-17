@@ -8,6 +8,7 @@ from src.tasks.CommissionsTask import CommissionsTask, Mission
 from src.tasks.BaseCombatTask import BaseCombatTask
 
 from src.tasks.AutoDefence import AutoDefence
+from src.tasks.fullauto.marker_walk import MarkerWalk
 from src.nav import text_zh as T
 from src.nav.nav import Nav, NavError
 from src.nav.navigator import NoSuchEntry, WrongMission
@@ -23,6 +24,7 @@ NIGHTBOOK_ENTRIES = {
          '浴血野蜂暗箭', '掠影野蜂利刃', '霜狱野蜂密探'],
 }
 NAV_OFF = "关闭"
+WALK_MODES = ["按标记直线走", "原录制路线"]
 NAV_TARGETS = {f"Lv.{lv} 第{i + 1}个 {name}": (lv, i)
                for lv, names in NIGHTBOOK_ENTRIES.items() for i, name in enumerate(names)}
 
@@ -50,12 +52,15 @@ class Auto65ArtifactTask_Fast(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
             "游戏内自动轮次": 0,
             "刷几次": 0,
             "自动导航": NAV_OFF,
+            "走位方式": WALK_MODES[0],
         })
         self.config_description.update({
             "游戏内自动轮次": "开打前把游戏自带的自动轮次设成这个数，每次进本由游戏打这么多轮；0 为不修改，按原来的轮次逻辑",
             "刷几次": "一共进本几次，打完停在大世界；1 为不按再次进行，0 为不限",
             "自动导航": "不在副本里时，从当前界面自动导航到夜航手册的这个关卡",
+            "走位方式": "按标记直线走：朝目标标记直走到附近；原录制路线：按录制的按键走完再复位",
         })
+        self.config_type["走位方式"] = {"type": "drop_down", "options": WALK_MODES}
         self.config_type["自动导航"] = {"type": "drop_down", "options": [NAV_OFF] + list(NAV_TARGETS)}
 
         self.action_timeout = 10
@@ -77,7 +82,7 @@ class Auto65ArtifactTask_Fast(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
                     raise Exception("请先打开关卡开始界面，或在「自动导航」里选一个关卡")
             game_rounds = int(self.config.get("游戏内自动轮次", 0) or 0)
             runs = int(self.config.get("刷几次", 0) or 0)
-            _to_do_task.config_external_movement(self.walk_to_aim, self.config,
+            _to_do_task.config_external_movement(self.walk, self.config,
                                                  recover=self.return_to_mission if auto_nav else None,
                                                  hands_off=bool(game_rounds),
                                                  run_limit=runs or None)
@@ -210,6 +215,21 @@ class Auto65ArtifactTask_Fast(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         if state.screen in ('commission', 'book', 'world', 'main_menu'):
             self.log_info(f"停在 {state.screen}，重新导航到关卡")
             self.navigate_to_mission()
+
+    def walk(self, delay=0):
+        if self.config.get("走位方式", WALK_MODES[0]) != WALK_MODES[0]:
+            return self.walk_to_aim(delay)
+        self.sleep(delay)
+        walker = MarkerWalk(self)
+        if walker.wait_for_marker() is None:
+            logger.info("没找到目标标记，改用录制路线")
+            return self.walk_to_aim(0)
+        if walker.run():
+            return
+        # partway there; the reset point by the objective is the nearest one
+        if not self.reset_and_transport():
+            logger.info("复位失败，重开任务...")
+            self.give_up_mission()
 
     def walk_to_aim(self, delay=0):
         """
