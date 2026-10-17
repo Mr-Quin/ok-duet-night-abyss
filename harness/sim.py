@@ -39,6 +39,9 @@ class TraceBackend(Backend):
     def ocr(self, img):
         return self.world.items(self.trace[max(self.step, 0)]['state'])
 
+    def ocr_region(self, scr, x0, y0, x1, y1, scale=2.0):
+        return self.world.region(self.trace[self.step]['state'], (x0, y0, x1, y1))
+
     def read(self):
         if self.step >= 0:
             expected = [tuple(a) for a in self.trace[self.step]['actions']]
@@ -103,6 +106,9 @@ class SimBackend(Backend):
         if nxt != self.state:
             self.state = nxt
             self.path.append(nxt)
+
+    def ocr_region(self, scr, x0, y0, x1, y1, scale=2.0):
+        return self.world.region(self.state, (x0, y0, x1, y1))
 
     def read(self):
         self._advance()
