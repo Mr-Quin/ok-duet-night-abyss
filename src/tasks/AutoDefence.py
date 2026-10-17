@@ -95,13 +95,14 @@ class AutoDefence(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
             self.open_in_mission_menu()
 
         idle_since = None
-        runs_done, at_result, run_live = 0, False, False
+        runs_done, run_live = 0, False
+        # 开始时就停在上一次的结算界面，那一局不算
+        at_result = bool(self.external_run_limit) and self.is_result_screen()
         while True:
             if self.external_run_limit or run_live:
                 was_at_result, at_result = at_result, self.is_result_screen()
                 if at_result:
                     run_live = False
-                    # 每局打完都停在结算界面；到了次数就停在这里，不再点「再次进行」
                     if self.external_run_limit and not was_at_result:
                         runs_done += 1
                         self.log_info(f"已完成 {runs_done}/{self.external_run_limit} 次")

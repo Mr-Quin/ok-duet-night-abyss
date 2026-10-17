@@ -85,7 +85,7 @@ class StartScreen(Target):
 @dataclass(frozen=True)
 class Mission(StartScreen):
     """委托页的卡片和等级，比如 Mission('扼守/无尽', lv=60)。"""
-    mode: str = ''
+    mode: str
     lv: Optional[int] = None
 
     def goal(self):
@@ -98,7 +98,7 @@ class Nightbook(StartScreen):
 
     给了 mode / lv 时会在开始界面上核对。
     """
-    level: int = 0
+    level: int
     row: Union[int, str] = 0
     mode: Optional[str] = None
     lv: Optional[int] = None
@@ -111,7 +111,7 @@ class Nightbook(StartScreen):
 @dataclass(frozen=True)
 class Letter(StartScreen):
     """委托密函里的一个委托，可以限定栏位：'角色'、'武器' 或 '魔之楔'。"""
-    mode: str = ''
+    mode: str
     column: Optional[str] = None
 
     def goal(self):
