@@ -9,9 +9,9 @@ from src.tasks.BaseCombatTask import BaseCombatTask
 
 from src.tasks.AutoDefence import AutoDefence
 from src.nav import text_zh as T
-from src.nav.navigator import Navigator
+from src.nav.nav import Nav
 from src.nav.okscript import OkScriptBackend, ROWS_PATH
-from src.nav.screens import classify, load_atlas
+from src.nav.targets import Nightbook
 
 logger = Logger.get_logger(__name__)
 
@@ -145,23 +145,23 @@ class Auto65ArtifactTask_Fast(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
     #         # 短暂休眠
     #         self.sleep(0.2)
 
-    def mission_goal(self):
-        book = int(self.config.get("夜航手册等级", 65))
-        row = str(self.config.get("夜航手册行", "0")).strip()
-        return {'screen': 'start', 'via': T.TABS[1], 'book': book, 'row': int(row) if row.isdigit() else row,
-                'mode': T.MISSIONS[8], 'lv': book}
+    @property
+    def nav(self):
+        if getattr(self, '_nav', None) is None:
+            self._nav = Nav(OkScriptBackend(self), log=self.log_debug, rows_path=ROWS_PATH)
+        return self._nav
 
     def navigate_to_mission(self):
-        goal = self.mission_goal()
-        self.log_info(f"导航到夜航手册 Lv.{goal['book']} 第 {goal['row']} 行")
-        nav = Navigator(OkScriptBackend(self), goal, log=self.log_debug, rows_path=ROWS_PATH)
-        if not nav.run():
-            raise Exception("无法导航到关卡")
+        level = int(self.config.get("夜航手册等级", 65))
+        row = str(self.config.get("夜航手册行", "0")).strip()
+        row = int(row) if row.isdigit() else row
+        self.log_info(f"导航到夜航手册 Lv.{level} 第 {row} 行")
+        self.nav.go(Nightbook(level, row, mode=T.MISSIONS[8], lv=level))
 
     def return_to_mission(self):
-        screen, _ = classify(OkScriptBackend(self).read(), load_atlas())
-        if screen in ('commission', 'book', 'world', 'main_menu'):
-            self.log_info(f"停在 {screen}，重新导航到关卡")
+        state = self.nav.where()
+        if state.screen in ('commission', 'book', 'world', 'main_menu'):
+            self.log_info(f"停在 {state.screen}，重新导航到关卡")
             self.navigate_to_mission()
 
     def walk_to_aim(self, delay=0):

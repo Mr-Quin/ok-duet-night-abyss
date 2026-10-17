@@ -6,12 +6,9 @@ press start, walk to the objective and wait for combat. Everything after that is
 """
 import time
 
-from src.nav import screens as S
 from src.nav import text_zh as T
-from src.nav.navigator import Navigator, NavError
-
-# auto-round controls on the start screen
-ROUNDS_MIN, ROUNDS_MINUS, ROUNDS_PLUS = (0.6117, 0.6819), (0.6477, 0.6819), (0.9188, 0.6819)
+from src.nav.nav import Nav, NavError
+from src.nav.targets import Nightbook, World
 
 
 class Gameplay:
@@ -41,44 +38,20 @@ def parse_plan(text):
 class PlanRunner:
     def __init__(self, backend, gameplay, log=print, nav_log=None, rows_path=None, mode=T.MISSIONS[8], dump_dir=None):
         self.b, self.gameplay, self.say = backend, gameplay, log
+        self.nav = Nav(backend, log=nav_log, rows_path=rows_path)
         self.dump_dir = dump_dir
-        self.nav_log = nav_log or (lambda msg: None)
-        self.rows_path = rows_path
         self.mode = mode
 
-    def navigate(self, goal, **kw):
-        return Navigator(self.b, goal, log=self.nav_log, rows_path=self.rows_path, **kw)
-
-    def set_auto_rounds(self, n):
-        for _ in range(12):
-            screen, info = S.classify(self.b.read(), {})
-            cur = info.get('auto_rounds') if screen == 'start' else None
-            if cur is None:
-                raise NavError('auto-round count not readable on %s' % screen)
-            if cur == n:
-                return
-            if cur - n > 8:
-                before = self.b.thumb()
-                self.b.click(*ROUNDS_MIN)
-                self.b.settle(before)
-                continue
-            for _ in range(min(abs(cur - n), 10)):
-                self.b.click(*(ROUNDS_MINUS if cur > n else ROUNDS_PLUS))
-                self.b.sleep(0.12)
-        raise NavError('could not set auto rounds to %d' % n)
-
     def run_item(self, book, row, rounds, attempts=2):
-        goal = {'screen': 'start', 'via': T.TABS[1], 'book': book, 'row': row, 'mode': self.mode, 'lv': book}
         for attempt in range(1, attempts + 1):
             t0 = time.time()
             self.say('navigating to 夜航手册 Lv.%d row %s' % (book, row))
-            if not self.navigate(goal).run():
-                raise NavError('could not reach the start screen')
+            target = Nightbook(book, row, mode=self.mode, lv=book, auto_rounds=rounds or None)
+            self.nav.go(target)
             if rounds == 0:
                 self.say('  start screen reached after %.1fs; 0 rounds, leaving' % (time.time() - t0))
-                self.navigate({'screen': 'world'}).run()
+                self.nav.go(World())
                 return
-            self.set_auto_rounds(rounds)
             self.say('  start screen reached, auto rounds %d, %.1fs' % (rounds, time.time() - t0))
             if self.gameplay.start_run():
                 break
@@ -86,7 +59,7 @@ class PlanRunner:
         else:
             raise NavError('gameplay could not start the run')
         t1 = time.time()
-        self.navigate({'screen': 'world'}, in_dungeon=True, leave='after_rounds').run(max_steps=60)
+        self.nav.wait_for_run_end()
         self.say('  rounds finished, back in the world after %.0fs' % (time.time() - t1))
 
     def run(self, plan):
