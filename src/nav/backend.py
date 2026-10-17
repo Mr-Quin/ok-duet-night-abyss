@@ -68,6 +68,9 @@ class Backend:
         """Positive notches scroll up, like the mouse wheel."""
         raise NotImplementedError
 
+    def park(self):
+        """Move the cursor off anything hoverable; hovered tabs and rows look selected."""
+
     def sleep(self, seconds):
         time.sleep(seconds)
 

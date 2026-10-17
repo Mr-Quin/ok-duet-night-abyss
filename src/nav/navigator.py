@@ -255,9 +255,12 @@ class Navigator:
         return False
 
     def on_commission(self, scr, info):
-        if info['tab'] is None and self.wait(3) is None:
-            # tab bar still animating; no label is lit yet
-            return None
+        if info['tab'] is None:
+            # tab bar still animating, or the cursor is resting on a tab and turned it gold
+            if self.wait(3) is None:
+                if self.unsure == 2:
+                    self.b.park()
+                return None
         return NotImplemented
 
     # the menu tree

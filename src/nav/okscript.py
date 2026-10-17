@@ -30,6 +30,9 @@ class OkScriptBackend(Backend):
     def click(self, x, y):
         self.task.click_relative(x, y)
         self.task.sleep(0.15)
+        self.park()
+
+    def park(self):
         self.task.move_relative(*PARK)
 
     def key(self, name):
