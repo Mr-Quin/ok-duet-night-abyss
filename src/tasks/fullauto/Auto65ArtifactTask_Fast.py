@@ -15,6 +15,9 @@ from src.nav.targets import Nightbook
 
 logger = Logger.get_logger(__name__)
 
+NAV_TARGETS = ["关闭", "夜航手册 Lv.30", "夜航手册 Lv.65"]
+NAV_LEVELS = [None, 30, 65]
+
 
 class Auto65ArtifactTask_Fast(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
     """
@@ -36,15 +39,17 @@ class Auto65ArtifactTask_Fast(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
             self.default_config.pop(key, None)
 
         self.default_config.update({
-            "自动导航": True,
-            "夜航手册等级": 65,
-            "夜航手册行": "0",
+            "自动导航": NAV_TARGETS[2],
+            "关卡": "1",
+            "游戏内自动轮次": 0,
         })
         self.config_description.update({
             "自动导航": "不在副本里时，从当前界面自动导航到夜航手册的扼守关卡",
-            "夜航手册等级": "30 或 65",
-            "夜航手册行": "第几行(从0开始)，或关卡名的一部分",
+            "关卡": "夜航手册该等级下的第几个关卡，从上往下数",
+            "游戏内自动轮次": "开打前设置游戏自带的自动轮次，每次进本打几轮后撤离再重开；0 为不修改，按原来的 3 轮",
         })
+        self.config_type["自动导航"] = {"type": "drop_down", "options": NAV_TARGETS}
+        self.config_type["关卡"] = {"type": "drop_down", "options": [str(i) for i in range(1, 10)]}
 
         self.action_timeout = 10
 
@@ -55,8 +60,13 @@ class Auto65ArtifactTask_Fast(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         self.set_check_monthly_card()
         try:
             _to_do_task = self.get_task_by_class(AutoDefence)
-            auto_nav = self.config.get("自动导航", False)
-            _to_do_task.config_external_movement(self.walk_to_aim, self.config,
+            auto_nav = self.mission_target() is not None
+            config = dict(self.config)
+            rounds = int(self.config.get("游戏内自动轮次", 0) or 0)
+            if rounds > 0:
+                # AutoDefence retreats after 轮次 rounds; keep it in step with the game's own count
+                config["轮次"] = rounds
+            _to_do_task.config_external_movement(self.walk_to_aim, config,
                                                  recover=self.return_to_mission if auto_nav else None)
             if auto_nav and not self.in_team():
                 self.navigate_to_mission()
@@ -151,12 +161,19 @@ class Auto65ArtifactTask_Fast(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
             self._nav = Nav(OkScriptBackend(self), log=self.log_debug, rows_path=ROWS_PATH)
         return self._nav
 
+    def mission_target(self):
+        choice = self.config.get("自动导航", NAV_TARGETS[0])
+        if choice not in NAV_TARGETS[1:]:
+            return None
+        level = NAV_LEVELS[NAV_TARGETS.index(choice)]
+        row = int(self.config.get("关卡", "1")) - 1
+        rounds = int(self.config.get("游戏内自动轮次", 0) or 0)
+        return Nightbook(level, row, mode=T.MISSIONS[8], lv=level, auto_rounds=rounds or None)
+
     def navigate_to_mission(self):
-        level = int(self.config.get("夜航手册等级", 65))
-        row = str(self.config.get("夜航手册行", "0")).strip()
-        row = int(row) if row.isdigit() else row
-        self.log_info(f"导航到夜航手册 Lv.{level} 第 {row} 行")
-        self.nav.go(Nightbook(level, row, mode=T.MISSIONS[8], lv=level))
+        target = self.mission_target()
+        self.log_info(f"导航到夜航手册 Lv.{target.level} 第 {target.row + 1} 个关卡")
+        self.nav.go(target)
 
     def return_to_mission(self):
         state = self.nav.where()
