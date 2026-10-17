@@ -42,5 +42,9 @@ class OkScriptBackend(Backend):
             self.task.scroll_relative(x, y, step)
             self.task.sleep(0.015)
 
+    def drag(self, x0, y0, x1, y1):
+        self.task.swipe_relative(x0, y0, x1, y1, duration=0.4)
+        self.park()
+
     def sleep(self, seconds):
         self.task.sleep(seconds)
