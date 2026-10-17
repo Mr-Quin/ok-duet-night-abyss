@@ -39,8 +39,8 @@ Look through `world/states/*.jpg` by eye before committing a recording.
 
 ## Privacy
 
-`privacy.py` decides what is blacked out per screen kind: UID, wallet, chat, profile,
-quest and map names, the party HUD and character, team presets, and on screens drawn over a
+`privacy.py` decides what is blacked out per screen kind: UID, wallet, chat, profile and level,
+quest and map names, the party HUD, HP and character, team presets, item counts, and on screens drawn over a
 run (results, in-run menu, round and confirm dialogs, main menu) everything except the panels
 the navigator reads. OCR items inside blacked-out regions are dropped from the JSON too.
 `TestPrivacy` fails if any saved image shows something in the UID box or any saved OCR text
