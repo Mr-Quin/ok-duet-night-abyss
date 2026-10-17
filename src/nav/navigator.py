@@ -419,7 +419,10 @@ class Navigator:
         # the row list refreshes a moment after the level ring moves; rows read too early belong to the old level
         stale = names and known[:1] != names[:1] and any(
             k != 'names/%d' % book and k.startswith('names/') and v[:1] == names[:1] for k, v in self.rows.items())
-        if S.selected_level(scr, info['levels']) != book or stale:
+        # the selected label is usually drawn white, but not always; rows matching this level's known list confirm it too
+        others = {n for k, v in self.rows.items() if k.startswith('names/') and k != 'names/%d' % book for n in v}
+        confirmed = S.selected_level(scr, info['levels']) == book or (names[:1] and names[0] in known and names[0] not in others)
+        if not confirmed or stale:
             if self.wait(4) is None:
                 return None
             st.pop('level', None)
