@@ -48,6 +48,10 @@ class RecordingBackend(Backend):
         self.pending.append(('click', round(x, 4), round(y, 4)))
         self.inner.click(x, y)
 
+    def drag(self, x0, y0, x1, y1):
+        self.pending.append(('drag', round(x0, 4), round(y0, 4), round(x1, 4), round(y1, 4)))
+        self.inner.drag(x0, y0, x1, y1)
+
     def key(self, name):
         self.pending.append(('key', name))
         self.inner.key(name)

@@ -158,6 +158,17 @@ class Game:
         time.sleep(hold)
         send(mouse_input(up))
 
+    def drag(self, x0, y0, x1, y1, steps=12):
+        self.move(x0, y0)
+        time.sleep(0.05)
+        send(mouse_input(MOUSEEVENTF_LEFTDOWN))
+        time.sleep(0.08)
+        for k in range(1, steps + 1):
+            self.move(x0 + (x1 - x0) * k / steps, y0 + (y1 - y0) * k / steps)
+            time.sleep(0.015)
+        time.sleep(0.08)
+        send(mouse_input(MOUSEEVENTF_LEFTUP))
+
     def scroll(self, x, y, notches):
         self.move(x, y)
         time.sleep(0.05)
@@ -227,7 +238,7 @@ class Handler(BaseHTTPRequestHandler):
                 res = {"hwnd": GAME.hwnd, "client": [w, h], "foreground": GAME.foreground()}
             elif cmd == "shot":
                 res = save_frame(q.get("name", "last"), f("scale", 1.0))
-            elif cmd in ("click", "key", "scroll", "turn", "move") and not GAME.foreground() and q.get("force") != "1":
+            elif cmd in ("click", "drag", "key", "scroll", "turn", "move") and not GAME.foreground() and q.get("force") != "1":
                 res = {"error": "game is not the foreground window; refusing to send input"}
             elif cmd == "focus":
                 res = {"ok": GAME.focus(), "foreground": GAME.foreground()}
@@ -236,6 +247,9 @@ class Handler(BaseHTTPRequestHandler):
                 if "park_x" in q:
                     time.sleep(0.05)
                     GAME.move(f("park_x"), f("park_y"))
+                res = {"ok": True}
+            elif cmd == "drag":
+                GAME.drag(f("x0"), f("y0"), f("x1"), f("y1"))
                 res = {"ok": True}
             elif cmd == "move":
                 GAME.move(f("x"), f("y"))

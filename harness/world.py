@@ -59,8 +59,8 @@ def region_key(box):
 def same_action(a, b):
     if a[0] != b[0]:
         return False
-    if a[0] == 'click':
-        return abs(a[1] - b[1]) <= CLICK_TOLERANCE and abs(a[2] - b[2]) <= CLICK_TOLERANCE
+    if a[0] in ('click', 'drag'):
+        return all(abs(p - q) <= CLICK_TOLERANCE for p, q in zip(a[1:], b[1:]))
     return a[1:] == b[1:]
 
 

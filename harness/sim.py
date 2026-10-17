@@ -59,6 +59,9 @@ class TraceBackend(Backend):
     def click(self, x, y):
         self.buffer.append(('click', x, y))
 
+    def drag(self, x0, y0, x1, y1):
+        self.buffer.append(('drag', x0, y0, x1, y1))
+
     def key(self, name):
         self.buffer.append(('key', name))
 
@@ -116,6 +119,9 @@ class SimBackend(Backend):
 
     def click(self, x, y):
         self.buffer.append(('click', x, y))
+
+    def drag(self, x0, y0, x1, y1):
+        self.buffer.append(('drag', x0, y0, x1, y1))
 
     def key(self, name):
         self.buffer.append(('key', name))
