@@ -646,7 +646,8 @@ class CommissionsTask(BaseDNATask):
 
     def get_round_info(self):
         """获取并更新当前轮次信息。"""
-        if self.in_team():
+        # 轮次数字在行动抉择弹窗上；用弹窗本身判断，in_team() 在弹窗盖着 HUD 时也可能成立
+        if not (self.find_action_dialog_continue() or self.find_action_dialog_retreat()):
             return
         box = self.box_of_screen(0.241, 0.361, 0.259, 0.394, name="green_mark", hcenter=True)
         self.wait_until(lambda: self.calculate_color_percentage(green_mark_color, box) > 0.135, time_out=1)
