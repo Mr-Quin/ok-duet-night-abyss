@@ -238,7 +238,7 @@ class Handler(BaseHTTPRequestHandler):
                 res = {"hwnd": GAME.hwnd, "client": [w, h], "foreground": GAME.foreground()}
             elif cmd == "shot":
                 res = save_frame(q.get("name", "last"), f("scale", 1.0))
-            elif cmd in ("click", "drag", "key", "scroll", "turn", "move") and not GAME.foreground() and q.get("force") != "1":
+            elif cmd in ("click", "drag", "key", "down", "up", "scroll", "turn", "move") and not GAME.foreground() and q.get("force") != "1":
                 res = {"error": "game is not the foreground window; refusing to send input"}
             elif cmd == "focus":
                 res = {"ok": GAME.focus(), "foreground": GAME.foreground()}
@@ -256,6 +256,9 @@ class Handler(BaseHTTPRequestHandler):
                 res = {"ok": True}
             elif cmd == "key":
                 GAME.key(q["k"].lower(), f("hold", 0.06))
+                res = {"ok": True}
+            elif cmd in ("down", "up"):
+                send(key_input(q["k"].lower(), cmd == "up"))
                 res = {"ok": True}
             elif cmd == "scroll":
                 GAME.scroll(f("x"), f("y"), f("n"))

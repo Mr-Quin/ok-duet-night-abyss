@@ -94,6 +94,18 @@ class LiveBackend(Backend):
     def key(self, name):
         self.call('key?k=' + name)
 
+    def key_down(self, name):
+        self.call('down?k=' + name)
+
+    def key_up(self, name):
+        self.call('up?k=' + name)
+
+    def turn(self, dx, dy=0, steps=10):
+        self.call('turn?dx=%d&dy=%d&steps=%d' % (dx, dy, steps))
+
+    def tap(self, name, hold):
+        self.call('key?k=%s&hold=%.2f' % (name, hold))
+
     def scroll(self, x, y, notches):
         px, py = self._px(x, y)
         self.call('scroll?x=%d&y=%d&n=%d' % (px, py, notches))
