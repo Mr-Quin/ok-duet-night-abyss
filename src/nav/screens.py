@@ -160,6 +160,24 @@ def classify(scr, atlas):
     return graph.classify(scr, atlas)
 
 
+# 启动游戏的画面排在最前面：这些画面上不能按 Esc（左下角就是退出游戏）
+
+@graph.detector(1)
+def detect_boot(scr, atlas):
+    version = scr.find(T.BOOT_VERSION, (0, 0.9, 0.4, 1))
+    if not (version or scr.find_any(T.BOOT_MARKERS)):
+        return None
+    buttons = [i for b in T.BOOT_DIALOG_BUTTONS for i in scr.find(b, (0.2, 0.3, 0.8, 0.85), exact=True)]
+    if buttons:
+        text = ' '.join(i['t'] for i in sorted(scr.items, key=lambda i: (i['y'], i['x']))
+                        if 0.2 < i['x'] < 0.8 and 0.2 < i['y'] < 0.85)
+        return 'boot_dialog', {'text': text}
+    enter = scr.find(T.TITLE_ENTER)
+    if enter:
+        return 'title', {'enter': enter[0]}
+    return 'boot', {'login': bool(scr.find(T.LOGIN, (0.3, 0.8, 0.7, 1), exact=True))}
+
+
 # 局内界面排在前面：局内 HUD 也有大世界判据要找的 Lv 条
 
 @graph.detector(10)

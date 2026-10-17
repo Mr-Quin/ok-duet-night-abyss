@@ -155,6 +155,50 @@ class TestAutoRounds(unittest.TestCase):
         self.assertEqual(backend.actions.count(('drag',)), 2)
 
 
+class TestStartingTheGame(unittest.TestCase):
+    VERSION = ('OS_ Windows_ Product_1.6.208.1', 0.11, 0.99)
+
+    def classify(self, *texts):
+        return S.classify(screen(*texts), {})
+
+    def test_title_screen_is_entered_by_clicking(self):
+        found, info = self.classify(('当前区服', 0.92, 0.04), ('点击进入游戏', 0.5, 0.9), self.VERSION)
+        self.assertEqual(found, 'title')
+        nav, backend = navigator(World())
+        H.on_title(nav, screen(), info)
+        self.assertEqual(backend.actions, [('click', 0.5, 0.9)])
+
+    def test_boot_screens_are_waited_through_without_pressing_anything(self):
+        for texts in ([('光敏性癫痫警告', 0.5, 0.3)], [('检查更新中·', 0.5, 0.9), self.VERSION],
+                      [('登录', 0.5, 0.9), self.VERSION]):
+            found, info = self.classify(*texts)
+            self.assertEqual(found, 'boot', texts)
+            nav, backend = navigator(World())
+            self.assertIsNone(H.on_boot(nav, screen(), info))
+            self.assertEqual(backend.actions, [])
+
+    def test_a_blank_frame_while_starting_is_waited_on(self):
+        nav, backend = navigator(World())
+        H.on_boot(nav, screen(), {'login': False})
+        self.assertIsNone(H.on_unknown(nav, screen(), {}))
+        self.assertEqual(backend.actions, [])
+
+    def test_waiting_too_long_at_login_asks_for_a_manual_login(self):
+        nav, backend = navigator(World())
+        with self.assertRaisesRegex(NavError, '手动登录'):
+            for _ in range(H.MAX_LOGIN_WAITS + 1):
+                H.on_boot(nav, screen(), {'login': True})
+
+    def test_a_dialog_while_starting_is_left_to_the_user(self):
+        found, info = self.classify(('发现新版本，是否下载？', 0.5, 0.45), ('确定', 0.6, 0.6), ('取消', 0.4, 0.6),
+                                    ('点击进入游戏', 0.5, 0.9), self.VERSION)
+        self.assertEqual(found, 'boot_dialog')
+        nav, backend = navigator(World())
+        with self.assertRaisesRegex(NavError, '发现新版本'):
+            H.on_boot_dialog(nav, screen(), info)
+        self.assertEqual(backend.actions, [])
+
+
 class TestRoutes(unittest.TestCase):
 
     def test_nightbook_route(self):

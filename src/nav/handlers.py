@@ -3,8 +3,9 @@
 局内的规则保证路上遇到正在进行的一局时，在第一个不损失奖励的时机离开：轮次弹窗撤离、
 结算界面退出，或者在本局还没有任何奖励时放弃。
 
-用到的 nav.state 键：giving_up（正在放弃本局）、loading（刚离开副本，在等加载）、
-run_waits（局内等了几次）、entered_row（从夜航手册哪一行进的开始界面，edges.py 写入）。
+用到的 nav.state 键：giving_up（正在放弃本局）、loading（刚离开副本或正在启动游戏，在等加载）、
+run_waits（局内等了几次）、login_waits（启动时在登录这一步等了几次）、
+entered_row（从夜航手册哪一行进的开始界面，edges.py 写入）。
 """
 from src.nav import graph
 from src.nav import text_zh as T
@@ -12,6 +13,8 @@ from src.nav.graph import NavError, WrongMission
 
 # 局内一直等不到弹窗或结算时，最多等这么多次（每次约 0.4 秒加一次识别）
 MAX_RUN_WAITS = 400
+# 启动时停在登录这一步超过这么多次，多半是要手动输入账号
+MAX_LOGIN_WAITS = 150
 # 开始界面左侧条目的点击位置
 TIER_X = 0.08
 LETTER_ENTRY_X = 0.05
@@ -111,6 +114,31 @@ def on_unknown(nav, scr, info):
         return None
     nav.b.key('esc')
     return False
+
+
+@graph.handler('boot')
+def on_boot(nav, scr, info):
+    # 启动画面之间的黑屏和进游戏前的加载画面都认不出，要等，不能按 Esc
+    nav.state['loading'] = True
+    if info['login']:
+        nav.state['login_waits'] = nav.state.get('login_waits', 0) + 1
+        if nav.state['login_waits'] > MAX_LOGIN_WAITS:
+            raise NavError('游戏停在登录界面，请手动登录')
+    return None
+
+
+@graph.handler('title')
+def on_title(nav, scr, info):
+    nav.log('  点击进入游戏')
+    nav.state['loading'] = True
+    nav.click(info['enter'])
+    return False
+
+
+@graph.handler('boot_dialog')
+def on_boot_dialog(nav, scr, info):
+    # 启动时的弹窗（下载更新、网络错误……）不替用户做决定
+    raise NavError('启动时弹出对话框：%s，请手动处理' % info['text'])
 
 
 @graph.handler('commission')
