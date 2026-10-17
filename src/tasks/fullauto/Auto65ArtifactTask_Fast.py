@@ -12,7 +12,7 @@ from src.nav import text_zh as T
 from src.nav.nav import Nav, NavError
 from src.nav.navigator import NoSuchEntry, WrongMission
 from src.nav.okscript import OkScriptBackend, ROWS_PATH
-from src.nav.targets import Nightbook
+from src.nav.targets import Nightbook, World
 
 logger = Logger.get_logger(__name__)
 
@@ -41,13 +41,19 @@ class Auto65ArtifactTask_Fast(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         self.group_icon = FluentIcon.CAFE
 
         self.setup_commission_config()
+        substrings_to_remove = ["轮次"]
+        keys_to_delete = [key for key in self.default_config for sub in substrings_to_remove if sub in key]
+        for key in keys_to_delete:
+            self.default_config.pop(key, None)
+
         self.default_config.update({
             "游戏内自动轮次": 0,
+            "刷几次": 0,
             "自动导航": NAV_OFF,
         })
         self.config_description.update({
-            "轮次": "每次进本打几个轮次后撤离；开了游戏内自动轮次时，每个轮次是一整段自动轮次",
-            "游戏内自动轮次": "开打前把游戏自带的自动轮次设成这个数，0 为不修改。每次进本共打 轮次 × 自动轮次 轮",
+            "游戏内自动轮次": "开打前把游戏自带的自动轮次设成这个数，每次进本由游戏打这么多轮；0 为不修改，按原来的轮次逻辑",
+            "刷几次": "一共进本几次，打完停在大世界；1 为不按再次进行，0 为不限",
             "自动导航": "不在副本里时，从当前界面自动导航到夜航手册的这个关卡",
         })
         self.config_type["自动导航"] = {"type": "drop_down", "options": [NAV_OFF] + list(NAV_TARGETS)}
@@ -69,16 +75,18 @@ class Auto65ArtifactTask_Fast(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
                     self.navigate_to_mission()
                 elif state.screen != 'start':
                     raise Exception("请先打开关卡开始界面，或在「自动导航」里选一个关卡")
-            config = dict(self.config)
-            # AutoDefence counts the rounds actually played and retreats after 轮次 of them, so with the
-            # game's auto rounds on, each of our 轮次 is a whole block of auto rounds
-            config["轮次"] = int(self.config.get("轮次", 5)) * self.auto_round_block()
-            self.log_info(f"每次进本打 {config['轮次']} 轮")
-            _to_do_task.config_external_movement(self.walk_to_aim, config,
-                                                 recover=self.return_to_mission if auto_nav else None)
+            game_rounds = int(self.config.get("游戏内自动轮次", 0) or 0)
+            runs = int(self.config.get("刷几次", 0) or 0)
+            _to_do_task.config_external_movement(self.walk_to_aim, self.config,
+                                                 recover=self.return_to_mission if auto_nav else None,
+                                                 stop=self.auto_rounds_done if game_rounds else None,
+                                                 run_limit=runs or None)
             original_info_set = _to_do_task.info_set
             _to_do_task.info_set = self.info_set
-            return _to_do_task.do_run()
+            result = _to_do_task.do_run()
+            if runs:
+                self.nav.go(World())
+            return result
         except TaskDisabledException:
             pass
         except Exception as e:
@@ -185,17 +193,20 @@ class Auto65ArtifactTask_Fast(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         rounds = int(self.config.get("游戏内自动轮次", 0) or 0)
         return Nightbook(level, row, mode=T.MISSIONS[8], lv=level, auto_rounds=rounds or None)
 
-    def auto_round_block(self):
-        """How many rounds the game plays on its own between our decisions: the 自动轮次 count, or 1."""
-        rounds = int(self.config.get("游戏内自动轮次", 0) or 0)
-        if rounds:
-            return rounds
-        state = self.nav.where()
-        if state.screen == 'start' and state.info.get('auto_on'):
-            return state.info.get('auto_rounds') or 1
-        if state.screen != 'start':
-            self.log_info("不在关卡开始界面，读不到游戏内自动轮次，按 1 计")
-        return 1
+    def auto_rounds_done(self, reads=3):
+        """At a round dialog: leave once the game's 自动轮次 countdown has run out, otherwise continue.
+
+        A countdown missed by one OCR read would cut the run short, so every read has to agree.
+        """
+        for _ in range(reads):
+            state = self.nav.where()
+            if state.screen != 'round_dialog':
+                return False
+            auto = state.info.get('auto')
+            if auto and auto[0] < auto[1]:
+                return False
+            self.sleep(0.2)
+        return True
 
     def navigate_to_mission(self):
         target = self.mission_target()
