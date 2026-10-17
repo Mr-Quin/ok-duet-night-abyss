@@ -115,4 +115,4 @@ class Letter(StartScreen):
     column: Optional[str] = None
 
     def goal(self):
-        return {'screen': 'start', 'via': T.TABS[2], 'mode': self.mode, 'column': self.column}
+        return {'screen': 'start', 'via': T.TABS[2], 'mode': self.mode, 'lv': None, 'column': self.column}
