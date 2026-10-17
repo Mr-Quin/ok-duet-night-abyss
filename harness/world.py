@@ -1,7 +1,8 @@
 """A recorded slice of the game UI: the screens seen and how actions moved between them.
 
 world.json holds the states and transitions; states/<id>.jpg and states/<id>.json hold each
-screen's masked image and OCR items. A transition is (from state, actions, to state), where
+screen's masked image and OCR items. A state can also hold the result of an enlarged OCR of
+part of the screen (Backend.ocr_region), since the downscaled image cannot reproduce it. A transition is (from state, actions, to state), where
 actions is the list of inputs sent between two reads; an empty list means the screen changed
 by itself (an animation finishing, a loading screen ending).
 """
@@ -49,6 +50,10 @@ def dhash(img):
     small = cv2.resize(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), (9, 8), interpolation=cv2.INTER_AREA)
     bits = (small[:, 1:] > small[:, :-1]).flatten()
     return '%016x' % int(''.join('1' if b else '0' for b in bits), 2)
+
+
+def region_key(box):
+    return ','.join('%.3f' % v for v in box)
 
 
 def same_action(a, b):
@@ -130,6 +135,12 @@ class World:
         found = [t for t in self.transitions if t['from'] == src and len(t['actions']) == len(actions)
                  and all(same_action(a, b) for a, b in zip(t['actions'], actions))]
         return [t['to'] for t in sorted(found, key=lambda t: -t['count'])]
+
+    def add_region(self, sid, box, items):
+        self.states[sid].setdefault('regions', {}).setdefault(region_key(box), items)
+
+    def region(self, sid, box):
+        return self.states[sid].get('regions', {}).get(region_key(box), [])
 
     def image(self, sid):
         if ('img', sid) not in self._cache:

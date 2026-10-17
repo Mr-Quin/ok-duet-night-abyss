@@ -4,6 +4,7 @@ import json
 from src.nav import screens as S
 from src.nav.backend import Backend
 
+from harness import privacy
 from harness.world import World
 
 
@@ -36,6 +37,12 @@ class RecordingBackend(Backend):
         self.trace.append({'state': sid, 'actions': []})
         self.current, self.pending = sid, []
         return scr
+
+    def ocr_region(self, scr, x0, y0, x1, y1, scale=2.0):
+        items = self.inner.ocr_region(scr, x0, y0, x1, y1, scale)
+        state = self.world.states[self.current]
+        self.world.add_region(self.current, (x0, y0, x1, y1), privacy.visible(items, state['screen']))
+        return items
 
     def click(self, x, y):
         self.pending.append(('click', round(x, 4), round(y, 4)))

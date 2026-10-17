@@ -60,7 +60,10 @@ class LiveBackend(Backend):
     def ocr(self, img):
         if self._ocr is None:
             from onnxocr.onnx_paddleocr import ONNXPaddleOcr
-            self._ocr = ONNXPaddleOcr(use_angle_cls=False, use_gpu=False, use_openvino=True)
+            # the detector shrinks anything longer than det_limit_side_len, which by default
+            # (960) turns the enlarged level column into unreadable text
+            self._ocr = ONNXPaddleOcr(use_angle_cls=False, use_gpu=False, use_openvino=True,
+                                      det_limit_side_len=2000)
         h, w = img.shape[:2]
         items = []
         for box, (text, conf) in (self._ocr.ocr(img)[0] or []):
