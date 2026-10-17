@@ -79,9 +79,7 @@ class Auto65ArtifactTask_Fast(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
             runs = int(self.config.get("刷几次", 0) or 0)
             _to_do_task.config_external_movement(self.walk_to_aim, self.config,
                                                  recover=self.return_to_mission if auto_nav else None,
-                                                 # the game ends each run on the result screen once its auto
-                                                 # rounds are played, so AutoDefence never retreats
-                                                 stop=(lambda: False) if game_rounds else None,
+                                                 hands_off=bool(game_rounds),
                                                  run_limit=runs or None)
             original_info_set = _to_do_task.info_set
             _to_do_task.info_set = self.info_set

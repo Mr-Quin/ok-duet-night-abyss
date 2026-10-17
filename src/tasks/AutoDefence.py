@@ -31,7 +31,7 @@ class AutoDefence(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         self.quick_assist_task = QuickAssistTask(self)
         self.external_movement = _default_movement
         self.external_recover = None
-        self.external_stop = None
+        self.external_hands_off = False
         self.external_run_limit = None
         self._external_config = None
         self._merged_config_cache = None
@@ -54,11 +54,11 @@ class AutoDefence(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         self._merged_config_cache = None
 
     def config_external_movement(self, func: Callable, config: dict, recover: Callable = None,
-                                 stop: Callable = None, run_limit: int = None):
-        """recover: called when idle on a menu; stop: replaces the 轮次 check at round dialogs;
-        run_limit: stop on the result screen after this many finished runs."""
+                                 hands_off: bool = False, run_limit: int = None):
+        """recover: called when idle on a menu; hands_off: the game's 自动轮次 runs the rounds, so leave
+        round dialogs alone; run_limit: stop on the result screen after this many finished runs."""
         self.external_recover = recover
-        self.external_stop = stop
+        self.external_hands_off = hands_off
         self.external_run_limit = run_limit
         if callable(func):
             self.external_movement = func
@@ -73,7 +73,7 @@ class AutoDefence(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         self.set_check_monthly_card()
         self.external_movement = _default_movement
         self.external_recover = None
-        self.external_stop = None
+        self.external_hands_off = False
         self.external_run_limit = None
         try:
             return self.do_run()
@@ -91,12 +91,14 @@ class AutoDefence(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
             self.open_in_mission_menu()
 
         idle_since = None
-        runs_done, was_at_result = 0, False
+        runs_done, was_at_result, run_live = 0, False, False
         while True:
-            if self.external_run_limit:
-                # each finished run ends on the result screen; stop on the last one instead of pressing 再次进行
+            if self.external_run_limit or run_live:
                 at_result = not self.in_team() and bool(self.find_result_again_btn())
-                if at_result and not was_at_result:
+                if at_result:
+                    run_live = False
+                # each finished run ends on the result screen; stop on the last one instead of pressing 再次进行
+                if self.external_run_limit and at_result and not was_at_result:
                     runs_done += 1
                     self.log_info(f"已完成 {runs_done}/{self.external_run_limit} 次")
                     if runs_done >= self.external_run_limit:
@@ -105,6 +107,13 @@ class AutoDefence(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
             if self.in_team():
                 if self.move_on_begin():
                     self.handle_in_mission()
+            elif run_live and self.external_hands_off and (self.find_action_dialog_continue() or
+                                                            self.find_action_dialog_retreat() or
+                                                            self.find_manual_select_btn()):
+                # the game continues between rounds and retreats after its 自动轮次 by itself;
+                # pressing 继续 here keeps the run going past that count
+                self.sleep(0.5)
+                continue
 
             _status = self.handle_mission_interface(stop_func=self.stop_func)
             # nothing to act on outside a run, e.g. back on the commission list after a failed walk
@@ -119,6 +128,7 @@ class AutoDefence(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
                 self.wait_until(self.in_team, time_out=30)
                 self.init_all()
                 self.handle_mission_start()
+                run_live = self.in_team()
             elif _status == Mission.STOP:
                 self.log_info("任务中止")
                 self.quit_mission()
@@ -199,8 +209,6 @@ class AutoDefence(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
             self.soundBeep()
 
     def stop_func(self):
-        if self.external_stop:
-            return self.external_stop()
         self.get_round_info()
         n = self.config.get("轮次", 3)
         if self.current_round >= n:
