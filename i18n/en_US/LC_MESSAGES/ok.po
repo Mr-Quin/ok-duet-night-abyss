@@ -611,3 +611,33 @@ msgstr "Runs"
 
 msgid "打几次，0 = 无限循环"
 msgstr "How many runs, 0 = endless"
+
+msgid "游戏内自动轮次"
+msgstr "In-game auto rounds"
+
+msgid "开打前把游戏自带的自动轮次设成这个数：打完第一轮后游戏自动再打这么多轮，然后自行结算；0 为不修改，按原来的轮次逻辑"
+msgstr "Before starting, set the game's own auto rounds to this number: after the first round the game plays this many more, then settles by itself. 0 leaves it unchanged and uses the usual round logic"
+
+msgid "刷几次"
+msgstr "Runs"
+
+msgid "一共进本几次，打完停在大世界；1 为不按再次进行，0 为不限"
+msgstr "How many runs in total, then stop in the open world; 1 = never press Retry, 0 = no limit"
+
+msgid "自动导航"
+msgstr "Auto navigation"
+
+msgid "不在副本里时，从当前界面自动导航到夜航手册的这个关卡"
+msgstr "When not in a mission, navigate from the current screen to this Nightbook stage"
+
+msgid "走位方式"
+msgstr "Movement"
+
+msgid "按标记直线走：朝目标标记直走到附近；原录制路线：按录制的按键走完再复位"
+msgstr "Follow marker: walk straight toward the objective marker; Recorded route: replay the recorded keys, then reset"
+
+msgid "按标记直线走"
+msgstr "Follow marker"
+
+msgid "原录制路线"
+msgstr "Recorded route"

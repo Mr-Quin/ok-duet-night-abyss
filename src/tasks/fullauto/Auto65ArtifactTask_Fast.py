@@ -8,8 +8,22 @@ from src.tasks.CommissionsTask import CommissionsTask, Mission
 from src.tasks.BaseCombatTask import BaseCombatTask
 
 from src.tasks.AutoDefence import AutoDefence
+from src.tasks.fullauto.marker_walk import MarkerWalk
+from src.nav import Nav, NavError, Nightbook, NoSuchEntry, World, WrongMission
+from src.nav.okscript import CACHE_PATH, OkScriptBackend
 
 logger = Logger.get_logger(__name__)
+
+# 夜航手册里进 30/65 扼守的关卡，从上往下
+NIGHTBOOK_ENTRIES = {
+    30: ['残火暴徒秽兽', '霹雳疾冲秽兽', '枯萎游击秽兽', '凛霜疾冲秽兽'],
+    65: ['霜狱野蜂暗箭', '浴血野蜂利刃', '浴血野蜂密探', '掠影野蜂暗箭', '守护野蜂暗箭', '守护野蜂利刃', '转雷野蜂密探',
+         '浴血野蜂暗箭', '掠影野蜂利刃', '霜狱野蜂密探'],
+}
+NAV_OFF = "关闭"
+WALK_MODES = ["按标记直线走", "原录制路线"]
+NAV_TARGETS = {f"Lv.{lv} 第{i + 1}个 {name}": (lv, i)
+               for lv, names in NIGHTBOOK_ENTRIES.items() for i, name in enumerate(names)}
 
 
 class Auto65ArtifactTask_Fast(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
@@ -31,6 +45,22 @@ class Auto65ArtifactTask_Fast(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         for key in keys_to_delete:
             self.default_config.pop(key, None)
 
+        self.default_config.update({
+            "游戏内自动轮次": 0,
+            "刷几次": 0,
+            "自动导航": NAV_OFF,
+            "走位方式": WALK_MODES[0],
+        })
+        self.config_description.update({
+            "游戏内自动轮次": "开打前把游戏自带的自动轮次设成这个数：打完第一轮后游戏自动再打这么多轮，然后自行结算；"
+                          "0 为不修改，按原来的轮次逻辑",
+            "刷几次": "一共进本几次，打完停在大世界；1 为不按再次进行，0 为不限",
+            "自动导航": "不在副本里时，从当前界面自动导航到夜航手册的这个关卡",
+            "走位方式": "按标记直线走：朝目标标记直走到附近；原录制路线：按录制的按键走完再复位",
+        })
+        self.config_type["走位方式"] = {"type": "drop_down", "options": WALK_MODES}
+        self.config_type["自动导航"] = {"type": "drop_down", "options": [NAV_OFF] + list(NAV_TARGETS)}
+
         self.action_timeout = 10
 
     def run(self):
@@ -40,10 +70,26 @@ class Auto65ArtifactTask_Fast(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         self.set_check_monthly_card()
         try:
             _to_do_task = self.get_task_by_class(AutoDefence)
-            _to_do_task.config_external_movement(self.walk_to_aim, self.config)
+            auto_nav = self.mission_target() is not None
+            # 大世界的 HUD 也有 Lv 条，in_team() 在大世界也成立，所以用导航层判断是否在局内
+            state = self.where_now()
+            if not state.in_run:
+                if auto_nav:
+                    self.navigate_to_mission()
+                elif state.screen != 'start':
+                    raise Exception("请先打开关卡开始界面，或在「自动导航」里选一个关卡")
+            game_rounds = int(self.config.get("游戏内自动轮次", 0) or 0)
+            runs = int(self.config.get("刷几次", 0) or 0)
+            _to_do_task.config_external_movement(self.walk, self.config,
+                                                 recover=self.return_to_mission if auto_nav else None,
+                                                 hands_off=bool(game_rounds),
+                                                 run_limit=runs or None)
             original_info_set = _to_do_task.info_set
             _to_do_task.info_set = self.info_set
-            return _to_do_task.do_run()
+            result = _to_do_task.do_run()
+            if runs:
+                self.nav.go(World())
+            return result
         except TaskDisabledException:
             pass
         except Exception as e:
@@ -125,6 +171,64 @@ class Auto65ArtifactTask_Fast(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
     #             _skill_time = 0
     #         # 短暂休眠
     #         self.sleep(0.2)
+
+    @property
+    def nav(self):
+        if getattr(self, '_nav', None) is None:
+            self._nav = Nav(OkScriptBackend(self), log=self.log_debug, cache_path=CACHE_PATH)
+        return self._nav
+
+    def where_now(self, reads=3):
+        """当前界面。技能特效可能在某一帧盖住局内 HUD，所以连读几次，只要有一次在局内就算局内。"""
+        state = None
+        for _ in range(reads):
+            state = self.nav.where()
+            if state.in_run:
+                return state
+            self.sleep(0.2)
+        return state
+
+    def mission_target(self):
+        entry = NAV_TARGETS.get(self.config.get("自动导航", NAV_OFF))
+        if entry is None:
+            return None
+        level, row = entry
+        rounds = int(self.config.get("游戏内自动轮次", 0) or 0)
+        return Nightbook(level, row, mode='扼守/无尽', lv=level, auto_rounds=rounds or None)
+
+    def navigate_to_mission(self):
+        target = self.mission_target()
+        self.log_info(f"导航到夜航手册 Lv.{target.level} 第 {target.row + 1} 个关卡")
+        try:
+            self.nav.go(target)
+        except NoSuchEntry as e:
+            raise Exception(f"夜航手册 Lv.{e.level} 现在只有 {len(e.names)} 个关卡，选的是第 {target.row + 1} 个，请在「自动导航」里重新选择")
+        except WrongMission as e:
+            raise Exception(f"夜航手册 Lv.{target.level} 第 {target.row + 1} 个关卡是 {e.found}，不是扼守，请重新选择")
+        except NavError as e:
+            raise Exception(f"自动导航失败：{e}")
+
+    def return_to_mission(self):
+        state = self.nav.where()
+        if state.screen in ('commission', 'book', 'world', 'main_menu'):
+            self.log_info(f"停在 {state.screen}，重新导航到关卡")
+            self.navigate_to_mission()
+
+    def walk(self, delay=0):
+        if self.config.get("走位方式", WALK_MODES[0]) != WALK_MODES[0]:
+            return self.walk_to_aim(delay)
+        self.sleep(delay)
+        walker = MarkerWalk(self)
+        seen = walker.wait_for_marker()
+        if seen is None:
+            logger.info("没找到目标标记，改用录制路线")
+            return self.walk_to_aim(0)
+        if walker.run(seen):
+            return
+        # 已经走了一段，离目标点旁的复位点最近
+        if not self.reset_and_transport():
+            logger.info("复位失败，重开任务...")
+            self.give_up_mission()
 
     def walk_to_aim(self, delay=0):
         """
