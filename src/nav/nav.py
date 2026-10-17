@@ -10,7 +10,8 @@
 from dataclasses import dataclass, field
 
 from src.nav import screens as S
-from src.nav.navigator import Navigator, NavError
+from src.nav.graph import NavError
+from src.nav.navigator import Navigator
 
 IN_RUN = ('dungeon', 'dungeon_menu', 'round_dialog', 'exit_confirm', 'result')
 

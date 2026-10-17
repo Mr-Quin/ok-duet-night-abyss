@@ -204,15 +204,15 @@ class TestNightbookRows(unittest.TestCase):
 
 class TestLeavingARun(unittest.TestCase):
 
-    def test_unstarted_run_is_given_up_now(self):
-        nav, backend = navigator(World(), leave='now')
+    def test_unstarted_run_is_given_up(self):
+        nav, backend = navigator(World())
         nav.on_dungeon(screen(), {'to_objective': True, 'round': 1})
         self.assertEqual(backend.actions, [('key', 'esc')])
         self.assertTrue(nav.giving_up)
 
-    def test_unstarted_run_waits_while_rounds_should_finish(self):
-        nav, backend = navigator(World(), leave='after_rounds')
-        self.assertIsNone(nav.on_dungeon(screen(), {'to_objective': True, 'round': 1}))
+    def test_run_in_progress_is_waited_out(self):
+        nav, backend = navigator(World())
+        self.assertIsNone(nav.on_dungeon(screen(), {'to_objective': False, 'round': 2}))
         self.assertEqual(backend.actions, [])
 
     def test_gives_up_only_when_nothing_is_earned(self):
@@ -237,11 +237,9 @@ class TestLeavingARun(unittest.TestCase):
         self.assertEqual(backend.actions, [('click', 0.4, 0.6)])
         self.assertEqual(backend2.actions, [('click', 0.6, 0.6)])
 
-    def test_round_dialog_waits_for_auto_rounds_then_retreats(self):
-        retreat = [{'x': 0.33, 'y': 0.69}]
-        nav, backend = navigator(World(), leave='after_rounds')
-        self.assertIsNone(nav.on_round_dialog(screen(), {'auto': (1, 3), 'retreat': retreat}))
-        nav.on_round_dialog(screen(), {'auto': (3, 3), 'retreat': retreat})
+    def test_round_dialog_retreats(self):
+        nav, backend = navigator(World())
+        nav.on_round_dialog(screen(), {'auto': (1, 3), 'retreat': [{'x': 0.33, 'y': 0.69}]})
         self.assertEqual(backend.actions, [('click', 0.33, 0.69)])
 
     def test_manual_popup_before_a_run_is_closed(self):
