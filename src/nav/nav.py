@@ -13,8 +13,6 @@ from src.nav import screens as S
 from src.nav.graph import NavError
 from src.nav.navigator import Navigator
 
-IN_RUN = ('dungeon', 'dungeon_menu', 'round_dialog', 'exit_confirm', 'result')
-
 
 @dataclass
 class State:
@@ -23,15 +21,15 @@ class State:
 
     @property
     def in_run(self):
-        return self.screen in IN_RUN or (self.screen == 'manual_popup' and not self.info.get('before_run'))
+        return self.screen in S.IN_RUN or (self.screen == 'manual_popup' and not self.info.get('before_run'))
 
 
 class Nav:
-    def __init__(self, backend, log=None, rows_path=None):
-        """rows_path：缓存夜航手册各等级行名的文件，省掉每次把列表滚到顶部。"""
+    def __init__(self, backend, log=None, cache_path=None):
+        """cache_path：跨导航保存数据的文件，比如夜航手册各等级的行名，省掉每次把列表滚到顶部。"""
         self.b = backend
         self.log = log or (lambda msg: None)
-        self.rows_path = rows_path
+        self.cache_path = cache_path
         self.atlas = S.load_atlas()
 
     def where(self):
@@ -40,7 +38,7 @@ class Nav:
 
     def go(self, target, max_steps=40):
         """从任意界面到达 target 并完成设置；做不到时抛出 NavError。"""
-        nav = Navigator(self.b, target, log=self.log, atlas=self.atlas, rows_path=self.rows_path)
+        nav = Navigator(self.b, target, log=self.log, atlas=self.atlas, cache_path=self.cache_path)
         if not nav.run(max_steps=max_steps):
             raise NavError('没能到达 %s' % (target,))
         target.setup(self)

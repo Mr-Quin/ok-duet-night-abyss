@@ -8,7 +8,7 @@
 导航层本身不依赖 ok-script，只通过 Backend 取画面、做 OCR 和输入；okscript.py 是
 ok-script 上的实现。
 """
-from src.nav import edges  # noqa: F401  导入时登记内置界面之间的路线
+from src.nav import edges, handlers  # noqa: F401  导入时登记内置的路线和界面处理方式
 from src.nav.backend import Backend, Screen
 from src.nav.graph import NavError, NoSuchEntry, WrongMission
 from src.nav.nav import Nav, State
