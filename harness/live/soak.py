@@ -20,7 +20,7 @@ import sys
 import time
 
 from src.nav import MainMenu, Nav, Nightbook, World
-from src.tasks.fullauto.Auto65NavTask import NIGHTBOOK_ENTRIES
+from src.tasks.fullauto.Auto65NavTask import COMMISSION_LEVELS, NIGHTBOOK_ENTRIES
 
 from harness.live.backend import LiveBackend
 
@@ -30,7 +30,7 @@ RUN_LOG = os.path.join('logs', 'run.txt')
 CACHE = os.path.join('configs', 'nav_cache.json')
 # ok-dna's log says 已完成 n/m after every finished run
 DONE = '已完成 %d/%d'
-EVENTS = re.compile(r'导航到|按标记直线走|已到达目标|没找到目标标记|标记丢失|走到目标超时|当前轮次|终止任务|已完成 |exception stopped|^Exception')
+EVENTS = re.compile(r'地图 |导航到|按标记直线走|已到达目标|没找到目标标记|标记丢失|走到目标超时|当前轮次|终止任务|已完成 |exception stopped|^Exception')
 
 
 def entry(lv, i):
@@ -141,6 +141,10 @@ def cases(soak):
     yield 'from another start screen', lambda: soak.run_case(
         'from another start screen', cfg(entry(30, 0)), before=lambda nav: nav.go(Nightbook(65, 3)))
     yield 'restart inside a run', lambda: soak.restart_inside_run('restart inside a run')
+    for lv in COMMISSION_LEVELS:
+        # 每次「再次进行」都从这个等级的地图里重新抽一张，看哪些图直线走得到
+        yield 'maps Lv.%d' % lv, lambda lv=lv: soak.run_case(
+            'maps Lv.%d' % lv, cfg('委托 扼守 Lv.%d' % lv, rounds=1, runs=4), runs=4, timeout=1200)
     yield 'one round per run', lambda: soak.run_case(
         'one round per run', cfg(entry(30, 1), rounds=1), timeout=600)
 
