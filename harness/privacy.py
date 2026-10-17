@@ -14,11 +14,14 @@ CHAT = (0.0, 0.94, 0.45, 1.0)
 WALLET = (0.66, 0.0, 1.0, 0.06)
 TEAM_PRESET = (0.72, 0.10, 0.98, 0.21)
 PARTY = (0.02, 0.82, 0.16, 0.935)
+HP = (0.185, 0.93, 0.3, 0.99)
+MANUAL_COUNTS = (0.3, 0.455, 0.72, 0.5)
+LETTER_COUNTS = (0.05, 0.415, 0.68, 0.45)
 SKILLS = (0.78, 0.78, 1.0, 0.99)
 CHARACTER = (0.30, 0.47, 0.76, 0.93)
 QUEST = (0.0, 0.2, 0.2, 0.4)
 LEVEL_BANNER = (0.40, 0.09, 0.60, 0.24)
-PROFILE = [(0.055, 0.005, 0.335, 0.118), (0.17, 0.13, 0.335, 0.18), (0.20, 0.18, 0.335, 0.21)]
+PROFILE = [(0.055, 0.005, 0.335, 0.13), (0.17, 0.13, 0.335, 0.18), (0.20, 0.18, 0.335, 0.21)]
 RESULT_TEAM = (0.0, 0.0, 0.64, 0.545)
 MENU_TEAM = (0.57, 0.72, 1.0, 0.868)
 MAP_PLACES = [(0.82, 0.83, 1.0, 0.905), (0.06, 0.84, 0.2, 0.905)]
@@ -35,7 +38,7 @@ KEEP = {
     'other_menu': [],
 }
 
-ALL = [UID, WALLET, CHAT, PARTY, SKILLS, CHARACTER, QUEST, LEVEL_BANNER, TEAM_PRESET, MENU_TEAM] + PROFILE + MAP_PLACES
+ALL = [UID, WALLET, CHAT, PARTY, HP, SKILLS, CHARACTER, QUEST, LEVEL_BANNER, TEAM_PRESET, MENU_TEAM] + PROFILE + MAP_PLACES
 
 
 def regions(screen, info=None):
@@ -45,9 +48,9 @@ def regions(screen, info=None):
         return ALL
     out = [UID, WALLET]
     if screen == 'world':
-        out += [PARTY, SKILLS, CHARACTER, QUEST]
+        out += [PARTY, HP, SKILLS, CHARACTER, QUEST]
     elif screen == 'dungeon':
-        out += [PARTY, SKILLS, CHARACTER, LEVEL_BANNER]
+        out += [PARTY, HP, SKILLS, CHARACTER, LEVEL_BANNER]
     else:
         out += [CHAT]
     if screen == 'main_menu':
@@ -58,6 +61,10 @@ def regions(screen, info=None):
         out.append(RESULT_TEAM)
     if screen == 'dungeon_menu':
         out.append(MENU_TEAM)
+    if screen == 'manual_popup':
+        out.append(MANUAL_COUNTS)
+    if screen == 'commission' and info.get('tab') == '委托密函':
+        out.append(LETTER_COUNTS)
     if screen == 'menu' and info.get('name') == '地图':
         out += MAP_PLACES
     return out
