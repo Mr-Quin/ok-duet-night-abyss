@@ -9,7 +9,8 @@ from src.tasks.BaseCombatTask import BaseCombatTask
 
 from src.tasks.AutoDefence import AutoDefence
 from src.nav import text_zh as T
-from src.nav.nav import Nav
+from src.nav.nav import Nav, NavError
+from src.nav.navigator import NoSuchEntry, WrongMission
 from src.nav.okscript import OkScriptBackend, ROWS_PATH
 from src.nav.targets import Nightbook
 
@@ -184,7 +185,14 @@ class Auto65ArtifactTask_Fast(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
     def navigate_to_mission(self):
         target = self.mission_target()
         self.log_info(f"导航到夜航手册 Lv.{target.level} 第 {target.row + 1} 个关卡")
-        self.nav.go(target)
+        try:
+            self.nav.go(target)
+        except NoSuchEntry as e:
+            raise Exception(f"夜航手册 Lv.{e.level} 现在只有 {len(e.names)} 个关卡，选的是第 {target.row + 1} 个，请在「自动导航」里重新选择")
+        except WrongMission as e:
+            raise Exception(f"夜航手册 Lv.{target.level} 第 {target.row + 1} 个关卡是 {e.found}，不是扼守，请重新选择")
+        except NavError as e:
+            raise Exception(f"自动导航失败：{e}")
 
     def return_to_mission(self):
         state = self.nav.where()

@@ -24,7 +24,7 @@ from src.nav import edges
 from src.nav import graph
 from src.nav import screens as S
 from src.nav import text_zh as T
-from src.nav.graph import NavError  # noqa: F401  callers catch it from here
+from src.nav.graph import NavError, NoSuchEntry, WrongMission  # noqa: F401  callers catch them from here
 
 
 def node_of(screen, info):
@@ -214,6 +214,8 @@ class Navigator:
         if g.get('via') == T.TABS[2] and info['via'] == T.TABS[2]:
             return self.adjust_letter_start(info)
         ok = start_matches(info, g)
+        if self.entered_row and g.get('mode') and info['mode'] and g['mode'] not in info['mode']:
+            raise WrongMission(info['mode'], g['mode'])
         if g.get('via') == T.TABS[1] and g.get('row') is not None and self.entered_row is None:
             # the same dungeon is reachable from several rows; only the one we entered counts
             ok = False

@@ -26,6 +26,23 @@ class NavError(RuntimeError):
     pass
 
 
+class NoSuchEntry(NavError):
+    """The requested 夜航手册 entry is not on its level's page."""
+
+    def __init__(self, level, row, names):
+        self.level, self.row, self.names = level, row, names
+        wanted = 'entry %d' % (row + 1) if isinstance(row, int) else repr(row)
+        super().__init__('Lv.%d has %d entries %s; no %s' % (level, len(names), names, wanted))
+
+
+class WrongMission(NavError):
+    """The entry exists but opens a different mission than the target asked for."""
+
+    def __init__(self, found, wanted):
+        self.found, self.wanted = found, wanted
+        super().__init__('the entry opens %s, not %s' % (found, wanted))
+
+
 def detector(order):
     def register(fn):
         DETECTORS.append((order, fn))

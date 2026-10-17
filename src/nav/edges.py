@@ -5,7 +5,7 @@ from src.nav import graph
 from src.nav import screens as S
 from src.nav import text_zh as T
 from src.nav.backend import Screen
-from src.nav.graph import NavError
+from src.nav.graph import NavError, NoSuchEntry
 
 # pages reached from a book section: name -> (section, button text)
 PAGES = dict(T.PAGE_ENTRY)
@@ -194,7 +194,7 @@ def open_nightbook_row(nav, scr, here, nxt, info):
     idx = next((k for k, n in enumerate(names) if target and target in n), None)
     if idx is None:
         if tuple(names) in st['seen']:
-            raise NavError('no row %r on the Lv.%d page; rows are %s' % (row, book, st['names']))
+            raise NoSuchEntry(book, row, st['names'])
         st['seen'].add(tuple(names))
         nav.log('  row %r not in %s, scrolling down' % (row, names))
         nav.b.scroll(0.4, 0.45, -3)
