@@ -7,8 +7,8 @@ from src.config import config
 from src.tasks.AutoDefence import AutoDefence
 from src.tasks.CommissionsTask import Mission
 
-# 每个元素是一次循环看到的画面：in_team / result / between（轮次弹窗或手册弹窗）
-START, FIGHT, DIALOG, RESULT, MENU = 'start', 'fight', 'dialog', 'result', 'menu'
+# 每个元素是一次循环看到的画面
+START, POPUP, FIGHT, DIALOG, MANUAL, RESULT, MENU = 'start', 'popup', 'fight', 'dialog', 'manual', 'result', 'menu'
 
 
 class FakeGame:
@@ -18,6 +18,7 @@ class FakeGame:
         self.screens = list(screens)
         self.seen = []
         self.pressed = []
+        self.walks = 0
 
     @property
     def now(self):
@@ -34,31 +35,48 @@ class TestAutoDefenceRuns(TaskTestCase):
 
     config = config
 
-    def run_loop(self, screens, hands_off=False, run_limit=None, recover=None):
+    def run_loop(self, screens, hands_off=False, run_limit=None, recover=None, round_limit=None, game_auto=None,
+                 clock_step=None):
         task, game = self.task, FakeGame(screens)
+        game_auto = hands_off if game_auto is None else game_auto
 
+        # 和 CommissionsTask.handle_mission_interface 一样：点开始或再次进行之后不返回状态，
+        # 由随后的手册弹窗返回 Mission.START；游戏开了自动确认时弹窗被跳过，直接进局内
         def handle_mission_interface(stop_func=None):
             screen = game.now
             game.advance()
             if screen in (START, RESULT):
                 game.pressed.append('start')
-                return Mission.START
+                task.mission_status = Mission.START
+                return None
+            if screen in (POPUP, MANUAL):
+                game.pressed.append('manual:%s' % ('between' if task.mission_status == Mission.CONTINUE else 'start'))
+                return task.get_return_status()
             if screen == DIALOG:
+                if stop_func():
+                    game.pressed.append('retreat')
+                    return Mission.STOP
                 game.pressed.append('continue')
-                return Mission.CONTINUE
+                task.mission_status = Mission.CONTINUE
+                return None
             return False
 
         def sleep(seconds):
             # 开着游戏内自动轮次时，游戏会自己从轮次弹窗继续；没开时弹窗一直等人点
-            if hands_off and game.now == DIALOG:
+            if game_auto and game.now in (DIALOG, MANUAL):
                 game.advance()
+
+        def handle_mission_start():
+            game.walks += 1
 
         patches = {
             'in_team': lambda *a, **k: game.now == FIGHT,
             'is_result_screen': lambda: game.now == RESULT,
-            'is_between_rounds': lambda: game.now == DIALOG,
+            'is_between_rounds': lambda: game.now in (DIALOG, MANUAL),
+            'find_action_dialog_continue': lambda *a, **k: game.now == DIALOG,
+            'find_action_dialog_retreat': lambda *a, **k: False,
             'handle_mission_interface': handle_mission_interface,
-            'handle_mission_start': lambda: None,
+            'handle_mission_start': handle_mission_start,
             'move_on_begin': lambda: False,
             'init_all': lambda: None,
             'init_for_next_round': lambda: None,
@@ -66,51 +84,98 @@ class TestAutoDefenceRuns(TaskTestCase):
             'wait_until': lambda *a, **k: True,
             'sleep': sleep,
             'log_info': lambda *a, **k: None,
+            'info_set': lambda *a, **k: None,
+            'stop_func': lambda: False,
+            'quit_mission': lambda: None,
         }
         original = {name: getattr(task, name) for name in patches}
+        import src.tasks.AutoDefence as module
+        original_time = module.time.time
+        if clock_step:
+            clock = {'now': 0.0}
+            module.time.time = lambda: clock.__setitem__('now', clock['now'] + clock_step) or clock['now']
         try:
             for name, fn in patches.items():
                 setattr(task, name, fn)
+            task.mission_status = None
             task.config_external_movement(lambda delay=0: None, {}, recover=recover, hands_off=hands_off,
-                                          run_limit=run_limit)
+                                          run_limit=run_limit, round_limit=round_limit)
             task.do_run()
         finally:
+            module.time.time = original_time
             for name, fn in original.items():
                 setattr(task, name, fn)
             task.config_external_movement(None, {})
         return game
 
     def test_stops_on_the_result_screen_after_the_limit(self):
-        game = self.run_loop([START, FIGHT, RESULT, FIGHT, RESULT], run_limit=2)
+        game = self.run_loop([START, POPUP, FIGHT, RESULT, POPUP, FIGHT, RESULT], run_limit=2)
         # 第一局结算时按了「再次进行」，第二局结算时停下
+        self.assertEqual(game.pressed, ['start', 'manual:start', 'start', 'manual:start'])
+        self.assertEqual(game.walks, 2)
+
+    def test_runs_start_when_the_game_skips_the_popup(self):
+        # 游戏内自动确认会跳过开局前的手册弹窗
+        game = self.run_loop([START, FIGHT, RESULT, FIGHT, RESULT], run_limit=2)
         self.assertEqual(game.pressed, ['start', 'start'])
-        self.assertEqual(game.seen, [START, FIGHT, RESULT, FIGHT])
+        self.assertEqual(game.walks, 2)
 
     def test_a_result_screen_left_from_before_is_not_counted(self):
-        game = self.run_loop([RESULT, FIGHT, RESULT], run_limit=1)
-        self.assertEqual(game.pressed, ['start'])
-        self.assertEqual(game.seen, [RESULT, FIGHT])
+        game = self.run_loop([RESULT, POPUP, FIGHT, RESULT], run_limit=1)
+        self.assertEqual(game.pressed, ['start', 'manual:start'])
+        self.assertEqual(game.walks, 1)
+
+    def test_a_result_screen_seen_twice_counts_once(self):
+        game = self.run_loop([START, POPUP, FIGHT, RESULT, MENU, RESULT, POPUP, FIGHT, RESULT], run_limit=2)
+        self.assertEqual(game.walks, 2)
 
     def test_round_dialogs_are_left_to_the_game_with_auto_rounds(self):
-        game = self.run_loop([START, FIGHT, DIALOG, FIGHT, DIALOG, FIGHT, RESULT], hands_off=True, run_limit=1)
+        game = self.run_loop([START, POPUP, FIGHT, DIALOG, FIGHT, DIALOG, FIGHT, RESULT], hands_off=True, run_limit=1)
         self.assertNotIn('continue', game.pressed)
+        self.assertEqual(game.walks, 1)
 
     def test_round_dialogs_are_handled_without_auto_rounds(self):
-        game = self.run_loop([START, FIGHT, DIALOG, FIGHT, RESULT], run_limit=1)
+        game = self.run_loop([START, POPUP, FIGHT, DIALOG, FIGHT, RESULT], run_limit=1)
         self.assertIn('continue', game.pressed)
+
+    def test_round_limit_retreats_at_that_dialog(self):
+        game = self.run_loop([START, POPUP, FIGHT, DIALOG, FIGHT, DIALOG, RESULT], run_limit=1, round_limit=2)
+        self.assertEqual(game.pressed, ['start', 'manual:start', 'continue', 'retreat'])
+
+    def test_round_limit_cannot_be_combined_with_hands_off(self):
+        with self.assertRaises(ValueError):
+            self.task.config_external_movement(lambda delay=0: None, {}, hands_off=True, round_limit=1)
+        self.task.config_external_movement(None, {})
+
+    def test_a_dialog_the_game_never_continues_is_retreated_from(self):
+        game = self.run_loop([START, POPUP, FIGHT, DIALOG, RESULT], hands_off=True, run_limit=1, game_auto=False,
+                             clock_step=5)
+        self.assertEqual(game.pressed, ['start', 'manual:start', 'retreat'])
+
+    def test_a_stuck_manual_popup_is_answered_as_a_between_rounds_popup(self):
+        game = self.run_loop([START, POPUP, FIGHT, MANUAL, FIGHT, RESULT], hands_off=True, run_limit=1,
+                             game_auto=False, clock_step=5)
+        self.assertEqual(game.pressed, ['start', 'manual:start', 'manual:between'])
+        self.assertEqual(game.walks, 1)
+
+    def test_waiting_on_one_dialog_does_not_shorten_the_next(self):
+        # 第一个弹窗游戏自己继续了；第二个弹窗的 20 秒要重新算
+        game = self.run_loop([START, POPUP, FIGHT, DIALOG, FIGHT, DIALOG, FIGHT, RESULT], hands_off=True,
+                             run_limit=1, clock_step=15)
+        self.assertNotIn('retreat', game.pressed)
 
     def test_idle_on_a_menu_navigates_back(self):
         calls = []
-        clock = {'now': 0.0}
-        import src.tasks.AutoDefence as module
-        original_time = module.time.time
-        module.time.time = lambda: clock.__setitem__('now', clock['now'] + 15) or clock['now']
-        try:
-            self.run_loop([MENU, MENU, MENU, START, FIGHT, RESULT], run_limit=1,
-                          recover=lambda: calls.append('recover'))
-        finally:
-            module.time.time = original_time
+        self.run_loop([MENU, MENU, MENU, START, POPUP, FIGHT, RESULT], run_limit=1,
+                      recover=lambda: calls.append('recover'), clock_step=15)
         self.assertEqual(calls, ['recover'])
+
+    def test_result_screen_is_not_the_between_round_popup(self):
+        # 轮次之间手册弹窗的「确认选择」和结算的「再次进行」是同一个金色圆环
+        self.set_image('tests/images/result_defence.png')
+        self.assertTrue(self.task.is_result_screen())
+        self.set_image('tests/images/manual_select_next_round.png')
+        self.assertFalse(self.task.is_result_screen())
 
 
 if __name__ == '__main__':
