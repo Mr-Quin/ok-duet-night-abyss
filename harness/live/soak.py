@@ -94,8 +94,12 @@ class Soak:
 
     def finish(self, name, status, t0):
         if status == 'ok':
-            time.sleep(15)
+            # going home from the result screen passes through the commission page first
+            deadline = time.time() + 60
             end = self.where()
+            while end != 'world' and time.time() < deadline:
+                time.sleep(5)
+                end = self.where()
             status = 'pass' if end == 'world' else 'ended on ' + end
         events = [l.rstrip()[:140] for l in self.log_lines() if EVENTS.search(l)]
         walks = sum(1 for e in events if '已到达目标' in e)
