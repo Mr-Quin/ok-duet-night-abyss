@@ -7,12 +7,13 @@
 「自动30/65级魔之楔本」不受影响。
 """
 from ok import Logger, TaskDisabledException
-from src.nav import Nav, NavError, Nightbook, NoSuchEntry, World, WrongMission
+from src.nav import Mission, Nav, NavError, Nightbook, NoSuchEntry, World, WrongMission
 from src.nav.okscript import CACHE_PATH, OkScriptBackend
 from src.tasks.AutoDefence import AutoDefence
 from src.tasks.DNAOneTimeTask import DNAOneTimeTask
 from src.tasks.fullauto.Auto65ArtifactTask_Fast import Auto65ArtifactTask_Fast
 from src.tasks.fullauto.marker_walk import MarkerWalk
+from src.tasks.fullauto.minimap import MapLibrary
 
 logger = Logger.get_logger(__name__)
 
@@ -22,8 +23,12 @@ NIGHTBOOK_ENTRIES = {
     65: ['霜狱野蜂暗箭', '浴血野蜂利刃', '浴血野蜂密探', '掠影野蜂暗箭', '守护野蜂暗箭', '守护野蜂利刃', '转雷野蜂密探',
          '浴血野蜂暗箭', '掠影野蜂利刃', '霜狱野蜂密探'],
 }
-TARGETS = {f"Lv.{lv} 第{i + 1}个 {name}": (lv, i)
+# 委托页「扼守/无尽」卡片上的等级；每个等级的地图从一组里随机抽
+COMMISSION_LEVELS = [40, 50, 60, 70, 80]
+MODE = '扼守/无尽'
+TARGETS = {f"Lv.{lv} 第{i + 1}个 {name}": ('nightbook', lv, i)
            for lv, names in NIGHTBOOK_ENTRIES.items() for i, name in enumerate(names)}
+TARGETS.update({f"委托 扼守 Lv.{lv}": ('commission', lv, None) for lv in COMMISSION_LEVELS})
 WALK_MODES = ["按标记直线走", "原录制路线"]
 
 
@@ -40,7 +45,7 @@ class Auto65NavTask(Auto65ArtifactTask_Fast):
             "走位方式": WALK_MODES[0],
         })
         self.config_description.update({
-            "关卡": "夜航手册里的扼守关卡，从当前界面自动导航过去",
+            "关卡": "夜航手册或委托页的扼守关卡，从当前界面自动导航过去",
             "每局轮次": "每局打几轮后结算。大于 1 时交给游戏自带的自动轮次；为 1 时关掉自动轮次，打完第一轮就撤离",
             "刷几次": "一共进本几次，打完回到大世界；1 为不按再次进行，0 为不限",
             "走位方式": "按标记直线走：朝目标标记直走到附近；原录制路线：按录制的按键走完再复位",
@@ -48,6 +53,7 @@ class Auto65NavTask(Auto65ArtifactTask_Fast):
         self.config_type["关卡"] = {"type": "drop_down", "options": list(TARGETS)}
         self.config_type["走位方式"] = {"type": "drop_down", "options": WALK_MODES}
         self._nav = None
+        self._maps = None
 
     @property
     def nav(self):
@@ -84,13 +90,19 @@ class Auto65NavTask(Auto65ArtifactTask_Fast):
         return min(100, max(1, int(self.config.get("每局轮次", 3) or 1)))
 
     def mission_target(self):
-        level, row = TARGETS.get(self.config.get("关卡"), next(iter(TARGETS.values())))
+        source, level, row = TARGETS.get(self.config.get("关卡"), next(iter(TARGETS.values())))
         # 游戏的自动轮次 N 表示打完第一轮后再自动打 N 轮
-        return Nightbook(level, row, mode='扼守/无尽', lv=level, auto_rounds=self.rounds_per_run() - 1)
+        extra = self.rounds_per_run() - 1
+        if source == 'commission':
+            return Mission(MODE, lv=level, auto_rounds=extra)
+        return Nightbook(level, row, mode=MODE, lv=level, auto_rounds=extra)
 
     def navigate_to_mission(self):
         target = self.mission_target()
-        self.log_info(f"导航到夜航手册 Lv.{target.level} 第 {target.row + 1} 个关卡")
+        if isinstance(target, Nightbook):
+            self.log_info(f"导航到夜航手册 Lv.{target.level} 第 {target.row + 1} 个关卡")
+        else:
+            self.log_info(f"导航到委托 {target.mode} Lv.{target.lv}")
         try:
             self.nav.go(target)
         except NoSuchEntry as e:
@@ -106,10 +118,18 @@ class Auto65NavTask(Auto65ArtifactTask_Fast):
             self.log_info(f"停在 {state.screen}，重新导航到关卡")
             self.navigate_to_mission()
 
+    def identify_map(self):
+        if self._maps is None:
+            self._maps = MapLibrary()
+        name, score = self._maps.identify(self.next_frame())
+        self.log_info(f"地图 {name or '未知'}（{score:.2f}）")
+        return name
+
     def walk(self, delay=0):
         if self.config.get("走位方式", WALK_MODES[0]) != WALK_MODES[0]:
             return self.walk_to_aim(delay)
         self.sleep(delay)
+        self.identify_map()
         walker = MarkerWalk(self)
         seen = walker.wait_for_marker()
         if seen is None:
