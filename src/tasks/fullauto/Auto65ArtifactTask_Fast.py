@@ -62,8 +62,13 @@ class Auto65ArtifactTask_Fast(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         try:
             _to_do_task = self.get_task_by_class(AutoDefence)
             auto_nav = self.mission_target() is not None
-            if auto_nav and not self.in_team():
-                self.navigate_to_mission()
+            # in_team() also holds in the open world, whose HUD has the same Lv bar, so ask the navigator
+            state = self.where_now()
+            if not state.in_run:
+                if auto_nav:
+                    self.navigate_to_mission()
+                elif state.screen != 'start':
+                    raise Exception("请先打开关卡开始界面，或在「自动导航」里选一个关卡")
             config = dict(self.config)
             # AutoDefence counts the rounds actually played and retreats after 轮次 of them, so with the
             # game's auto rounds on, each of our 轮次 is a whole block of auto rounds
@@ -161,6 +166,16 @@ class Auto65ArtifactTask_Fast(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         if getattr(self, '_nav', None) is None:
             self._nav = Nav(OkScriptBackend(self), log=self.log_debug, rows_path=ROWS_PATH)
         return self._nav
+
+    def where_now(self, reads=3):
+        """The current screen; combat effects can hide the run HUD in one frame, so any in-run read wins."""
+        state = None
+        for _ in range(reads):
+            state = self.nav.where()
+            if state.in_run:
+                return state
+            self.sleep(0.2)
+        return state
 
     def mission_target(self):
         entry = NAV_TARGETS.get(self.config.get("自动导航", NAV_OFF))
