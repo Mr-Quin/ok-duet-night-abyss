@@ -11,15 +11,17 @@ from src.nav import text_zh as T
 # 委托页页签中心、手册顶栏分区中心
 TAB_X = [0.137, 0.29, 0.445, 0.6]
 TAB_Y = 0.157
+TAB_LINE_Y = (0.176, 0.19)
 SECTION_X = [0.182, 0.302, 0.422, 0.541]
 SECTION_Y = 0.027
-# 选中项白字所占比例在 0.07 以上，未选中的接近 0
+# 选中项的白字、亮线或圆圈所占比例在 0.05 以上，未选中的是 0
 SELECTED_LIT = 0.03
 
 LEVELS = [20, 30, 40, 50, 55, 60, 65, 70, 75, 80]
 LEVEL_X = 0.075
 LEVEL_STEP = 0.0731
 LEVEL_COLUMN = (0.03, 0.15, 0.11, 0.95)
+LEVEL_RING_X = (0.086, 0.095)
 
 # 开始界面的自动轮次面板：开关和标签在同一行，按钮在计数下面一行
 AUTO_SWITCH_X = 0.9375
@@ -34,7 +36,8 @@ def load_atlas(path=None):
 
 
 def selected_tab(scr):
-    lit = [scr.lit(x - 0.035, TAB_Y - 0.012, x + 0.035, TAB_Y + 0.012) for x in TAB_X]
+    # 选中页签的字有时会变灰，下面那条亮线一直都在
+    lit = [scr.lit(x - 0.06, TAB_LINE_Y[0], x + 0.06, TAB_LINE_Y[1], level=150) for x in TAB_X]
     return T.TABS[int(np.argmax(lit))] if max(lit) > SELECTED_LIT else None
 
 
@@ -61,7 +64,9 @@ def level_positions(scr):
 
 
 def selected_level(scr, levels):
-    lit = {lv: scr.lit(0.06, y - 0.02, 0.09, y + 0.02) for lv, y in (levels or {}).items() if 0.2 <= y <= 0.86}
+    # 看选中等级外面那个圈的右半边；圈里的数字在列表滚动过后会变灰
+    lit = {lv: scr.lit(LEVEL_RING_X[0], y - 0.03, LEVEL_RING_X[1], y + 0.03, level=120)
+           for lv, y in (levels or {}).items() if 0.2 <= y <= 0.86}
     ranked = sorted(lit.items(), key=lambda kv: -kv[1])
     if not ranked or ranked[0][1] < SELECTED_LIT:
         return None
