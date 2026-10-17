@@ -122,6 +122,21 @@ class Auto65NavTask(Auto65ArtifactTask_Fast):
             self.log_info(f"停在 {state.screen}，重新导航到关卡")
             self.navigate_to_mission()
 
+    def wave_started(self, timeout=3):
+        """到了目标点波次就会开始；没开始说明其实没到（比如距离读错了）。"""
+        self.current_wave = -1
+        if self.wait_until(lambda: self.current_wave != -1, post_action=self.get_wave_info, time_out=timeout):
+            return True
+        self.log_info("走到了但波次没开始")
+        return False
+
+    def reach(self, walker, seen):
+        if walker.run(seen) and self.wave_started():
+            return True
+        # 有的图防守范围比 6 米小，停下来时还在范围外
+        seen = walker.wait_for_marker(timeout=1)
+        return seen is not None and walker.run(seen, arrive=2) and self.wave_started()
+
     def identify_map(self):
         if self._maps is None:
             self._maps = MapLibrary()
@@ -133,28 +148,33 @@ class Auto65NavTask(Auto65ArtifactTask_Fast):
         if self.config.get("走位方式", WALK_MODES[0]) != WALK_MODES[0]:
             return self.walk_to_aim(delay)
         self.sleep(delay)
-        self.identify_map()
+        map_name = self.identify_map()
         walker = MarkerWalk(self)
         seen = walker.wait_for_marker()
         if seen is None:
-            logger.info("没找到目标标记，改用录制路线")
+            self.log_info("没找到目标标记，改用录制路线")
             return self.walk_to_aim(0)
         if self._routes is None:
             self._routes = routes.RouteLibrary()
         spawn, marker = self.next_frame(), (seen[0], walker.last_y)
-        route = self._routes.find(spawn, marker)
+        route = self._routes.find(spawn, marker, map_name)
         if route is not None:
             self.log_info(f"按路线 {route.name} 走")
             routes.play(self, route)
             seen = walker.wait_for_marker(timeout=3)
-            if seen is not None and walker.run(seen):
+            if seen is not None and self.reach(walker, seen):
+                self._routes.remember_map(route, map_name)
                 return
             if route.path.startswith(routes.LEARNED_DIR):
                 # 学来的路线这次没走到，删掉，下次重新学
                 os.remove(route.path)
                 self._routes.routes.remove(route)
-        elif walker.run(seen):
-            path = self._routes.save(spawn, marker, walker.steps)
+        else:
+            near, score, offset = self._routes.closest(spawn, marker)
+            if near is not None:
+                self.log_info(f"没有对上的路线，最像 {near.name}：画面 {score:.2f}，标记差 {offset:.3f}")
+        if route is None and self.reach(walker, seen):
+            path = self._routes.save(spawn, marker, walker.steps, map_name)
             self.log_info(f"记下这条路线：{os.path.basename(path)}")
             return
         # 已经走了一段，离目标点旁的复位点最近
