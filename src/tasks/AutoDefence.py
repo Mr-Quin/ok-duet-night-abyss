@@ -31,6 +31,7 @@ class AutoDefence(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         self.quick_assist_task = QuickAssistTask(self)
         self.external_movement = _default_movement
         self.external_recover = None
+        self.external_run_limit = None
         self._external_config = None
         self._merged_config_cache = None
         self.skill_tick = self.create_skill_ticker()
@@ -51,8 +52,9 @@ class AutoDefence(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         self._base_config = value
         self._merged_config_cache = None
 
-    def config_external_movement(self, func: Callable, config: dict, recover: Callable = None):
+    def config_external_movement(self, func: Callable, config: dict, recover: Callable = None, run_limit: int = None):
         self.external_recover = recover
+        self.external_run_limit = run_limit
         if callable(func):
             self.external_movement = func
         else:
@@ -66,6 +68,7 @@ class AutoDefence(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         self.set_check_monthly_card()
         self.external_movement = _default_movement
         self.external_recover = None
+        self.external_run_limit = None
         try:
             return self.do_run()
         except TaskDisabledException:
@@ -82,7 +85,17 @@ class AutoDefence(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
             self.open_in_mission_menu()
 
         idle_since = None
+        runs_done, was_at_result = 0, False
         while True:
+            if self.external_run_limit:
+                # each finished run ends on the result screen; stop on the last one instead of pressing 再次进行
+                at_result = not self.in_team() and bool(self.find_result_again_btn())
+                if at_result and not was_at_result:
+                    runs_done += 1
+                    self.log_info(f"已完成 {runs_done}/{self.external_run_limit} 次进本")
+                    if runs_done >= self.external_run_limit:
+                        return
+                was_at_result = at_result
             if self.in_team():
                 if self.move_on_begin():
                     self.handle_in_mission()
