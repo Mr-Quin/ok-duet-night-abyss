@@ -1,12 +1,12 @@
 """Go from whatever screen the game is on to a target screen.
 
-The menus form a tree rooted at the open world. A goal becomes a route of nodes from the
-root, and each step reads the screen and takes one action: finish if the screen is the goal,
-enter the next node if the screen is on the route, switch sideways between book sections
-and commission tabs, otherwise back out with Esc. Screens that belong to a run in progress
-(round dialogs, results, the in-run menu) have their own rules and never end a run early.
+Each step reads the screen and takes one action: finish if the screen is the target, take the
+registered edge to the next node if the screen is on the target's route, move sideways between
+sibling screens, otherwise back out with Esc. Screens of a run in progress (round dialogs,
+results, the in-run menu) have their own rules and never lose what a run has earned.
 
-Goals:
+What the navigator knows about screens and moves lives in graph.py's tables; this module only
+walks them. Targets are the classes in targets.py, or goal dicts:
   {'screen': 'world'}
   {'screen': 'main_menu'}
   {'screen': 'menu', 'name': '背包'}
@@ -18,38 +18,13 @@ Goals:
   {'screen': 'start', 'via': '委托密函', 'mode': ..., 'column': '角色' | '武器' | '魔之楔'}
 """
 import json
-import re
 import time
 
+from src.nav import edges
+from src.nav import graph
 from src.nav import screens as S
-from src.nav.backend import Screen
 from src.nav import text_zh as T
-
-
-class NavError(RuntimeError):
-    pass
-
-
-def route(goal):
-    """Nodes from the world down to the goal. A node is (screen, key)."""
-    g = goal['screen']
-    if g == 'world':
-        return [('world', None)]
-    if g == 'main_menu':
-        return [('world', None), ('main_menu', None)]
-    if g == 'menu':
-        return [('world', None), ('main_menu', None), ('menu', goal['name'])]
-    if g == 'book':
-        if goal['section'] == T.SECTIONS[1]:
-            return [('world', None), ('commission', None)]
-        return [('world', None), ('book', goal['section'])]
-    if g == 'page':
-        return [('world', None), ('book', T.PAGE_ENTRY[goal['name']][0]), ('page', goal['name'])]
-    if g == 'commission':
-        return [('world', None), ('commission', goal['tab'])]
-    if g == 'start':
-        return [('world', None), ('commission', goal['via']), ('start', goal['via'])]
-    raise ValueError('unknown goal screen %r' % g)
+from src.nav.graph import NavError  # noqa: F401  callers catch it from here
 
 
 def node_of(screen, info):
@@ -60,10 +35,6 @@ def node_of(screen, info):
 def same_node(a, b):
     # a key of None on the route means any tab or section will do
     return a[0] == b[0] and (b[1] is None or a[1] == b[1])
-
-
-# screens on the book's top bar, reachable from each other with one click
-BOOK_LEVEL = ('book', 'commission')
 
 
 def start_matches(info, goal):
@@ -82,8 +53,11 @@ class Navigator:
         # the HUD) mean "still in the run", never a menu to back out of.
         # leave: how to get out of a run found on the way. 'after_rounds' lets the game's auto rounds
         # finish; 'now' leaves at the first point where nothing earned is lost.
-        self.b, self.goal, self.in_dungeon, self.leave = backend, goal, in_dungeon, leave
-        self.route = route(goal)
+        self.b, self.in_dungeon, self.leave = backend, in_dungeon, leave
+        if isinstance(goal, dict):
+            self.goal, self.route = goal, edges.route(goal)
+        else:
+            self.goal, self.route = goal.goal(), goal.route()
         self.trace = []
 
         def log_and_trace(msg):
@@ -110,7 +84,7 @@ class Navigator:
         except (OSError, ValueError):
             return {}
 
-    def _save_rows(self):
+    def save_rows(self):
         if self.rows_path:
             with open(self.rows_path, 'w', encoding='utf-8') as f:
                 json.dump(self.rows, f, ensure_ascii=False)
@@ -135,7 +109,8 @@ class Navigator:
         shown = {k: v for k, v in info.items() if k not in ('levels', 'tiers', 'retreat', 'resume', 'cancel', 'confirm', 'give_up')}
         self.log('%s %s' % (screen, shown))
 
-        handler = getattr(self, 'on_' + screen, None)
+        registered = graph.HANDLERS.get(screen)
+        handler = (lambda scr, info: registered(self, scr, info)) if registered else getattr(self, 'on_' + screen, None)
         if handler:
             result = handler(scr, info)
             if result is not NotImplemented:
@@ -292,172 +267,15 @@ class Navigator:
             return True
         on = next((k for k, n in enumerate(path) if same_node(here, n)), None)
         if on is not None:
-            return self.enter(scr, here, path[on + 1], info)
-        if here[0] in BOOK_LEVEL:
-            target = next((n for n in path if n[0] in BOOK_LEVEL), None)
+            step = graph.find_edge(here, path[on + 1])
+            if step is None:
+                raise NavError('no edge from %s to %s' % (here, path[on + 1]))
+            return step(self, scr, here, path[on + 1], info)
+        for group, move in graph.SIDEWAYS:
+            target = next((n for n in path if n[0] in group), None) if here[0] in group else None
             if target:
-                return self.switch(here, target)
+                return move(self, here, target)
         self.b.key('esc')
-        return False
-
-    def enter(self, scr, here, nxt, info):
-        kind = nxt[0]
-        if here[0] == 'world':
-            self.b.key('esc' if kind == 'main_menu' else 'l')
-            return False
-        if kind == 'menu':
-            tile = scr.find(nxt[1], (0.03, 0.2, 0.33, 0.97), exact=True)
-            if not tile:
-                if self.wait(3) is None:
-                    return None
-                raise NavError('no %s tile on the main menu' % nxt[1])
-            self.log('  opening %s' % nxt[1])
-            self.b.click(tile[0]['x'], tile[0]['y'] - 0.04)
-            return False
-        if kind == 'page':
-            button = scr.find(T.PAGE_ENTRY[nxt[1]][1], (0.3, 0.5, 0.8, 0.8), exact=True)
-            if not button:
-                return self.wait(3)
-            self.log('  entering %s' % nxt[1])
-            self.click(button[0])
-            return False
-        if kind == 'start':
-            tab = nxt[1]
-            if tab == T.TABS[0]:
-                return self.enter_mission_card(scr)
-            if tab == T.TABS[2]:
-                return self.enter_letter(scr)
-            if tab == T.TABS[1]:
-                return self.enter_nightbook_row(scr, info)
-        raise NavError('no way from %s into %s' % (here, nxt))
-
-    def switch(self, here, target):
-        if target[0] == 'book':
-            self.log('  section %s -> %s' % (here[1], target[1]))
-            self.b.click(S.SECTION_X[T.SECTIONS.index(target[1])], S.SECTION_Y)
-        elif here[0] == 'book':
-            self.log('  section %s -> %s' % (here[1], T.SECTIONS[1]))
-            self.b.click(S.SECTION_X[1], S.SECTION_Y)
-        else:
-            self.log('  switching tab %s -> %s' % (here[1], target[1]))
-            self.b.click(S.TAB_X[T.TABS.index(target[1])], S.TAB_Y)
-        return False
-
-    def enter_mission_card(self, scr):
-        target = self.goal['mode']
-        cards = [i for i in scr.items if 0.62 < i['y'] < 0.68 and i['x'] < 0.75 and i['t'] in T.MISSIONS]
-        hit = next((c for c in cards if c['t'] == target), None)
-        if hit and 0.05 < hit['x'] < 0.68:
-            self.log('  opening card %s' % target)
-            self.b.click(hit['x'], 0.42)
-            return False
-        seen = [T.MISSIONS.index(c['t']) for c in cards]
-        want = T.MISSIONS.index(target)
-        # about 9 wheel notches move the strip by one card
-        if hit:
-            n = -4 if hit['x'] >= 0.68 else 4
-        elif not seen:
-            n = -9
-        elif want > max(seen):
-            n = -9 * (want - max(seen) + 1)
-        else:
-            n = 9 * (min(seen) - want + 1)
-        self.log('  card %s not in view (%s), scrolling %d' % (target, [c['t'] for c in cards], n))
-        self.b.scroll(0.37, 0.45, n)
-        return False
-
-    def enter_letter(self, scr):
-        """Open the 委托密函 column holding the wanted mission; the start screen then picks the entry."""
-        heads = {i['t']: i for i in scr.items if 0.37 < i['y'] < 0.42 and i['t'] in T.LETTER_COLUMNS}
-        if not heads:
-            return self.wait(3)
-
-        def entries(head):
-            return [i for i in scr.items if 0.55 < i['y'] < 0.75 and head['x'] - 0.1 < i['x'] < head['x'] - 0.02
-                    and not re.search(r'\d', i['t'])]
-        cols = [self.goal['column']] if self.goal.get('column') else list(heads)
-        for col in cols:
-            if col not in heads:
-                continue
-            hit = next((e for e in entries(heads[col]) if self.goal['mode'] in e['t']), None)
-            if hit:
-                self.log('  opening %s / %s' % (col, hit['t']))
-                self.click(hit)
-                return False
-        offered = {c: [e['t'] for e in entries(h)] for c, h in heads.items()}
-        raise NavError('no %s letter mission right now; offered %s' % (self.goal['mode'], offered))
-
-    def enter_nightbook_row(self, scr, info):
-        """Select the 夜航手册 level, then the row, then press its 前往."""
-        g, st = self.goal, self.row_state
-        book = g.get('book') or g.get('lv')
-        if not info.get('levels'):
-            column = Screen(scr.img, self.b.ocr_region(scr, *S.LEVEL_COLUMN))
-            info['levels'] = S.level_positions(column)
-        y = (info.get('levels') or {}).get(book)
-        if y is None:
-            result = self.wait(3)
-            if result is None:
-                return None
-            self.log('  level column not readable')
-            return False
-        if not 0.2 <= y <= 0.86:
-            self.log('  level %d off the column (y=%.2f), scrolling' % (book, y))
-            self.b.scroll(S.LEVEL_X, 0.5, -3 if y > 0.86 else 3)
-            st.pop('level', None)
-            return False
-        if st.get('level') != book:
-            st.update(level=book, names=None, seen=set())
-            if S.selected_level(scr, info['levels']) != book:
-                self.log('  selecting level %d' % book)
-                self.b.click(S.LEVEL_X, y)
-                return False
-        listed = S.nightbook_rows(scr)
-        names = [r['name'] for r in listed]
-        row = g.get('row', 0)
-        known = self.rows.get('names/%d' % book, [])
-        # the row list refreshes a moment after the level ring moves; rows read too early belong to the old level
-        stale = names and known[:1] != names[:1] and any(
-            k != 'names/%d' % book and k.startswith('names/') and v[:1] == names[:1] for k, v in self.rows.items())
-        # the selected label is usually drawn white, but not always; rows matching this level's known list confirm it too
-        others = {n for k, v in self.rows.items() if k.startswith('names/') and k != 'names/%d' % book for n in v}
-        confirmed = S.selected_level(scr, info['levels']) == book or (names[:1] and names[0] in known and names[0] not in others)
-        if not confirmed or stale:
-            if self.wait(4) is None:
-                return None
-            st.pop('level', None)
-            return False
-        named_here = isinstance(row, str) and any(row in n for n in names)
-        if st['names'] is None:
-            if names and known and names[0] == known[0]:
-                st['names'] = list(known)
-            elif not named_here:
-                # indexes count from the top, and the list keeps its scroll position between visits
-                self.log('  scrolling rows to the top')
-                self.b.scroll(0.4, 0.45, 30)
-                st['names'] = []
-                return False
-            else:
-                st['names'] = []
-        for n in names:
-            if n and n not in st['names']:
-                st['names'].append(n)
-        if len(st['names']) > len(known) and (not known or st['names'][0] == known[0]):
-            self.rows['names/%d' % book] = list(st['names'])
-            self._save_rows()
-        target = st['names'][row] if isinstance(row, int) and row < len(st['names']) else (row if isinstance(row, str) else None)
-        idx = next((k for k, n in enumerate(names) if target and target in n), None)
-        if idx is None:
-            if tuple(names) in st['seen']:
-                raise NavError('no row %r on the Lv.%d page; rows are %s' % (row, book, st['names']))
-            st['seen'].add(tuple(names))
-            self.log('  row %r not in %s, scrolling down' % (row, names))
-            self.b.scroll(0.4, 0.45, -3)
-            return False
-        self.log('  row %r -> %s' % (row, names[idx]))
-        self.click(listed[idx]['button'])
-        self.entered_row = names[idx]
-        st.pop('level', None)
         return False
 
     def run(self, max_steps=40):

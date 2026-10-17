@@ -11,10 +11,7 @@ from dataclasses import dataclass, field
 
 from src.nav import screens as S
 from src.nav.navigator import Navigator, NavError
-from src.nav.targets import StartScreen
-
-# auto-round controls on the start screen
-ROUNDS_MIN, ROUNDS_MINUS, ROUNDS_PLUS = (0.6117, 0.6819), (0.6477, 0.6819), (0.9188, 0.6819)
+from src.nav.targets import World
 
 IN_RUN = ('dungeon', 'dungeon_menu', 'round_dialog', 'exit_confirm', 'result')
 
@@ -44,33 +41,46 @@ class Nav:
 
     def go(self, target, max_steps=40):
         """Reach target from any screen and set it up; raises NavError when it cannot."""
-        nav = Navigator(self.b, target.goal(), log=self.log, atlas=self.atlas, rows_path=self.rows_path)
+        nav = Navigator(self.b, target, log=self.log, atlas=self.atlas, rows_path=self.rows_path)
         if not nav.run(max_steps=max_steps):
             raise NavError('could not reach %s' % (target,))
-        if isinstance(target, StartScreen) and target.auto_rounds is not None:
-            self.set_auto_rounds(target.auto_rounds)
+        target.setup(self)
 
     def wait_for_run_end(self, max_steps=60):
         """Let a run in progress play its auto rounds, then leave it and return to the world."""
-        nav = Navigator(self.b, {'screen': 'world'}, log=self.log, atlas=self.atlas, rows_path=self.rows_path,
+        nav = Navigator(self.b, World(), log=self.log, atlas=self.atlas, rows_path=self.rows_path,
                         in_dungeon=True, leave='after_rounds')
         if not nav.run(max_steps=max_steps):
             raise NavError('the run did not end')
 
+    def tap(self, x, y):
+        before = self.b.thumb()
+        self.b.click(x, y)
+        self.b.settle(before)
+
     def set_auto_rounds(self, n):
-        for _ in range(12):
+        """On a start screen, switch 自动轮次 off (n=0) or on with n rounds, and check it took."""
+        for _ in range(15):
             state = self.where()
-            cur = state.info.get('auto_rounds') if state.screen == 'start' else None
-            if cur is None:
-                raise NavError('auto-round count not readable on %s' % state.screen)
-            if cur == n:
-                return
-            if cur - n > 8:
-                before = self.b.thumb()
-                self.b.click(*ROUNDS_MIN)
-                self.b.settle(before)
+            info = state.info
+            if state.screen != 'start' or info.get('auto_on') is None:
+                raise NavError('no 自动轮次 setting on %s' % state.screen)
+            if info['auto_on'] != (n > 0):
+                self.log('  switching 自动轮次 %s' % ('on' if n else 'off'))
+                self.tap(*info['auto_switch'])
                 continue
-            for _ in range(min(abs(cur - n), 10)):
-                self.b.click(*(ROUNDS_MINUS if cur > n else ROUNDS_PLUS))
-                self.b.sleep(0.12)
-        raise NavError('could not set auto rounds to %d' % n)
+            cur, y = info['auto_rounds'], info['auto_buttons_y']
+            if n == 0 or cur == n:
+                return
+            if cur is None:
+                raise NavError('自动轮次 is on but its count is not readable')
+            # the end buttons jump to 1 or 99; from there + and - step by one
+            if n == 99 or (n > cur and 99 - n < n - cur):
+                self.tap(S.AUTO_MAX_X, y)
+            elif n < cur and n - 1 < cur - n:
+                self.tap(S.AUTO_MIN_X, y)
+            else:
+                for _ in range(min(abs(cur - n), 10)):
+                    self.b.click(S.AUTO_PLUS_X if n > cur else S.AUTO_MINUS_X, y)
+                    self.b.sleep(0.12)
+        raise NavError('could not set 自动轮次 to %d' % n)

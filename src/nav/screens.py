@@ -5,6 +5,7 @@ import re
 
 import numpy as np
 
+from src.nav import graph
 from src.nav import text_zh as T
 
 # tab centres on the commission page and section centres in the book's top bar
@@ -17,6 +18,11 @@ LEVELS = [20, 30, 40, 50, 55, 60, 65, 70, 75]
 LEVEL_X = 0.075
 LEVEL_STEP = 0.0731
 LEVEL_COLUMN = (0.03, 0.15, 0.11, 0.95)
+
+# 自动轮次 panel on start screens: the switch is on the label's row, the buttons a row below the counter
+AUTO_SWITCH_X = 0.9375
+AUTO_BUTTONS_DY = 0.039
+AUTO_MIN_X, AUTO_MINUS_X, AUTO_PLUS_X, AUTO_MAX_X = 0.612, 0.648, 0.919, 0.955
 
 
 def load_atlas(path=None):
@@ -101,9 +107,21 @@ def start_info(scr):
     entries = [{'mode': i['t'], 'y': i['y']} for i in items
                if i['x'] < 0.08 and 0.18 < i['y'] < 0.6 and not re.search(r'\d', i['t'])]
     column = next((i['t'] for i in items if 0.6 < i['x'] < 0.68 and 0.83 < i['y'] < 0.88), None)
-    m = next((re.search(T.AUTO_ROUNDS, i['t']) for i in items if re.search(T.AUTO_ROUNDS, i['t'])), None)
     return {'via': via, 'mode': title, 'lv': selected, 'tiers': tiers, 'entries': entries, 'column': column,
-            'auto_rounds': int(m.group(1)) if m else None}
+            **auto_round_info(scr)}
+
+
+def auto_round_info(scr):
+    """The 自动轮次 panel: a switch on the label's row, and when it is on, a 轮次 N/99 counter below it.
+
+    The panel moves up when it opens, so the controls are placed from the text rather than fixed spots.
+    """
+    label = next(iter(scr.find(T.AUTO_LABEL, (0.55, 0.4, 0.75, 0.8))), None)
+    count = next(((i, re.search(T.AUTO_ROUNDS, i['t'])) for i in scr.items if re.search(T.AUTO_ROUNDS, i['t'])), None)
+    return {'auto_on': bool(count) if label else None,
+            'auto_rounds': int(count[1].group(1)) if count else None,
+            'auto_switch': (AUTO_SWITCH_X, label['y']) if label else None,
+            'auto_buttons_y': count[0]['y'] + AUTO_BUTTONS_DY if count else None}
 
 
 def match_atlas(scr, atlas, prefix):
@@ -120,55 +138,104 @@ def match_atlas(scr, atlas, prefix):
 
 
 def classify(scr, atlas):
-    """Return (screen, info). Checks run most specific first."""
-    find = scr.find
-    # in-run screens first: the dungeon HUD also has the Lv bar the world check looks for
-    if find(T.EXIT_CONFIRM):
-        return 'exit_confirm', {'cancel': (find(T.CANCEL) or [None])[0], 'confirm': (find(T.CONFIRM) or [None])[-1]}
-    if find(T.RESULT) and scr.find_any(T.RESULT_BUTTONS):
+    """Return (screen, info) from the registered detectors, most specific first."""
+    return graph.classify(scr, atlas)
+
+
+# in-run screens come first: the run HUD also has the Lv bar the world check looks for
+
+@graph.detector(10)
+def detect_exit_confirm(scr, atlas):
+    if scr.find(T.EXIT_CONFIRM):
+        return 'exit_confirm', {'cancel': (scr.find(T.CANCEL) or [None])[0], 'confirm': (scr.find(T.CONFIRM) or [None])[-1]}
+
+
+@graph.detector(20)
+def detect_result(scr, atlas):
+    if scr.find(T.RESULT) and scr.find_any(T.RESULT_BUTTONS):
         return 'result', {}
-    if find(T.RETREAT) and find(T.CONTINUE):
+
+
+@graph.detector(30)
+def detect_round_dialog(scr, atlas):
+    if scr.find(T.RETREAT) and scr.find(T.CONTINUE):
         # with auto rounds on, the dialog counts down to continuing by itself
         auto = next((re.search(r'(\d+)\s*/\s*(\d+)', i['t']) for i in scr.items
                      if T.AUTO_RUNNING in i['t'] and re.search(r'\d+\s*/\s*\d+', i['t'])), None)
-        return 'round_dialog', {'retreat': find(T.RETREAT, exact=True) or find(T.RETREAT),
+        return 'round_dialog', {'retreat': scr.find(T.RETREAT, exact=True) or scr.find(T.RETREAT),
                                 'auto': (int(auto.group(1)), int(auto.group(2))) if auto else None}
-    if find(T.GIVE_UP) and find(T.RESUME):
+
+
+@graph.detector(40)
+def detect_dungeon_menu(scr, atlas):
+    if scr.find(T.GIVE_UP) and scr.find(T.RESUME):
         # the in-run menu lists what the run has earned so far, or 无奖励 when nothing yet
-        return 'dungeon_menu', {'resume': find(T.RESUME)[0], 'give_up': find(T.GIVE_UP)[0],
-                                'nothing_earned': bool(find(T.NO_REWARD))}
-    # the commission-manual popup between rounds also has a start-screen button, so it goes first
-    if find(T.MANUAL_SKIP) and find('Space'):
+        return 'dungeon_menu', {'resume': scr.find(T.RESUME)[0], 'give_up': scr.find(T.GIVE_UP)[0],
+                                'nothing_earned': bool(scr.find(T.NO_REWARD))}
+
+
+@graph.detector(50)
+def detect_manual_popup(scr, atlas):
+    # it also has a start-screen button, so it has to be checked before the start screen
+    if scr.find(T.MANUAL_SKIP) and scr.find('Space'):
         # before a run the popup has 取消 next to 开始挑战; between rounds it has a single confirm button
-        return 'manual_popup', {'before_run': bool(find(T.CANCEL))}
+        return 'manual_popup', {'before_run': bool(scr.find(T.CANCEL))}
+
+
+@graph.detector(60)
+def detect_start(scr, atlas):
     if scr.find_any(T.START):
         return 'start', start_info(scr)
-    hud = (0, 0.15, 0.3, 0.45)
-    if any(find(t, hud) for t in T.ROUND_HUD):
-        m = next((re.search(T.ROUND_NOW, i['t']) for i in find(T.ROUND_HUD[0], hud) if re.search(T.ROUND_NOW, i['t'])), None)
-        return 'dungeon', {'round': int(m.group(1)) if m else None, 'to_objective': bool(find(T.TO_OBJECTIVE, hud))}
 
+
+@graph.detector(70)
+def detect_dungeon(scr, atlas):
+    hud = (0, 0.15, 0.3, 0.45)
+    if any(scr.find(t, hud) for t in T.ROUND_HUD):
+        m = next((re.search(T.ROUND_NOW, i['t']) for i in scr.find(T.ROUND_HUD[0], hud) if re.search(T.ROUND_NOW, i['t'])), None)
+        return 'dungeon', {'round': int(m.group(1)) if m else None, 'to_objective': bool(scr.find(T.TO_OBJECTIVE, hud))}
+
+
+@graph.detector(80)
+def detect_book(scr, atlas):
     top = (0, 0, 1, 0.06)
-    in_book = len([t for t in T.BOOK_MARKERS if find(t, top)]) >= 2 or find(T.BOOK_TITLE, top)
-    tabs = [t for t in T.TABS if find(t, (0, 0.12, 0.75, 0.2), exact=True)]
-    if in_book and len(tabs) >= 3:
-        if find(T.GO, (0.55, 0.2, 0.7, 0.7)) and find(T.DROPS):
+    in_book = len([t for t in T.BOOK_MARKERS if scr.find(t, top)]) >= 2 or scr.find(T.BOOK_TITLE, top)
+    if not in_book:
+        return None
+    tabs = [t for t in T.TABS if scr.find(t, (0, 0.12, 0.75, 0.2), exact=True)]
+    if len(tabs) >= 3:
+        if scr.find(T.GO, (0.55, 0.2, 0.7, 0.7)) and scr.find(T.DROPS):
             return 'commission', {'tab': T.TABS[1], 'levels': level_positions(scr)}
         return 'commission', {'tab': selected_tab(scr)}
-    if in_book:
-        return 'book', {'section': selected_section(scr)}
-    if find(T.UID, (0, 0, 0.35, 0.25)) and (find(T.SHOP) or find(T.EVENTS)):
+    return 'book', {'section': selected_section(scr)}
+
+
+@graph.detector(90)
+def detect_main_menu(scr, atlas):
+    if scr.find(T.UID, (0, 0, 0.35, 0.25)) and (scr.find(T.SHOP) or scr.find(T.EVENTS)):
         return 'main_menu', {}
-    if find(T.ESC) or find(T.BACK, (0.9, 0.93, 1, 1)):
-        for kind in ('menu', 'page'):
-            name = match_atlas(scr, atlas, kind + '_')
-            if name:
-                return kind, {'name': name}
-        return 'other_menu', {}
-    if find(T.LV, (0, 0.9, 0.2, 1)) or find(T.UID, (0.4, 0.95, 0.6, 1)):
-        return 'world', {}
+
+
+def atlas_screen(scr, atlas):
     for kind in ('menu', 'page'):
         name = match_atlas(scr, atlas, kind + '_')
         if name:
             return kind, {'name': name}
-    return 'unknown', {}
+    return None
+
+
+@graph.detector(100)
+def detect_other_menu(scr, atlas):
+    if scr.find(T.ESC) or scr.find(T.BACK, (0.9, 0.93, 1, 1)):
+        return atlas_screen(scr, atlas) or ('other_menu', {})
+
+
+@graph.detector(110)
+def detect_world(scr, atlas):
+    if scr.find(T.LV, (0, 0.9, 0.2, 1)) or scr.find(T.UID, (0.4, 0.95, 0.6, 1)):
+        return 'world', {}
+
+
+@graph.detector(120)
+def detect_atlas(scr, atlas):
+    return atlas_screen(scr, atlas)

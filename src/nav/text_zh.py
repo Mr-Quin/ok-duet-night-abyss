@@ -33,6 +33,7 @@ RESULT_BUTTONS = ('再次进行', '退出委托')
 RETREAT = '撤离'
 CONTINUE = '继续挑战'
 AUTO_RUNNING = '轮次中'
+AUTO_LABEL = '自动轮次'
 AUTO_ROUNDS = r'轮次\s*(\d+)\s*/\s*99'
 GIVE_UP = '放弃挑战'
 RESUME = '继续游戏'
