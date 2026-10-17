@@ -1,7 +1,8 @@
 """跟着屏幕上的目标标记走到扼守的防守点。
 
-30/65 扼守开局时角色正对着目标，所以就是一段直线：按住前进和冲刺，标记偏离中央时
-左右微调，标记下方的距离读到几米以内就停。
+按住前进和冲刺，转镜头让标记保持在画面中央，标记下方的距离读到几米以内就停。距离一阵子
+不变小就跳一下，跳了两次还不行就放弃，交给调用方复位。走的过程会记成一条时间线
+（steps），走到了可以存成路线，下次从同一个出生点直接重放。
 """
 import os
 import re
@@ -13,12 +14,21 @@ TEMPLATE = os.path.join(os.path.dirname(__file__), 'marker', 'objective.png')
 # 模板是从 2560 宽的画面上截的
 TEMPLATE_WIDTH = 2560
 ARRIVED_METRES = 6
+# 镜头横移一格，标记在画面上挪大约 0.003 个画面宽（转得多了会少一点），一次最多转这么多格
+TURN_PER_COUNT = 0.003
+MAX_TURN = 150
+STEER = 0.03
+# 距离这么久没变小就当作被挡住了
+STUCK_SECONDS = 2.5
+MAX_JUMPS = 2
 
 
 class MarkerWalk:
     def __init__(self, task):
         self.task = task
         self.template = cv2.imread(TEMPLATE)
+        self.last_y = None
+        self.steps = []
 
     def find(self, frame):
         """(标记相对中央的水平偏移 [-1, 1], 距离米数或 None)，看不到标记时返回 None。"""
@@ -38,6 +48,7 @@ class MarkerWalk:
         if score < 0.8:
             return None
         cx, cy = centre
+        self.last_y = cy / H
         # 距离文字就在标记正下方，比如「51米」
         label = frame[cy + int(16 * s):cy + int(60 * s), max(0, cx - int(80 * s)):cx + int(80 * s)]
         boxes = self.task.ocr(frame=label, threshold=0.5) if label.size else []
@@ -54,15 +65,17 @@ class MarkerWalk:
         return None
 
     def run(self, seen, timeout=30):
-        """从 wait_for_marker() 看到标记的位置出发走到目标点；标记丢失或超时没走到时返回 False。"""
+        """从 wait_for_marker() 看到标记的位置出发走到目标点；走到返回 True，被挡住、标记丢失或超时返回 False。"""
         task = self.task
-        task.log_info(f"按标记直线走，距离 {seen[1]} 米")
+        task.log_info(f"按标记走，距离 {seen[1]} 米")
         dodge = task.get_dodge_key()
+        t0 = time.time()
+        self.steps = [{'t': 0.0, 'down': 'w'}, {'t': 0.0, 'down': dodge}]
         task.send_key_down('w')
         task.send_key_down(dodge)
         try:
-            deadline, lost_since = time.time() + timeout, None
-            while time.time() < deadline:
+            lost_since, best, best_at, jumps = None, None, time.time(), 0
+            while time.time() - t0 < timeout:
                 seen = self.find(task.next_frame())
                 if seen is None:
                     lost_since = lost_since or time.time()
@@ -73,12 +86,30 @@ class MarkerWalk:
                 lost_since = None
                 x, metres = seen
                 if metres is not None and metres <= ARRIVED_METRES:
-                    task.log_info(f"已到达目标，距离 {metres} 米")
+                    task.log_info(f"已到达目标，距离 {metres} 米，用时 {time.time() - t0:.1f} 秒")
                     return True
-                if abs(x) > 0.05:
-                    task.send_key('d' if x > 0 else 'a', down_time=0.08)
+                if metres is not None and (best is None or metres < best):
+                    best, best_at = metres, time.time()
+                elif time.time() - best_at > STUCK_SECONDS:
+                    if jumps >= MAX_JUMPS:
+                        task.log_info(f"被挡住了，停在 {best} 米")
+                        return False
+                    jumps += 1
+                    self.record({'down': 'space'}, t0)
+                    task.send_key('space', down_time=0.1)
+                    self.record({'up': 'space'}, t0)
+                    best_at = time.time()
+                if abs(x) > STEER:
+                    dx = max(-MAX_TURN, min(MAX_TURN, round(x / TURN_PER_COUNT)))
+                    self.record({'turn': [dx, 0]}, t0)
+                    task.move_mouse_relative(dx, 0)
             task.log_info("走到目标超时")
             return False
         finally:
             task.send_key_up(dodge)
             task.send_key_up('w')
+            self.record({'up': dodge}, t0)
+            self.record({'up': 'w'}, t0)
+
+    def record(self, step, t0):
+        self.steps.append(dict(step, t=round(time.time() - t0, 3)))
