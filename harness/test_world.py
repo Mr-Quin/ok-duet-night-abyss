@@ -15,7 +15,7 @@ from src.nav import Nav, NavError, targets
 from src.nav import screens as S
 from src.nav.backend import Screen
 
-from harness.sim import SimBackend
+from harness.sim import TraceBackend
 from harness.world import World, signature
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -102,8 +102,9 @@ class TestRecordedWorld(unittest.TestCase):
                 self.assertEqual(signature(scr, screen, info), state['signature'])
 
     def test_recorded_journey_replays(self):
-        sim = SimBackend(self.world, self.plan['start'])
-        nav = Nav(sim, rows_path=self.rows)
+        with open(os.path.join(WORLD, 'trace.json'), encoding='utf-8') as f:
+            trace = json.load(f)
+        nav = Nav(TraceBackend(self.world, trace), rows_path=self.rows)
         for k, entry in enumerate(self.plan['plan']):
             target = getattr(targets, entry['target'])(**entry['fields'])
             try:

@@ -121,11 +121,15 @@ class World:
                 return
         self.transitions.append({'from': src, 'actions': list(actions), 'to': dst, 'count': 1})
 
-    def follow(self, src, actions):
-        """The state reached from src by actions, preferring the transition seen most often."""
+    def outcomes(self, src, actions):
+        """Every state the recording reached from src with these actions, most frequent first.
+
+        The game sometimes ignores an input (a key pressed while it hitches), so the same input
+        from the same screen can have been recorded leading to different screens.
+        """
         found = [t for t in self.transitions if t['from'] == src and len(t['actions']) == len(actions)
                  and all(same_action(a, b) for a, b in zip(t['actions'], actions))]
-        return max(found, key=lambda t: t['count'])['to'] if found else None
+        return [t['to'] for t in sorted(found, key=lambda t: -t['count'])]
 
     def image(self, sid):
         if ('img', sid) not in self._cache:
