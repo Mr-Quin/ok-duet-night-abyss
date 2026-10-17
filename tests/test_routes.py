@@ -74,12 +74,28 @@ class TestMarkerWalk(unittest.TestCase):
         self.assertEqual(task.actions.count(('key', 'space')), MW.MAX_JUMPS)
         self.assertEqual(task.actions[-2:], [('up', 'lshift'), ('up', 'w')])
 
+    def test_a_distance_that_drops_impossibly_fast_is_not_an_arrival(self):
+        task = FakeTask()
+        walker = ScriptedWalk(task, [(0.0, 3), (0.0, 30), (0.0, 26), (0.0, 5)])
+        self.assertTrue(walker.run((0.0, 35)))
+        # 35 米后 0.5 秒读到 3 米是读错了，要一直走到真正读到 5 米
+        self.assertEqual(walker.seen, [(0.0, 5)])
+
+    def test_a_marker_that_vanishes_up_close_means_the_wave_started(self):
+        self.assertTrue(ScriptedWalk(FakeTask(), [(0.0, 5), None]).run((0.0, 9), arrive=2))
+        self.assertFalse(ScriptedWalk(FakeTask(), [(0.0, 20), None]).run((0.0, 25)))
+
     def test_the_walk_is_recorded_as_a_replayable_timeline(self):
         walker = ScriptedWalk(FakeTask(), [(0.3, 40), (0.0, 5)])
         walker.run((0.3, 40))
-        self.assertEqual(walker.steps[0], {'t': 0.0, 'down': 'w'})
+        self.assertEqual(walker.steps[0]['down'], 'w')
         self.assertTrue(any('turn' in s for s in walker.steps))
         self.assertEqual({s.get('up') for s in walker.steps if 'up' in s}, {'w', 'lshift'})
+        first = walker.steps[-1]['t']
+        walker.seen = [(0.0, 2)]
+        walker.run((0.0, 4), arrive=2)
+        self.assertGreater(walker.steps[-1]['t'], first)
+        self.assertEqual([s['t'] for s in walker.steps], sorted(s['t'] for s in walker.steps))
 
 
 class TestRoutes(unittest.TestCase):
@@ -102,6 +118,27 @@ class TestRoutes(unittest.TestCase):
         self.assertIsNone(lib.find(self.room, (-0.1, 0.4)))
         self.assertIsNone(lib.find(self.other_room, (0.34, 0.25)))
 
+    def test_on_the_same_map_the_view_does_not_have_to_match(self):
+        lib = R.RouteLibrary(folders=())
+        lib.save(self.room, (0.34, 0.25), [], 'defence_13', folder=self.folder, name='room')
+        # 光线不同时同一张图的出生画面也会差很多
+        self.assertIsNotNone(lib.find(self.other_room, (0.34, 0.25), 'defence_13'))
+        self.assertIsNone(lib.find(self.other_room, (0.34, 0.25), 'defence_05'))
+        self.assertIsNone(lib.find(self.other_room, (-0.1, 0.4), 'defence_13'))
+
+    def test_a_route_that_worked_on_another_map_remembers_it(self):
+        original = R.LEARNED_DIR
+        R.LEARNED_DIR = self.folder
+        try:
+            lib = R.RouteLibrary(folders=())
+            lib.save(self.room, (0.34, 0.25), [], 'defence_14', folder=self.folder, name='room')
+            lib.remember_map(lib.routes[-1], 'defence_01')
+            lib = R.RouteLibrary(folders=(self.folder,))
+            self.assertEqual(lib.routes[0].maps, {'defence_01', 'defence_14'})
+            self.assertIsNotNone(lib.find(self.other_room, (0.34, 0.25), 'defence_01'))
+        finally:
+            R.LEARNED_DIR = original
+
     def test_a_route_still_matches_at_another_resolution(self):
         lib = R.RouteLibrary(folders=())
         lib.save(self.room, (0.34, 0.25), [], folder=self.folder, name='room')
@@ -119,8 +156,8 @@ class TestRoutes(unittest.TestCase):
 
     def test_the_shipped_grapple_route_loads(self):
         lib = R.RouteLibrary(folders=(R.SHIPPED_DIR,))
-        names = [r.name for r in lib.routes]
-        self.assertIn('grapple_room', names)
+        grapple = next(r for r in lib.routes if r.name == 'grapple_room')
+        self.assertIn('defence_08', grapple.maps)
 
 
 if __name__ == '__main__':
