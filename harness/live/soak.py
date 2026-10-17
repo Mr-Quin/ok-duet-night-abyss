@@ -26,7 +26,7 @@ from harness.live.backend import LiveBackend
 SCHEDULED_TASK = 'okdna_fork'
 TASK_CONFIG = os.path.join('configs', 'Auto65ArtifactTask_Fast.json')
 RUN_LOG = os.path.join('logs', 'run.txt')
-ROWS = os.path.join('configs', 'nav_rows.json')
+CACHE = os.path.join('configs', 'nav_cache.json')
 # ok-dna's log says 已完成 n/m after every finished run
 DONE = '已完成 %d/%d'
 EVENTS = re.compile(r'导航到|按标记直线走|已到达目标|没找到目标标记|标记丢失|走到目标超时|当前轮次|终止任务|已完成 |exception stopped|^Exception')
@@ -43,7 +43,7 @@ def cfg(target, game_rounds=1, runs=1, walk='按标记直线走'):
 class Soak:
     def __init__(self, out):
         self.out = out
-        self.nav = Nav(LiveBackend(), rows_path=ROWS, log=lambda m: None)
+        self.nav = Nav(LiveBackend(), cache_path=CACHE, log=lambda m: None)
 
     def where(self):
         state = self.nav.where()
