@@ -16,6 +16,8 @@ from src.nav.graph import NavError, NoSuchEntry, WrongMission  # noqa: F401  调
 
 # 局内一直等不到弹窗或结算时，最多等这么多次（每次约 0.4 秒加一次识别）
 MAX_RUN_WAITS = 400
+# 同一个动作做了这么多次界面还没变，就认为卡住了
+MAX_REPEATS = 4
 
 
 def node_of(screen, info):
@@ -287,7 +289,7 @@ class Navigator:
             self.unsure = 0
             state = tuple(self.trace[log_len:])
             seen[state] = seen.get(state, 0) + 1
-            if seen[state] >= 4:
+            if seen[state] > MAX_REPEATS:
                 raise NavError('一直在重复：%s' % ' / '.join(state))
             self.b.settle(before)
             if seen[state] >= 2:
