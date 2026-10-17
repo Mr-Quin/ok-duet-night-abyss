@@ -1,7 +1,7 @@
-"""Text anchors for the Simplified Chinese client.
+"""简体中文客户端的界面文字。
 
-Every string the navigator reads off the screen lives here, so another client language needs
-its own copy of this module and a fresh atlas capture, not changes to the navigator.
+导航层从画面上读的字都在这里。换其他语言的客户端时复制一份这个模块、重新采集
+atlas，不需要改导航逻辑。
 """
 
 TABS = ['委托', '夜航手册', '委托密函', '悬赏委托']
@@ -9,7 +9,7 @@ SECTIONS = ['今日行程', '委托', '梦魔残声', '歧路足音']
 BOOK_TITLE = '夜航手册'
 BOOK_MARKERS = ('历练', '今日行程', '歧路足音')
 
-# order of the cards on the 委托 tab, left to right
+# 委托页卡片从左到右的顺序
 MISSIONS = ['勘察/无尽', '避险', '驱逐', '探险/无尽', '调停', '驱离', '护送', '追缉', '扼守/无尽', '迁移']
 LETTER_COLUMNS = ('角色', '武器', '魔之楔')
 
@@ -44,9 +44,6 @@ TO_OBJECTIVE = '前往目标点'
 NO_REWARD = '无奖励'
 CONFIRM = '确定'
 
-# pages reached from a book section: name -> (section, button text)
+# 从手册分区进入的页面：名称 -> (分区, 入口按钮文字)
 PAGE_ENTRY = {'迷津': ('歧路足音', GO), 'boss_map': ('梦魔残声', GO_CHALLENGE)}
 
-ALIASES = {'defence': '扼守/无尽', 'repel': '驱离', 'explore': '探险/无尽', 'survey': '勘察/无尽', 'hedge': '避险',
-           'expel': '驱逐', 'mediate': '调停', 'escort': '护送', 'pursuit': '追缉', 'migrate': '迁移',
-           'tasks': '委托', 'nightbook': '夜航手册', 'letters': '委托密函', 'bounty': '悬赏委托'}

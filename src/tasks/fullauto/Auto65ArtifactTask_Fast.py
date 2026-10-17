@@ -9,15 +9,13 @@ from src.tasks.BaseCombatTask import BaseCombatTask
 
 from src.tasks.AutoDefence import AutoDefence
 from src.tasks.fullauto.marker_walk import MarkerWalk
+from src.nav import Nav, NavError, Nightbook, NoSuchEntry, World, WrongMission
 from src.nav import text_zh as T
-from src.nav.nav import Nav, NavError
-from src.nav.navigator import NoSuchEntry, WrongMission
 from src.nav.okscript import OkScriptBackend, ROWS_PATH
-from src.nav.targets import Nightbook, World
 
 logger = Logger.get_logger(__name__)
 
-# 夜航手册 entries leading to the 30/65 defence, top to bottom
+# 夜航手册里进 30/65 扼守的关卡，从上往下
 NIGHTBOOK_ENTRIES = {
     30: ['残火暴徒秽兽', '霹雳疾冲秽兽', '枯萎游击秽兽', '凛霜疾冲秽兽'],
     65: ['霜狱野蜂暗箭', '浴血野蜂利刃', '浴血野蜂密探', '掠影野蜂暗箭', '守护野蜂暗箭', '守护野蜂利刃', '转雷野蜂密探',
@@ -74,7 +72,7 @@ class Auto65ArtifactTask_Fast(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         try:
             _to_do_task = self.get_task_by_class(AutoDefence)
             auto_nav = self.mission_target() is not None
-            # in_team() also holds in the open world, whose HUD has the same Lv bar, so ask the navigator
+            # 大世界的 HUD 也有 Lv 条，in_team() 在大世界也成立，所以用导航层判断是否在局内
             state = self.where_now()
             if not state.in_run:
                 if auto_nav:
@@ -182,7 +180,7 @@ class Auto65ArtifactTask_Fast(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         return self._nav
 
     def where_now(self, reads=3):
-        """The current screen; combat effects can hide the run HUD in one frame, so any in-run read wins."""
+        """当前界面。技能特效可能在某一帧盖住局内 HUD，所以连读几次，只要有一次在局内就算局内。"""
         state = None
         for _ in range(reads):
             state = self.nav.where()
@@ -222,12 +220,13 @@ class Auto65ArtifactTask_Fast(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
             return self.walk_to_aim(delay)
         self.sleep(delay)
         walker = MarkerWalk(self)
-        if walker.wait_for_marker() is None:
+        seen = walker.wait_for_marker()
+        if seen is None:
             logger.info("没找到目标标记，改用录制路线")
             return self.walk_to_aim(0)
-        if walker.run():
+        if walker.run(seen):
             return
-        # partway there; the reset point by the objective is the nearest one
+        # 已经走了一段，离目标点旁的复位点最近
         if not self.reset_and_transport():
             logger.info("复位失败，重开任务...")
             self.give_up_mission()
