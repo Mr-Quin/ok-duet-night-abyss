@@ -83,6 +83,11 @@ class LiveBackend(Backend):
         kx, ky = self._px(*PARK)
         self.call('click?x=%d&y=%d&park_x=%d&park_y=%d' % (px, py, kx, ky))
 
+    def drag(self, x0, y0, x1, y1):
+        (a, b), (c, d) = self._px(x0, y0), self._px(x1, y1)
+        self.call('drag?x0=%d&y0=%d&x1=%d&y1=%d' % (a, b, c, d))
+        self.park()
+
     def park(self):
         self.call('move?x=%d&y=%d' % self._px(*PARK))
 
