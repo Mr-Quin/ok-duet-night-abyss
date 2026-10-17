@@ -106,8 +106,11 @@ class AutoDefence(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
 
         idle_since = between_since = None
         runs_done, run_live = 0, False
-        track_runs = bool(self.external_run_limit or self.external_hands_off)
+        track_runs = bool(self.external_run_limit or self.external_hands_off or self.external_round_limit)
         stop_func = self.count_round_dialogs if self.external_round_limit else self.stop_func
+        self.rounds_seen = 0
+        if track_runs:
+            self.mission_status = None
         while True:
             if track_runs and self.is_result_screen() and run_live:
                 run_live = False
@@ -144,8 +147,11 @@ class AutoDefence(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
                 between_since = None
 
             _status = self.handle_mission_interface(stop_func=stop)
-            if _status is False and self.external_recover and not self.in_team():
-                # 局外没有能处理的界面，比如走位失败放弃后回到了委托列表
+            if track_runs and (self.mission_status == Mission.START or _status == Mission.GIVE_UP):
+                # 点了开始或再次进行、或者放弃了这一局：下一次进局内是新的一局
+                run_live = False
+            if _status is False and self.external_recover and (not self.in_team() or self.find_esc_menu()):
+                # 局外没有能处理的界面（比如走位失败放弃后回到了委托列表），或者停在局内菜单里
                 idle_since = idle_since or time.time()
                 if time.time() - idle_since > 20:
                     self.external_recover()

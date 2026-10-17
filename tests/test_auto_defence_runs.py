@@ -11,6 +11,10 @@ from src.tasks.CommissionsTask import Mission
 START, POPUP, FIGHT, DIALOG, MANUAL, RESULT, MENU = 'start', 'popup', 'fight', 'dialog', 'manual', 'result', 'menu'
 
 
+class OutOfScreens(Exception):
+    pass
+
+
 class FakeGame:
     """按脚本依次给出画面，记录主循环对每个画面做了什么。"""
 
@@ -19,11 +23,13 @@ class FakeGame:
         self.seen = []
         self.pressed = []
         self.walks = 0
+        self.waited = 0
+        self.ran_out = False
 
     @property
     def now(self):
         if not self.screens:
-            raise AssertionError('主循环没有停下，画面已经用完；按过：%s' % self.pressed)
+            raise OutOfScreens()
         return self.screens[0]
 
     def advance(self):
@@ -36,7 +42,7 @@ class TestAutoDefenceRuns(TaskTestCase):
     config = config
 
     def run_loop(self, screens, hands_off=False, run_limit=None, recover=None, round_limit=None, game_auto=None,
-                 clock_step=None):
+                 clock_step=None, countdown=1, status=None):
         task, game = self.task, FakeGame(screens)
         game_auto = hands_off if game_auto is None else game_auto
 
@@ -62,9 +68,12 @@ class TestAutoDefenceRuns(TaskTestCase):
             return False
 
         def sleep(seconds):
-            # 开着游戏内自动轮次时，游戏会自己从轮次弹窗继续；没开时弹窗一直等人点
+            # 开着游戏内自动轮次时，游戏等 countdown 次之后自己从轮次弹窗继续；没开时弹窗一直等人点
             if game_auto and game.now in (DIALOG, MANUAL):
-                game.advance()
+                game.waited += 1
+                if game.waited >= countdown:
+                    game.waited = 0
+                    game.advance()
 
         def handle_mission_start():
             game.walks += 1
@@ -97,10 +106,12 @@ class TestAutoDefenceRuns(TaskTestCase):
         try:
             for name, fn in patches.items():
                 setattr(task, name, fn)
-            task.mission_status = None
+            task.mission_status = status
             task.config_external_movement(lambda delay=0: None, {}, recover=recover, hands_off=hands_off,
                                           run_limit=run_limit, round_limit=round_limit)
             task.do_run()
+        except OutOfScreens:
+            game.ran_out = True
         finally:
             module.time.time = original_time
             for name, fn in original.items():
@@ -119,6 +130,24 @@ class TestAutoDefenceRuns(TaskTestCase):
         game = self.run_loop([START, FIGHT, RESULT, FIGHT, RESULT], run_limit=2)
         self.assertEqual(game.pressed, ['start', 'start'])
         self.assertEqual(game.walks, 2)
+
+    def test_one_round_runs_start_when_the_game_skips_the_popup(self):
+        # 每局一轮、不限局数：没有 run_limit 也要认出新的一局并走位
+        game = self.run_loop([START, FIGHT, DIALOG, RESULT, FIGHT, DIALOG], round_limit=1)
+        self.assertTrue(game.ran_out)
+        self.assertEqual(game.walks, 2)
+        self.assertEqual(game.pressed, ['start', 'retreat', 'start', 'retreat'])
+
+    def test_a_new_run_after_giving_up_is_walked(self):
+        # 走位失败放弃后回到开始界面重开，这次弹窗被跳过
+        game = self.run_loop([START, POPUP, FIGHT, START, FIGHT, RESULT], run_limit=1)
+        self.assertEqual(game.walks, 2)
+        self.assertFalse(game.ran_out)
+
+    def test_a_start_left_over_from_before_does_not_walk(self):
+        game = self.run_loop([FIGHT, RESULT], run_limit=1, status=Mission.START)
+        self.assertEqual(game.walks, 0)
+        self.assertFalse(game.ran_out)
 
     def test_a_result_screen_left_from_before_is_not_counted(self):
         game = self.run_loop([RESULT, POPUP, FIGHT, RESULT], run_limit=1)
@@ -159,10 +188,16 @@ class TestAutoDefenceRuns(TaskTestCase):
         self.assertEqual(game.walks, 1)
 
     def test_waiting_on_one_dialog_does_not_shorten_the_next(self):
-        # 第一个弹窗游戏自己继续了；第二个弹窗的 20 秒要重新算
+        # 每个弹窗都要等上十几秒游戏才继续；第二个弹窗的 20 秒要重新算
         game = self.run_loop([START, POPUP, FIGHT, DIALOG, FIGHT, DIALOG, FIGHT, RESULT], hands_off=True,
-                             run_limit=1, clock_step=15)
+                             run_limit=1, clock_step=2.5, countdown=4)
         self.assertNotIn('retreat', game.pressed)
+        self.assertFalse(game.ran_out)
+
+    def test_waiting_longer_than_the_countdown_retreats(self):
+        game = self.run_loop([START, POPUP, FIGHT, DIALOG, RESULT], hands_off=True, run_limit=1,
+                             clock_step=2.5, countdown=20)
+        self.assertEqual(game.pressed, ['start', 'manual:start', 'retreat'])
 
     def test_idle_on_a_menu_navigates_back(self):
         calls = []
