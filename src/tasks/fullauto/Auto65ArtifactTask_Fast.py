@@ -79,7 +79,9 @@ class Auto65ArtifactTask_Fast(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
             runs = int(self.config.get("刷几次", 0) or 0)
             _to_do_task.config_external_movement(self.walk_to_aim, self.config,
                                                  recover=self.return_to_mission if auto_nav else None,
-                                                 stop=self.auto_rounds_done if game_rounds else None,
+                                                 # the game ends each run on the result screen once its auto
+                                                 # rounds are played, so AutoDefence never retreats
+                                                 stop=(lambda: False) if game_rounds else None,
                                                  run_limit=runs or None)
             original_info_set = _to_do_task.info_set
             _to_do_task.info_set = self.info_set
@@ -192,21 +194,6 @@ class Auto65ArtifactTask_Fast(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         level, row = entry
         rounds = int(self.config.get("游戏内自动轮次", 0) or 0)
         return Nightbook(level, row, mode=T.MISSIONS[8], lv=level, auto_rounds=rounds or None)
-
-    def auto_rounds_done(self, reads=3):
-        """At a round dialog: leave once the game's 自动轮次 countdown has run out, otherwise continue.
-
-        A countdown missed by one OCR read would cut the run short, so every read has to agree.
-        """
-        for _ in range(reads):
-            state = self.nav.where()
-            if state.screen != 'round_dialog':
-                return False
-            auto = state.info.get('auto')
-            if auto and auto[0] < auto[1]:
-                return False
-            self.sleep(0.2)
-        return True
 
     def navigate_to_mission(self):
         target = self.mission_target()
