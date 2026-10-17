@@ -15,8 +15,14 @@ from src.nav.targets import Nightbook
 
 logger = Logger.get_logger(__name__)
 
-NAV_TARGETS = ["关闭", "夜航手册 Lv.30", "夜航手册 Lv.65"]
-NAV_LEVELS = [None, 30, 65]
+# 夜航手册 entries leading to the 30/65 defence, top to bottom
+NIGHTBOOK_ENTRIES = {
+    30: ['残火暴徒秽兽', '霹雳疾冲秽兽', '枯萎游击秽兽', '凛霜疾冲秽兽'],
+    65: ['霜狱野蜂暗箭', '浴血野蜂利刃', '浴血野蜂密探', '掠影野蜂暗箭', '守护野蜂暗箭', '守护野蜂利刃', '转雷野蜂密探'],
+}
+NAV_OFF = "关闭"
+NAV_TARGETS = {f"Lv.{lv} 第{i + 1}个 {name}": (lv, i)
+               for lv, names in NIGHTBOOK_ENTRIES.items() for i, name in enumerate(names)}
 
 
 class Auto65ArtifactTask_Fast(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
@@ -33,23 +39,16 @@ class Auto65ArtifactTask_Fast(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         self.group_icon = FluentIcon.CAFE
 
         self.setup_commission_config()
-        substrings_to_remove = ["轮次"]
-        keys_to_delete = [key for key in self.default_config for sub in substrings_to_remove if sub in key]
-        for key in keys_to_delete:
-            self.default_config.pop(key, None)
-
         self.default_config.update({
-            "自动导航": NAV_TARGETS[2],
-            "关卡": "1",
             "游戏内自动轮次": 0,
+            "自动导航": NAV_OFF,
         })
         self.config_description.update({
-            "自动导航": "不在副本里时，从当前界面自动导航到夜航手册的扼守关卡",
-            "关卡": "夜航手册该等级下的第几个关卡，从上往下数",
-            "游戏内自动轮次": "开打前设置游戏自带的自动轮次，每次进本打几轮后撤离再重开；0 为不修改，按原来的 3 轮",
+            "轮次": "每次进本打几个轮次后撤离；开了游戏内自动轮次时，每个轮次是一整段自动轮次",
+            "游戏内自动轮次": "开打前把游戏自带的自动轮次设成这个数，0 为不修改。每次进本共打 轮次 × 自动轮次 轮",
+            "自动导航": "不在副本里时，从当前界面自动导航到夜航手册的这个关卡",
         })
-        self.config_type["自动导航"] = {"type": "drop_down", "options": NAV_TARGETS}
-        self.config_type["关卡"] = {"type": "drop_down", "options": [str(i) for i in range(1, 10)]}
+        self.config_type["自动导航"] = {"type": "drop_down", "options": [NAV_OFF] + list(NAV_TARGETS)}
 
         self.action_timeout = 10
 
@@ -61,15 +60,15 @@ class Auto65ArtifactTask_Fast(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         try:
             _to_do_task = self.get_task_by_class(AutoDefence)
             auto_nav = self.mission_target() is not None
-            config = dict(self.config)
-            rounds = int(self.config.get("游戏内自动轮次", 0) or 0)
-            if rounds > 0:
-                # AutoDefence retreats after 轮次 rounds; keep it in step with the game's own count
-                config["轮次"] = rounds
-            _to_do_task.config_external_movement(self.walk_to_aim, config,
-                                                 recover=self.return_to_mission if auto_nav else None)
             if auto_nav and not self.in_team():
                 self.navigate_to_mission()
+            config = dict(self.config)
+            # AutoDefence counts the rounds actually played and retreats after 轮次 of them, so with the
+            # game's auto rounds on, each of our 轮次 is a whole block of auto rounds
+            config["轮次"] = int(self.config.get("轮次", 5)) * self.auto_round_block()
+            self.log_info(f"每次进本打 {config['轮次']} 轮")
+            _to_do_task.config_external_movement(self.walk_to_aim, config,
+                                                 recover=self.return_to_mission if auto_nav else None)
             original_info_set = _to_do_task.info_set
             _to_do_task.info_set = self.info_set
             return _to_do_task.do_run()
@@ -162,13 +161,24 @@ class Auto65ArtifactTask_Fast(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         return self._nav
 
     def mission_target(self):
-        choice = self.config.get("自动导航", NAV_TARGETS[0])
-        if choice not in NAV_TARGETS[1:]:
+        entry = NAV_TARGETS.get(self.config.get("自动导航", NAV_OFF))
+        if entry is None:
             return None
-        level = NAV_LEVELS[NAV_TARGETS.index(choice)]
-        row = int(self.config.get("关卡", "1")) - 1
+        level, row = entry
         rounds = int(self.config.get("游戏内自动轮次", 0) or 0)
         return Nightbook(level, row, mode=T.MISSIONS[8], lv=level, auto_rounds=rounds or None)
+
+    def auto_round_block(self):
+        """How many rounds the game plays on its own between our decisions: the 自动轮次 count, or 1."""
+        rounds = int(self.config.get("游戏内自动轮次", 0) or 0)
+        if rounds:
+            return rounds
+        state = self.nav.where()
+        if state.screen == 'start' and state.info.get('auto_on'):
+            return state.info.get('auto_rounds') or 1
+        if state.screen != 'start':
+            self.log_info("不在关卡开始界面，读不到游戏内自动轮次，按 1 计")
+        return 1
 
     def navigate_to_mission(self):
         target = self.mission_target()
