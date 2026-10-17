@@ -129,7 +129,7 @@ def open_letter(nav, scr, here, nxt, info):
     def entries(head):
         return [i for i in scr.items if 0.55 < i['y'] < 0.75 and head['x'] - 0.1 < i['x'] < head['x'] - 0.02
                 and not re.search(r'\d', i['t'])]
-    cols = [nav.goal['column']] if nav.goal.get('column') else list(heads)
+    cols = [nav.goal['column']] if nav.goal['column'] else list(heads)
     for col in cols:
         if col not in heads:
             continue
@@ -142,11 +142,32 @@ def open_letter(nav, scr, here, nxt, info):
     raise NavError('现在的密函里没有 %s，可选 %s' % (nav.goal['mode'], offered))
 
 
+# 夜航手册分三步：选中等级，认出这个等级的全部行名，再打开目标行。
+# 每一步做不完就返回这一步的结果（None 等待、False 做了一步操作），做完返回 READY。
+READY = object()
+
+
 @graph.edge('commission', ('start', T.TABS[1]))
 def open_nightbook_row(nav, scr, here, nxt, info):
     """选夜航手册的等级，再找到那一行，点它的「前往」。"""
-    g, st = nav.goal, nav.row_state
-    book = g['book']
+    book = nav.goal['book']
+    st = nav.state.setdefault('nightbook', {})
+    for step in (select_level, learn_rows, open_row):
+        result = step(nav, scr, info, book, st)
+        if result is not READY:
+            return result
+    return False
+
+
+def cached_rows(nav, book):
+    return nav.cache.get('names/%d' % book, [])
+
+
+def other_levels_rows(nav, book):
+    return {k: v for k, v in nav.cache.items() if k.startswith('names/') and k != 'names/%d' % book}
+
+
+def select_level(nav, scr, info, book, st):
     if not info.get('levels'):
         column = Screen(scr.img, nav.b.ocr_region(scr, *S.LEVEL_COLUMN))
         info['levels'] = S.level_positions(column)
@@ -167,40 +188,54 @@ def open_nightbook_row(nav, scr, here, nxt, info):
             nav.log('  选择 Lv.%d' % book)
             nav.b.click(S.LEVEL_X, y)
             return False
-    listed = S.nightbook_rows(scr)
-    names = [r['name'] for r in listed]
-    row = g.get('row', 0)
-    known = nav.rows.get('names/%d' % book, [])
+    names = [r['name'] for r in S.nightbook_rows(scr)]
+    known, others = cached_rows(nav, book), other_levels_rows(nav, book)
     # 等级切换后列表要过一会儿才刷新，太早读到的还是上一个等级的行
-    stale = names and known[:1] != names[:1] and any(
-        k != 'names/%d' % book and k.startswith('names/') and v[:1] == names[:1] for k, v in nav.rows.items())
-    # 选中的等级通常是白字，但不总是；行名属于这个等级已知的列表时也算确认
-    others = {n for k, v in nav.rows.items() if k.startswith('names/') and k != 'names/%d' % book for n in v}
-    confirmed = S.selected_level(scr, info['levels']) == book or (names[:1] and names[0] in known and names[0] not in others)
+    stale = names and known[:1] != names[:1] and any(v[:1] == names[:1] for v in others.values())
+    # 选中标记读不出来时，行名属于这个等级已知的列表也算确认
+    elsewhere = {n for v in others.values() for n in v}
+    confirmed = S.selected_level(scr, info['levels']) == book or (names[:1] and names[0] in known
+                                                                    and names[0] not in elsewhere)
     if not confirmed or stale:
         if nav.wait(4) is None:
             return None
         st.pop('level', None)
         return False
-    named_here = isinstance(row, str) and any(row in n for n in names)
+    return READY
+
+
+def learn_rows(nav, scr, info, book, st):
+    """把看到的行名按顺序记进 st['names']，比缓存的多时写回缓存。"""
+    names = [r['name'] for r in S.nightbook_rows(scr)]
+    row, known = nav.goal['row'], cached_rows(nav, book)
     if st['names'] is None:
         if names and known and names[0] == known[0]:
             st['names'] = list(known)
-        elif not named_here:
+        elif isinstance(row, str) and any(row in n for n in names):
+            st['names'] = []
+        else:
             # 行号从顶部数起，而列表会记住上次的滚动位置
             nav.log('  把列表滚到顶部')
             nav.b.scroll(0.4, 0.45, 30)
             st['names'] = []
             return False
-        else:
-            st['names'] = []
     for n in names:
         if n and not any(same_name(n, m) for m in st['names']):
             st['names'].append(n)
     if len(st['names']) > len(known) and (not known or st['names'][0] == known[0]):
-        nav.rows['names/%d' % book] = list(st['names'])
-        nav.save_rows()
-    target = st['names'][row] if isinstance(row, int) and row < len(st['names']) else (row if isinstance(row, str) else None)
+        nav.cache['names/%d' % book] = list(st['names'])
+        nav.save_cache()
+    return READY
+
+
+def open_row(nav, scr, info, book, st):
+    listed = S.nightbook_rows(scr)
+    names = [r['name'] for r in listed]
+    row = nav.goal['row']
+    if isinstance(row, str):
+        target = row
+    else:
+        target = st['names'][row] if row < len(st['names']) else None
     idx = next((k for k, n in enumerate(names) if target and (target in n or same_name(target, n))), None)
     if idx is None:
         if tuple(names) in st['seen']:
@@ -211,6 +246,6 @@ def open_nightbook_row(nav, scr, here, nxt, info):
         return False
     nav.log('  第 %r 行 -> %s' % (row, names[idx]))
     nav.click(listed[idx]['button'])
-    nav.entered_row = names[idx]
+    nav.state['entered_row'] = names[idx]
     st.pop('level', None)
     return False

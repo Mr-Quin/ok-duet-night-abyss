@@ -5,7 +5,7 @@ from src.nav.backend import Backend
 
 # 鼠标在两次点击之间停在这里：悬停的页签和行会高亮得和选中差不多，干扰选中判断
 PARK = (0.97, 0.5)
-ROWS_PATH = os.path.join('configs', 'nav_rows.json')
+CACHE_PATH = os.path.join('configs', 'nav_cache.json')
 
 
 class OkScriptBackend(Backend):
