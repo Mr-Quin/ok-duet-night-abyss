@@ -69,6 +69,10 @@ class Backend:
         """notches 为正时向上滚，和鼠标滚轮一致。"""
         raise NotImplementedError
 
+    def drag(self, x0, y0, x1, y1):
+        """按住左键从 (x0, y0) 拖到 (x1, y1) 再松开。"""
+        raise NotImplementedError
+
     def park(self):
         """把鼠标移到不会悬停到按钮的地方；悬停的页签和行看起来和选中一样。"""
 

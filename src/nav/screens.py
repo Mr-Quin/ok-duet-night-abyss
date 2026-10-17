@@ -31,6 +31,12 @@ LEVEL_RING_X = (0.086, 0.095)
 AUTO_SWITCH_X = 0.9375
 AUTO_BUTTONS_DY = 0.039
 AUTO_MIN_X, AUTO_MINUS_X, AUTO_PLUS_X, AUTO_MAX_X = 0.612, 0.648, 0.919, 0.955
+# 滑块手柄在轮次 1 时的中心，以及每一轮移动的距离（99 时在 0.894）
+AUTO_SLIDER_X, AUTO_SLIDER_STEP = 0.674, 0.00225
+
+
+def auto_slider_x(rounds):
+    return AUTO_SLIDER_X + (rounds - 1) * AUTO_SLIDER_STEP
 
 
 def load_atlas(path=None):
