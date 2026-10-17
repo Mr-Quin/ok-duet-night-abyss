@@ -12,7 +12,7 @@ from src.nav import text_zh as T
 from src.nav.nav import Nav, NavError
 from src.nav.navigator import NoSuchEntry, WrongMission
 from src.nav.okscript import OkScriptBackend, ROWS_PATH
-from src.nav.targets import Nightbook, World
+from src.nav.targets import Nightbook
 
 logger = Logger.get_logger(__name__)
 
@@ -46,10 +46,8 @@ class Auto65ArtifactTask_Fast(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
             "自动导航": NAV_OFF,
         })
         self.config_description.update({
-            "轮次": "游戏内自动轮次为 0 时：每次进本打几个轮次后撤离再重开（原逻辑，一直循环）。"
-                    "设置了游戏内自动轮次时：一共进本几次，打完停在大世界",
-            "游戏内自动轮次": "开打前把游戏自带的自动轮次设成这个数，每次进本由游戏打满这么多轮后结算。"
-                          "0 为不修改，按原逻辑运行。总轮次 = 游戏内自动轮次 × 轮次",
+            "轮次": "每次进本打几个轮次后撤离；开了游戏内自动轮次时，每个轮次是一整段自动轮次",
+            "游戏内自动轮次": "开打前把游戏自带的自动轮次设成这个数，0 为不修改。每次进本共打 轮次 × 自动轮次 轮",
             "自动导航": "不在副本里时，从当前界面自动导航到夜航手册的这个关卡",
         })
         self.config_type["自动导航"] = {"type": "drop_down", "options": [NAV_OFF] + list(NAV_TARGETS)}
@@ -71,23 +69,16 @@ class Auto65ArtifactTask_Fast(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
                     self.navigate_to_mission()
                 elif state.screen != 'start':
                     raise Exception("请先打开关卡开始界面，或在「自动导航」里选一个关卡")
-            config, run_limit = dict(self.config), None
-            game_rounds = int(self.config.get("游戏内自动轮次", 0) or 0)
-            if game_rounds:
-                # the game ends each run on the result screen after its auto rounds, so 轮次 counts runs
-                # here, and AutoDefence must not retreat before the game is done
-                run_limit = int(self.config.get("轮次", 5))
-                config["轮次"] = 999
-                self.log_info(f"进本 {run_limit} 次，每次 {game_rounds} 轮，共 {run_limit * game_rounds} 轮")
+            config = dict(self.config)
+            # AutoDefence counts the rounds actually played and retreats after 轮次 of them, so with the
+            # game's auto rounds on, each of our 轮次 is a whole block of auto rounds
+            config["轮次"] = int(self.config.get("轮次", 5)) * self.auto_round_block()
+            self.log_info(f"每次进本打 {config['轮次']} 轮")
             _to_do_task.config_external_movement(self.walk_to_aim, config,
-                                                 recover=self.return_to_mission if auto_nav else None,
-                                                 run_limit=run_limit)
+                                                 recover=self.return_to_mission if auto_nav else None)
             original_info_set = _to_do_task.info_set
             _to_do_task.info_set = self.info_set
-            result = _to_do_task.do_run()
-            if run_limit:
-                self.nav.go(World())
-            return result
+            return _to_do_task.do_run()
         except TaskDisabledException:
             pass
         except Exception as e:
@@ -193,6 +184,18 @@ class Auto65ArtifactTask_Fast(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         level, row = entry
         rounds = int(self.config.get("游戏内自动轮次", 0) or 0)
         return Nightbook(level, row, mode=T.MISSIONS[8], lv=level, auto_rounds=rounds or None)
+
+    def auto_round_block(self):
+        """How many rounds the game plays on its own between our decisions: the 自动轮次 count, or 1."""
+        rounds = int(self.config.get("游戏内自动轮次", 0) or 0)
+        if rounds:
+            return rounds
+        state = self.nav.where()
+        if state.screen == 'start' and state.info.get('auto_on'):
+            return state.info.get('auto_rounds') or 1
+        if state.screen != 'start':
+            self.log_info("不在关卡开始界面，读不到游戏内自动轮次，按 1 计")
+        return 1
 
     def navigate_to_mission(self):
         target = self.mission_target()
