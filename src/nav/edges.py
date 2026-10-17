@@ -7,7 +7,6 @@ from src.nav import text_zh as T
 from src.nav.backend import Screen
 from src.nav.graph import NavError, NoSuchEntry
 
-PAGES = dict(T.PAGE_ENTRY)
 
 WORLD = ('world', None)
 
@@ -38,7 +37,7 @@ def route(goal):
             return [WORLD, ('commission', None)]
         return [WORLD, ('book', goal['section'])]
     if g == 'page':
-        return [WORLD, ('book', PAGES[goal['name']][0]), ('page', goal['name'])]
+        return [WORLD, ('book', T.PAGE_ENTRY[goal['name']][0]), ('page', goal['name'])]
     if g == 'commission':
         return [WORLD, ('commission', goal['tab'])]
     if g == 'start':
@@ -73,7 +72,7 @@ def open_menu_tile(nav, scr, here, nxt, info):
 
 @graph.edge('book', 'page')
 def open_page(nav, scr, here, nxt, info):
-    button = scr.find(PAGES[nxt[1]][1], (0.3, 0.5, 0.8, 0.8), exact=True)
+    button = scr.find(T.PAGE_ENTRY[nxt[1]][1], (0.3, 0.5, 0.8, 0.8), exact=True)
     if not button:
         return nav.wait(3)
     nav.log('  进入 %s' % nxt[1])
@@ -147,7 +146,7 @@ def open_letter(nav, scr, here, nxt, info):
 def open_nightbook_row(nav, scr, here, nxt, info):
     """选夜航手册的等级，再找到那一行，点它的「前往」。"""
     g, st = nav.goal, nav.row_state
-    book = g.get('book') or g.get('lv')
+    book = g['book']
     if not info.get('levels'):
         column = Screen(scr.img, nav.b.ocr_region(scr, *S.LEVEL_COLUMN))
         info['levels'] = S.level_positions(column)

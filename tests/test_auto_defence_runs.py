@@ -86,6 +86,11 @@ class TestAutoDefenceRuns(TaskTestCase):
         self.assertEqual(game.pressed, ['start', 'start'])
         self.assertEqual(game.seen, [START, FIGHT, RESULT, FIGHT])
 
+    def test_a_result_screen_left_from_before_is_not_counted(self):
+        game = self.run_loop([RESULT, FIGHT, RESULT], run_limit=1)
+        self.assertEqual(game.pressed, ['start'])
+        self.assertEqual(game.seen, [RESULT, FIGHT])
+
     def test_round_dialogs_are_left_to_the_game_with_auto_rounds(self):
         game = self.run_loop([START, FIGHT, DIALOG, FIGHT, DIALOG, FIGHT, RESULT], hands_off=True, run_limit=1)
         self.assertNotIn('continue', game.pressed)

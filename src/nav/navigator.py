@@ -7,7 +7,6 @@
 对界面和操作的认识都在 graph.py 的注册表里，这里只负责照表走。目标见 targets.py。
 """
 import json
-import time
 
 from src.nav import graph
 from src.nav import screens as S
@@ -41,13 +40,11 @@ def start_matches(info, goal):
 
 
 class Navigator:
-    """一次导航。in_dungeon 表示调用方知道正处在局内，认不出的画面（技能特效盖住 HUD）
-    一律当作局内，而不是可以退出的菜单。leave 决定路上遇到局内时怎么离开：
-    'now' 在第一个不损失奖励的时机离开；'after_rounds' 让游戏的自动轮次打完。
-    """
+    """一次导航。路上遇到正在进行的一局时，在第一个不损失奖励的时机离开。"""
 
-    def __init__(self, backend, target, log=print, in_dungeon=False, atlas=None, rows_path=None, leave='now'):
-        self.b, self.in_dungeon, self.leave = backend, in_dungeon, leave
+    def __init__(self, backend, target, log=None, atlas=None, rows_path=None):
+        self.b = backend
+        log = log or (lambda msg: None)
         self.goal, self.route = target.goal(), target.route()
         self.trace = []
 
@@ -64,7 +61,6 @@ class Navigator:
         self.run_waits = 0
         self.loading = False
         self.giving_up = False
-        self.idle_since = None
 
     def _load_rows(self):
         if not self.rows_path:
@@ -76,9 +72,14 @@ class Navigator:
             return {}
 
     def save_rows(self):
-        if self.rows_path:
+        if not self.rows_path:
+            return
+        try:
             with open(self.rows_path, 'w', encoding='utf-8') as f:
                 json.dump(self.rows, f, ensure_ascii=False)
+        except OSError:
+            # 只是缓存，存不下来下次重新滚一遍列表
+            pass
 
     def click(self, item):
         self.b.click(item['x'], item['y'])
@@ -91,12 +92,6 @@ class Navigator:
     def step(self):
         scr = self.b.read()
         screen, info = S.classify(scr, self.atlas)
-        if self.in_dungeon:
-            # 局内 HUD 和大世界一样有 Lv 条，只有结算界面才说明这一局结束了
-            if screen == 'result':
-                self.in_dungeon = False
-            elif screen in ('unknown', 'other_menu', 'start', 'world', 'menu', 'page'):
-                screen, info = 'dungeon', {}
         shown = {k: v for k, v in info.items() if k not in ('levels', 'tiers', 'retreat', 'resume', 'cancel', 'confirm', 'give_up')}
         self.log('%s %s' % (screen, shown))
 
@@ -111,9 +106,6 @@ class Navigator:
     # 局内界面
 
     def on_round_dialog(self, scr, info):
-        if self.leave == 'after_rounds' and info['auto'] and info['auto'][0] < info['auto'][1]:
-            # 自动轮次还没打完，倒计时结束后游戏会自己继续
-            return self.wait_in_run()
         self.log('  撤离，轮次 %s' % (info['auto'],))
         self.click(info['retreat'][0])
         return False
@@ -128,7 +120,7 @@ class Navigator:
         if self.giving_up and info['confirm']:
             self.log('  确认结束：本局还没有奖励')
             self.click(info['confirm'])
-            self.giving_up, self.in_dungeon, self.loading = False, False, True
+            self.giving_up, self.loading = False, True
             return False
         self.log('  取消结束任务的确认')
         if info['cancel']:
@@ -150,17 +142,12 @@ class Navigator:
         return False
 
     def on_dungeon(self, scr, info):
-        # 第一波开始前没有人在打：要么调用方现在就想离开，要么本该走去目标点的逻辑已经停了。
-        # 这时放弃不损失任何东西，局内菜单的「无奖励」会再确认一次。
+        # 还在走向目标点说明第一波没开始，放弃不损失什么；局内菜单的「无奖励」会再确认一次
         if info.get('to_objective'):
-            self.idle_since = self.idle_since or time.time()
-            if self.leave == 'now' or time.time() - self.idle_since > 45:
-                self.log('  本局还没开打（轮次 %s），打开菜单离开' % info.get('round'))
-                self.giving_up, self.idle_since = True, None
-                self.b.key('esc')
-                return False
-        else:
-            self.idle_since = None
+            self.log('  本局还没开打（轮次 %s），打开菜单离开' % info.get('round'))
+            self.giving_up = True
+            self.b.key('esc')
+            return False
         return self.wait_in_run()
 
     def on_manual_popup(self, scr, info):
