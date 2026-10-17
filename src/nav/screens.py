@@ -11,16 +11,20 @@ from src.nav import text_zh as T
 # 委托页页签中心、手册顶栏分区中心
 TAB_X = [0.137, 0.29, 0.445, 0.6]
 TAB_Y = 0.157
+# 选中页签下面的亮线，比白字暗，所以亮度阈值用 150
 TAB_LINE_Y = (0.176, 0.19)
 SECTION_X = [0.182, 0.302, 0.422, 0.541]
 SECTION_Y = 0.027
 # 选中项的白字、亮线或圆圈所占比例在 0.05 以上，未选中的是 0
 SELECTED_LIT = 0.03
 
+IN_RUN = ('dungeon', 'dungeon_menu', 'round_dialog', 'exit_confirm', 'result')
+
 LEVELS = [20, 30, 40, 50, 55, 60, 65, 70, 75, 80]
 LEVEL_X = 0.075
 LEVEL_STEP = 0.0731
 LEVEL_COLUMN = (0.03, 0.15, 0.11, 0.95)
+# 选中等级外面圆圈的右半边，比白字暗，所以亮度阈值用 120
 LEVEL_RING_X = (0.086, 0.095)
 
 # 开始界面的自动轮次面板：开关和标签在同一行，按钮在计数下面一行
@@ -54,7 +58,7 @@ def level_positions(scr):
             nums = [int(n) for n in re.findall(r'\d\d', i['t']) if int(n) in LEVELS]
             if len(nums) == 1:
                 pts.append((LEVELS.index(nums[0]), i['y']))
-    # OCR 偶尔会读错标签（55 读成 50），只用间距一致的那些点来拟合
+    # OCR 偶尔会读错标签（55 读成 50），只用间距一致（偏差不到 0.015）的那些点来拟合
     offsets = [y - k * LEVEL_STEP for k, y in pts]
     inliers = max(([o for o in offsets if abs(o - ref) < 0.015] for ref in offsets), key=len, default=[])
     if len(inliers) < 2:
@@ -104,6 +108,7 @@ def start_info(scr):
     elif tiers:
         top = max(tiers, key=lambda t: t['lum'])
         rest = sorted(t['lum'] for t in tiers if t is not top)
+        # 选中行的底色实测在 150 以上，其余在 80 以下
         if top['lum'] > rest[-1] + 40:
             selected = top['lv']
     # 夜航手册进来的开始界面只有一个条目，条目上的字就是委托类型

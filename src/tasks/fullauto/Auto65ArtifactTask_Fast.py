@@ -10,7 +10,7 @@ from src.tasks.BaseCombatTask import BaseCombatTask
 from src.tasks.AutoDefence import AutoDefence
 from src.tasks.fullauto.marker_walk import MarkerWalk
 from src.nav import Nav, NavError, Nightbook, NoSuchEntry, World, WrongMission
-from src.nav.okscript import OkScriptBackend, ROWS_PATH
+from src.nav.okscript import CACHE_PATH, OkScriptBackend
 
 logger = Logger.get_logger(__name__)
 
@@ -175,7 +175,7 @@ class Auto65ArtifactTask_Fast(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
     @property
     def nav(self):
         if getattr(self, '_nav', None) is None:
-            self._nav = Nav(OkScriptBackend(self), log=self.log_debug, rows_path=ROWS_PATH)
+            self._nav = Nav(OkScriptBackend(self), log=self.log_debug, cache_path=CACHE_PATH)
         return self._nav
 
     def where_now(self, reads=3):

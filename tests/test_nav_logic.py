@@ -3,13 +3,14 @@ import unittest
 
 import numpy as np
 
-from src.nav import (BookSection, CommissionTab, MainMenu, Mission, NavError, Nightbook, NoSuchEntry, Page, World,
-                     WrongMission)
+from src.nav import (BookSection, CommissionTab, Letter, MainMenu, Mission, NavError, Nightbook, NoSuchEntry, Page,
+                     World, WrongMission)
 from src.nav import screens as S
 from src.nav import text_zh as T
 from src.nav.backend import Backend, Screen
 from src.nav.edges import open_nightbook_row, same_name
-from src.nav.navigator import Navigator, start_matches
+from src.nav import handlers as H
+from src.nav.navigator import Navigator
 
 BLANK = np.zeros((90, 160, 3), np.uint8)
 
@@ -147,8 +148,8 @@ class TestRouteWalking(unittest.TestCase):
 
     def test_unreadable_tab_parks_the_cursor_before_clicking(self):
         nav, backend = navigator(CommissionTab(T.TABS[2]))
-        self.assertIsNone(nav.on_commission(screen(), {'tab': None}))
-        self.assertIsNone(nav.on_commission(screen(), {'tab': None}))
+        self.assertIsNone(H.on_commission(nav, screen(), {'tab': None}))
+        self.assertIsNone(H.on_commission(nav, screen(), {'tab': None}))
         self.assertIn(('park',), backend.actions)
 
 
@@ -157,16 +158,24 @@ class TestStartScreen(unittest.TestCase):
     def test_other_tier_on_offer(self):
         info = {'via': T.TABS[0], 'mode': '扼守/无尽', 'lv': 50,
                 'tiers': [{'lv': 50, 'y': 0.3}, {'lv': 60, 'y': 0.35}]}
-        self.assertIsNone(start_matches(info, Mission('扼守/无尽', lv=60).goal()))
-        self.assertFalse(start_matches(info, Mission('驱离', lv=60).goal()))
+        self.assertIsNone(H.start_matches(info, Mission('扼守/无尽', lv=60).goal()))
+        self.assertFalse(H.start_matches(info, Mission('驱离', lv=60).goal()))
 
     def test_entry_opening_another_mission_is_reported(self):
         nav, backend = navigator(Nightbook(20, 0, mode='扼守/无尽', lv=20))
-        nav.entered_row = '爆破疾冲秽兽'
+        nav.state['entered_row'] = '爆破疾冲秽兽'
         info = {'via': T.TABS[1], 'mode': '驱离', 'lv': 10, 'tiers': [{'lv': 10, 'y': 0.22}],
                 'entries': [], 'column': None}
         with self.assertRaises(WrongMission):
-            nav.on_start(screen(), info)
+            H.on_start(nav, screen(), info)
+
+
+    def test_letter_goal_backs_out_of_another_start_screen(self):
+        nav, backend = navigator(Letter('驱逐'))
+        info = {'via': T.TABS[0], 'mode': '扼守/无尽', 'lv': 60, 'tiers': [{'lv': 60, 'y': 0.3}],
+                'entries': [], 'column': None}
+        self.assertFalse(H.on_start(nav, screen(), info))
+        self.assertEqual(backend.actions, [('key', 'esc')])
 
 
 class TestNightbookRows(unittest.TestCase):
@@ -181,7 +190,7 @@ class TestNightbookRows(unittest.TestCase):
 
     def nightbook(self, row):
         nav, backend = navigator(Nightbook(30, row))
-        nav.rows = {'names/30': list(self.ROWS)}
+        nav.cache = {'names/30': list(self.ROWS)}
         levels = {lv: 0.25 + 0.07 * k for k, lv in enumerate(S.LEVELS)}
         return nav, backend, {'tab': T.TABS[1], 'levels': levels}
 
@@ -191,7 +200,7 @@ class TestNightbookRows(unittest.TestCase):
         open_nightbook_row(nav, scr, None, None, dict(info))
         open_nightbook_row(nav, scr, None, None, dict(info))
         self.assertEqual(backend.actions, [('click', S.LEVEL_X, round(info['levels'][30], 3)), ('click', 0.62, 0.45)])
-        self.assertEqual(nav.entered_row, '枯萎游击秽兽')
+        self.assertEqual(nav.state['entered_row'], '枯萎游击秽兽')
 
     def test_misread_name_does_not_add_a_row(self):
         nav, backend, info = self.nightbook(4)
@@ -206,45 +215,45 @@ class TestLeavingARun(unittest.TestCase):
 
     def test_unstarted_run_is_given_up(self):
         nav, backend = navigator(World())
-        nav.on_dungeon(screen(), {'to_objective': True, 'round': 1})
+        H.on_dungeon(nav, screen(), {'to_objective': True, 'round': 1})
         self.assertEqual(backend.actions, [('key', 'esc')])
-        self.assertTrue(nav.giving_up)
+        self.assertTrue(nav.state['giving_up'])
 
     def test_run_in_progress_is_waited_out(self):
         nav, backend = navigator(World())
-        self.assertIsNone(nav.on_dungeon(screen(), {'to_objective': False, 'round': 2}))
+        self.assertIsNone(H.on_dungeon(nav, screen(), {'to_objective': False, 'round': 2}))
         self.assertEqual(backend.actions, [])
 
     def test_gives_up_only_when_nothing_is_earned(self):
         menu = {'resume': {'x': 0.5, 'y': 0.9}, 'give_up': {'x': 0.9, 'y': 0.9}}
         nav, backend = navigator(World())
-        nav.giving_up = True
-        nav.on_dungeon_menu(screen(), dict(menu, nothing_earned=True))
+        nav.state['giving_up'] = True
+        H.on_dungeon_menu(nav, screen(), dict(menu, nothing_earned=True))
         nav2, backend2 = navigator(World())
-        nav2.giving_up = True
-        nav2.on_dungeon_menu(screen(), dict(menu, nothing_earned=False))
+        nav2.state['giving_up'] = True
+        H.on_dungeon_menu(nav2, screen(), dict(menu, nothing_earned=False))
         self.assertEqual(backend.actions, [('click', 0.9, 0.9)])
         self.assertEqual(backend2.actions, [('click', 0.5, 0.9)])
-        self.assertFalse(nav2.giving_up)
+        self.assertFalse(nav2.state['giving_up'])
 
     def test_exit_confirmation_is_cancelled_unless_giving_up(self):
         confirm = {'cancel': {'x': 0.4, 'y': 0.6}, 'confirm': {'x': 0.6, 'y': 0.6}}
         nav, backend = navigator(World())
-        nav.on_exit_confirm(screen(), confirm)
+        H.on_exit_confirm(nav, screen(), confirm)
         nav2, backend2 = navigator(World())
-        nav2.giving_up = True
-        nav2.on_exit_confirm(screen(), confirm)
+        nav2.state['giving_up'] = True
+        H.on_exit_confirm(nav2, screen(), confirm)
         self.assertEqual(backend.actions, [('click', 0.4, 0.6)])
         self.assertEqual(backend2.actions, [('click', 0.6, 0.6)])
 
     def test_round_dialog_retreats(self):
         nav, backend = navigator(World())
-        nav.on_round_dialog(screen(), {'auto': (1, 3), 'retreat': [{'x': 0.33, 'y': 0.69}]})
+        H.on_round_dialog(nav, screen(), {'auto': (1, 3), 'retreat': [{'x': 0.33, 'y': 0.69}]})
         self.assertEqual(backend.actions, [('click', 0.33, 0.69)])
 
     def test_manual_popup_before_a_run_is_closed(self):
         nav, backend = navigator(World())
-        nav.on_manual_popup(screen(), {'before_run': True})
+        H.on_manual_popup(nav, screen(), {'before_run': True})
         self.assertEqual(backend.actions, [('key', 'esc')])
 
 
