@@ -646,16 +646,7 @@ class CommissionsTask(BaseDNATask):
 
     def get_round_info(self):
         """获取并更新当前轮次信息。"""
-        # 轮次数字在行动抉择弹窗上；用弹窗本身判断，in_team() 在弹窗盖着 HUD 时也可能成立
-        if not (self.find_action_dialog_continue() or self.find_action_dialog_retreat()):
-            return
-        # 开了游戏内自动轮次时弹窗换成三行列表，下面的固定框读不到；顶部横幅「自动轮次中（5/99）」直接给出已打轮次
-        banner = self.ocr(0.3, 0.08, 0.7, 0.16, match=re.compile(r'\d+\s*/\s*\d+'), name="auto_round_banner")
-        m = re.search(r'(\d+)\s*/\s*\d+', banner[0].name) if banner else None
-        if m:
-            if int(m.group(1)) != self.current_round:
-                self.current_round = int(m.group(1))
-                self.info_set("当前轮次", self.current_round)
+        if self.in_team():
             return
         box = self.box_of_screen(0.241, 0.361, 0.259, 0.394, name="green_mark", hcenter=True)
         self.wait_until(lambda: self.calculate_color_percentage(green_mark_color, box) > 0.135, time_out=1)
@@ -675,8 +666,7 @@ class CommissionsTask(BaseDNATask):
 
         if new_round_from_ocr is not None:
             self.current_round = new_round_from_ocr
-        else:
-            # 读不到数字时按弹窗计数，每个弹窗代表打完一轮
+        elif self.current_round != 0:  # OCR失败，但之前已有轮次记录，则递增
             self.current_round += 1
 
         if prev_round != self.current_round:

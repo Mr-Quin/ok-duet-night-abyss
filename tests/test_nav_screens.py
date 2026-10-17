@@ -116,12 +116,6 @@ class TestNavScreens(TaskTestCase):
         self.assertLess(abs(x), 0.1)
         self.assertEqual(metres, 29)
 
-    def test_round_read_from_auto_round_banner(self):
-        self.set_image(NAV + 'round_dialog_auto.png')
-        self.task.current_round = 0
-        self.task.get_round_info()
-        self.assertEqual(self.task.current_round, 1)
-
     def test_result_screen_is_not_the_between_round_popup(self):
         self.set_image(IMAGES + 'result_defence.png')
         self.assertTrue(self.task.is_result_screen())
