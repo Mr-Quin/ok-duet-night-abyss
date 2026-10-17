@@ -94,7 +94,8 @@ class AutoDefence(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         runs_done, was_at_result, run_live = 0, False, False
         while True:
             if self.external_run_limit or run_live:
-                at_result = not self.in_team() and bool(self.find_result_again_btn())
+                # the between-round popup's 确认选择 has the same gold ring as 再次进行, so also look for 委托完成
+                at_result = not self.in_team() and bool(self.find_result_again_btn())                     and bool(self.ocr(0, 0.55, 0.35, 0.72, match='委托完成'))
                 if at_result:
                     run_live = False
                 # each finished run ends on the result screen; stop on the last one instead of pressing 再次进行
