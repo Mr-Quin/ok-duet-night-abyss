@@ -611,3 +611,33 @@ msgstr "Repeticiones"
 
 msgid "打几次，0 = 无限循环"
 msgstr "Cuántas veces repetir, 0 = infinito"
+
+msgid "游戏内自动轮次"
+msgstr "Rondas automáticas del juego"
+
+msgid "开打前把游戏自带的自动轮次设成这个数：打完第一轮后游戏自动再打这么多轮，然后自行结算；0 为不修改，按原来的轮次逻辑"
+msgstr "Antes de empezar, ajusta las rondas automáticas del juego a este número: tras la primera ronda el juego juega estas rondas más y luego liquida solo. 0 no lo cambia y usa la lógica de rondas habitual"
+
+msgid "刷几次"
+msgstr "Partidas"
+
+msgid "一共进本几次，打完停在大世界；1 为不按再次进行，0 为不限"
+msgstr "Cuántas partidas en total; al terminar se detiene en el mundo abierto. 1 = no pulsar Repetir, 0 = sin límite"
+
+msgid "自动导航"
+msgstr "Navegación automática"
+
+msgid "不在副本里时，从当前界面自动导航到夜航手册的这个关卡"
+msgstr "Fuera de una misión, navega desde la pantalla actual a esta fase del Nightbook"
+
+msgid "走位方式"
+msgstr "Movimiento"
+
+msgid "按标记直线走：朝目标标记直走到附近；原录制路线：按录制的按键走完再复位"
+msgstr "Seguir marcador: camina recto hacia el marcador del objetivo; Ruta grabada: reproduce las teclas grabadas y luego reinicia"
+
+msgid "按标记直线走"
+msgstr "Seguir marcador"
+
+msgid "原录制路线"
+msgstr "Ruta grabada"
