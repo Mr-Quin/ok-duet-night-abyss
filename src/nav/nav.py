@@ -53,6 +53,7 @@ class Nav:
 
         游戏只在从这个界面开局时保存设置，所以调用方设完要接着开局。
         """
+        drags = 0
         for _ in range(15):
             state = self.where()
             info = state.info
@@ -67,11 +68,15 @@ class Nav:
                 return
             if cur is None:
                 raise NavError('自动轮次已打开但读不出轮次数')
-            # 两端的按钮直接跳到 1 或 99，加减按钮每次一轮
-            if n == 99 or (n > cur and 99 - n < n - cur):
-                self.tap(S.AUTO_MAX_X, y)
-            elif n < cur and n - 1 < cur - n:
-                self.tap(S.AUTO_MIN_X, y)
+            # 两端的按钮直接跳到 1 或 99；离得远就拖滑块（手柄停在当前轮次的位置），剩下的用加减按钮补
+            if n in (1, 99):
+                self.tap(S.AUTO_MIN_X if n == 1 else S.AUTO_MAX_X, y)
+            elif abs(n - cur) > 2 and drags < 2:
+                drags += 1
+                self.log('  拖动滑块 %d -> %d' % (cur, n))
+                before = self.b.thumb()
+                self.b.drag(S.auto_slider_x(cur), y, S.auto_slider_x(n), y)
+                self.b.settle(before)
             else:
                 for _ in range(min(abs(cur - n), 10)):
                     self.b.click(S.AUTO_PLUS_X if n > cur else S.AUTO_MINUS_X, y)
