@@ -8,8 +8,9 @@ open world. Run on the game PC with the live service up and the game in the fore
     python -m harness.live.soak soak.jsonl sweep       (only cases whose name contains "sweep")
 
 The task is started through a scheduled task, so ok-dna runs in the desktop session even when
-this script is started over ssh. The scheduled task must run `main.py -t 7` with its output
-redirected to logs/run.txt, the way run_plan.cmd does.
+this script is started over ssh. The scheduled task must run `main.py -t <n>`, n being the 1-based
+position of Auto65NavTask in src/config.py's onetime_tasks, with its output redirected to
+logs/run.txt, the way run_plan.cmd does.
 """
 import json
 import os
@@ -19,12 +20,12 @@ import sys
 import time
 
 from src.nav import MainMenu, Nav, Nightbook, World
-from src.tasks.fullauto.Auto65ArtifactTask_Fast import NIGHTBOOK_ENTRIES
+from src.tasks.fullauto.Auto65NavTask import NIGHTBOOK_ENTRIES
 
 from harness.live.backend import LiveBackend
 
 SCHEDULED_TASK = 'okdna_fork'
-TASK_CONFIG = os.path.join('configs', 'Auto65ArtifactTask_Fast.json')
+TASK_CONFIG = os.path.join('configs', 'Auto65NavTask.json')
 RUN_LOG = os.path.join('logs', 'run.txt')
 CACHE = os.path.join('configs', 'nav_cache.json')
 # ok-dna's log says 已完成 n/m after every finished run
@@ -36,8 +37,8 @@ def entry(lv, i):
     return 'Lv.%d 第%d个 %s' % (lv, i + 1, NIGHTBOOK_ENTRIES[lv][i])
 
 
-def cfg(target, game_rounds=1, runs=1, walk='按标记直线走'):
-    return {'超时时间': 90, '游戏内自动轮次': game_rounds, '刷几次': runs, '自动导航': target, '走位方式': walk}
+def cfg(target, rounds=2, runs=1, walk='按标记直线走'):
+    return {'超时时间': 90, '关卡': target, '每局轮次': rounds, '刷几次': runs, '走位方式': walk}
 
 
 class Soak:
@@ -57,7 +58,7 @@ class Soak:
 
     def okdna_pids(self):
         out = subprocess.run(['powershell', '-NoProfile', '-Command',
-                              "Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -match 'main\\.py -t 7' } "
+                              "Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -match 'main\\.py -t \\d+' } "
                               "| ForEach-Object { $_.ProcessId }"], capture_output=True, text=True).stdout
         return [int(p) for p in out.split()]
 
@@ -124,26 +125,20 @@ class Soak:
         return self.finish(name, self.wait_for(DONE % (1, 1), 600), t0)
 
 
-def auto_rounds_off(nav):
-    # the game only saves 自动轮次 when a run is started from that screen, so the case
-    # starting from here is what actually exercises the old round counting
-    nav.go(Nightbook(30, 1, auto_rounds=0))
-
-
 def cases(soak):
     for lv in (30, 65):
         for i in range(len(NIGHTBOOK_ENTRIES[lv])):
             yield 'sweep Lv.%d #%d' % (lv, i + 1), lambda lv=lv, i=i: soak.run_case(
                 'sweep Lv.%d #%d' % (lv, i + 1), cfg(entry(lv, i)))
     yield 'multi-run Lv.65 #5 2x3', lambda: soak.run_case(
-        'multi-run Lv.65 #5 2x3', cfg(entry(65, 4), game_rounds=2, runs=3), runs=3, timeout=900)
+        'multi-run Lv.65 #5 2x3', cfg(entry(65, 4), rounds=3, runs=3), runs=3, timeout=900)
     yield 'from main menu', lambda: soak.run_case(
         'from main menu', cfg(entry(30, 2)), before=lambda nav: nav.go(MainMenu()))
     yield 'from another start screen', lambda: soak.run_case(
         'from another start screen', cfg(entry(30, 0)), before=lambda nav: nav.go(Nightbook(65, 3)))
     yield 'restart inside a run', lambda: soak.restart_inside_run('restart inside a run')
-    yield 'old logic, 自动轮次 off', lambda: soak.run_case(
-        'old logic, 自动轮次 off', cfg(entry(30, 1), game_rounds=0), timeout=600, before=auto_rounds_off)
+    yield 'one round per run', lambda: soak.run_case(
+        'one round per run', cfg(entry(30, 1), rounds=1), timeout=600)
 
 
 def main():
