@@ -85,10 +85,10 @@ class TestRecordedWorld(unittest.TestCase):
         with open(os.path.join(WORLD, 'plan.json'), encoding='utf-8') as f:
             self.plan = json.load(f)
         self.tmp = tempfile.mkdtemp()
-        self.rows = os.path.join(self.tmp, 'nav_rows.json')
-        start_rows = os.path.join(WORLD, 'nav_rows_start.json')
-        if os.path.exists(start_rows):
-            shutil.copy(start_rows, self.rows)
+        self.cache = os.path.join(self.tmp, 'nav_cache.json')
+        start_cache = os.path.join(WORLD, 'nav_cache_start.json')
+        if os.path.exists(start_cache):
+            shutil.copy(start_cache, self.cache)
 
     def tearDown(self):
         shutil.rmtree(self.tmp, ignore_errors=True)
@@ -104,7 +104,7 @@ class TestRecordedWorld(unittest.TestCase):
     def test_recorded_journey_replays(self):
         with open(os.path.join(WORLD, 'trace.json'), encoding='utf-8') as f:
             trace = json.load(f)
-        nav = Nav(TraceBackend(self.world, trace), rows_path=self.rows)
+        nav = Nav(TraceBackend(self.world, trace), cache_path=self.cache)
         for k, entry in enumerate(self.plan['plan']):
             target = getattr(targets, entry['target'])(**entry['fields'])
             try:

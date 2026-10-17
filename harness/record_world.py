@@ -5,7 +5,7 @@ Run on the game PC, with the live service up and the game in the foreground:
 
 Writes the masked states and transitions to the world folder, plus plan.json (the targets in
 order and how each ended), trace.json (every screen read in order and the inputs sent after it)
-and nav_rows_start.json (the row cache the navigator started from), which together let
+and nav_cache_start.json (the cache the navigator started from), which together let
 harness/test_world.py replay the same journey without the game.
 """
 import argparse
@@ -37,16 +37,16 @@ def main():
     ap.add_argument('world')
     ap.add_argument('count', type=int)
     ap.add_argument('--seed', type=int, default=1)
-    ap.add_argument('--rows', default=os.path.join('configs', 'nav_rows.json'))
+    ap.add_argument('--cache', default=os.path.join('configs', 'nav_cache.json'))
     args = ap.parse_args()
 
     os.makedirs(args.world, exist_ok=True)
-    rows = os.path.join(args.world, 'nav_rows.json')
-    if os.path.exists(args.rows):
-        shutil.copy(args.rows, os.path.join(args.world, 'nav_rows_start.json'))
-        shutil.copy(args.rows, rows)
+    cache = os.path.join(args.world, 'nav_cache.json')
+    if os.path.exists(args.cache):
+        shutil.copy(args.cache, os.path.join(args.world, 'nav_cache_start.json'))
+        shutil.copy(args.cache, cache)
     backend = RecordingBackend(LiveBackend(), args.world)
-    nav = Nav(backend, rows_path=rows)
+    nav = Nav(backend, cache_path=cache)
     rng = random.Random(args.seed)
     plan, previous = [], None
     try:
