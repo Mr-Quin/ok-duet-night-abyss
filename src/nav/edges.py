@@ -1,0 +1,251 @@
+"""委托界面里怎么走：内置目标的路线，以及界面之间的每一步操作。"""
+import re
+
+from src.nav import graph
+from src.nav import screens as S
+from src.nav import text_zh as T
+from src.nav.backend import Screen
+from src.nav.graph import NavError, NoSuchEntry
+
+
+WORLD = ('world', None)
+
+
+def same_name(a, b):
+    """同一行两次读出的名字可能差一个错字（枯萎/枯菱）；罗马数字必须一致。"""
+    norm = lambda n: n.replace('Ⅲ', 'III').replace('Ⅱ', 'II').replace('Ⅰ', 'I').replace(' ', '')
+    a, b = norm(a), norm(b)
+    if a == b:
+        return True
+    if len(a) != len(b):
+        return False
+    diff = [(x, y) for x, y in zip(a, b) if x != y]
+    return len(diff) == 1 and not diff[0][0].isascii() and not diff[0][1].isascii()
+
+
+def route(goal):
+    """从大世界到目标的节点列表。goal 是目标类 goal() 返回的字典。"""
+    g = goal['screen']
+    if g == 'world':
+        return [WORLD]
+    if g == 'main_menu':
+        return [WORLD, ('main_menu', None)]
+    if g == 'menu':
+        return [WORLD, ('main_menu', None), ('menu', goal['name'])]
+    if g == 'book':
+        if goal['section'] == T.SECTIONS[1]:
+            return [WORLD, ('commission', None)]
+        return [WORLD, ('book', goal['section'])]
+    if g == 'page':
+        return [WORLD, ('book', T.PAGE_ENTRY[goal['name']][0]), ('page', goal['name'])]
+    if g == 'commission':
+        return [WORLD, ('commission', goal['tab'])]
+    if g == 'start':
+        return [WORLD, ('commission', goal['via']), ('start', goal['via'])]
+    raise ValueError('unknown goal screen %r' % g)
+
+
+@graph.edge('world', 'main_menu')
+def open_main_menu(nav, scr, here, nxt, info):
+    nav.b.key('esc')
+    return False
+
+
+@graph.edge('world', 'book')
+@graph.edge('world', 'commission')
+def open_book(nav, scr, here, nxt, info):
+    nav.b.key('l')
+    return False
+
+
+@graph.edge('main_menu', 'menu')
+def open_menu_tile(nav, scr, here, nxt, info):
+    tile = scr.find(nxt[1], (0.03, 0.2, 0.33, 0.97), exact=True)
+    if not tile:
+        if nav.wait(3) is None:
+            return None
+        raise NavError('主菜单上没有 %s' % nxt[1])
+    nav.log('  打开 %s' % nxt[1])
+    nav.b.click(tile[0]['x'], tile[0]['y'] - 0.04)
+    return False
+
+
+@graph.edge('book', 'page')
+def open_page(nav, scr, here, nxt, info):
+    button = scr.find(T.PAGE_ENTRY[nxt[1]][1], (0.3, 0.5, 0.8, 0.8), exact=True)
+    if not button:
+        return nav.wait(3)
+    nav.log('  进入 %s' % nxt[1])
+    nav.click(button[0])
+    return False
+
+
+@graph.sideways(('book', 'commission'))
+def switch_book_page(nav, here, target):
+    if target[0] == 'book':
+        nav.log('  分区 %s -> %s' % (here[1], target[1]))
+        nav.b.click(S.SECTION_X[T.SECTIONS.index(target[1])], S.SECTION_Y)
+    elif here[0] == 'book':
+        nav.log('  分区 %s -> %s' % (here[1], T.SECTIONS[1]))
+        nav.b.click(S.SECTION_X[1], S.SECTION_Y)
+    else:
+        nav.log('  页签 %s -> %s' % (here[1], target[1]))
+        nav.b.click(S.TAB_X[T.TABS.index(target[1])], S.TAB_Y)
+    return False
+
+
+@graph.edge('commission', ('start', T.TABS[0]))
+def open_mission_card(nav, scr, here, nxt, info):
+    target = nav.goal['mode']
+    cards = [i for i in scr.items if 0.62 < i['y'] < 0.68 and i['x'] < 0.75 and i['t'] in T.MISSIONS]
+    hit = next((c for c in cards if c['t'] == target), None)
+    if hit and 0.05 < hit['x'] < 0.68:
+        nav.log('  打开卡片 %s' % target)
+        nav.b.click(hit['x'], 0.42)
+        return False
+    seen = [T.MISSIONS.index(c['t']) for c in cards]
+    want = T.MISSIONS.index(target)
+    # 滚轮大约 9 格移动一张卡片
+    if hit:
+        n = -4 if hit['x'] >= 0.68 else 4
+    elif not seen:
+        n = -9
+    elif want > max(seen):
+        n = -9 * (want - max(seen) + 1)
+    else:
+        n = 9 * (min(seen) - want + 1)
+    nav.log('  看不到 %s（当前 %s），滚动 %d' % (target, [c['t'] for c in cards], n))
+    nav.b.scroll(0.37, 0.45, n)
+    return False
+
+
+@graph.edge('commission', ('start', T.TABS[2]))
+def open_letter(nav, scr, here, nxt, info):
+    """打开有目标委托的那一栏密函，具体条目到开始界面再选。"""
+    heads = {i['t']: i for i in scr.items if 0.37 < i['y'] < 0.42 and i['t'] in T.LETTER_COLUMNS}
+    if not heads:
+        return nav.wait(3)
+
+    def entries(head):
+        return [i for i in scr.items if 0.55 < i['y'] < 0.75 and head['x'] - 0.1 < i['x'] < head['x'] - 0.02
+                and not re.search(r'\d', i['t'])]
+    cols = [nav.goal['column']] if nav.goal['column'] else list(heads)
+    for col in cols:
+        if col not in heads:
+            continue
+        hit = next((e for e in entries(heads[col]) if nav.goal['mode'] in e['t']), None)
+        if hit:
+            nav.log('  打开 %s / %s' % (col, hit['t']))
+            nav.click(hit)
+            return False
+    offered = {c: [e['t'] for e in entries(h)] for c, h in heads.items()}
+    raise NavError('现在的密函里没有 %s，可选 %s' % (nav.goal['mode'], offered))
+
+
+# 夜航手册分三步：选中等级，认出这个等级的全部行名，再打开目标行。
+# 每一步做不完就返回这一步的结果（None 等待、False 做了一步操作），做完返回 READY。
+READY = object()
+
+
+@graph.edge('commission', ('start', T.TABS[1]))
+def open_nightbook_row(nav, scr, here, nxt, info):
+    """选夜航手册的等级，再找到那一行，点它的「前往」。"""
+    book = nav.goal['book']
+    st = nav.state.setdefault('nightbook', {})
+    for step in (select_level, learn_rows, open_row):
+        result = step(nav, scr, info, book, st)
+        if result is not READY:
+            return result
+    return False
+
+
+def cached_rows(nav, book):
+    return nav.cache.get('names/%d' % book, [])
+
+
+def other_levels_rows(nav, book):
+    return {k: v for k, v in nav.cache.items() if k.startswith('names/') and k != 'names/%d' % book}
+
+
+def select_level(nav, scr, info, book, st):
+    if not info.get('levels'):
+        column = Screen(scr.img, nav.b.ocr_region(scr, *S.LEVEL_COLUMN))
+        info['levels'] = S.level_positions(column)
+    y = (info.get('levels') or {}).get(book)
+    if y is None:
+        if nav.wait(3) is None:
+            return None
+        nav.log('  读不出等级栏')
+        return False
+    if not 0.2 <= y <= 0.86:
+        nav.log('  Lv.%d 不在可见范围（y=%.2f），滚动' % (book, y))
+        nav.b.scroll(S.LEVEL_X, 0.5, -3 if y > 0.86 else 3)
+        st.pop('level', None)
+        return False
+    if st.get('level') != book:
+        st.update(level=book, names=None, seen=set())
+        if S.selected_level(scr, info['levels']) != book:
+            nav.log('  选择 Lv.%d' % book)
+            nav.b.click(S.LEVEL_X, y)
+            return False
+    names = [r['name'] for r in S.nightbook_rows(scr)]
+    known, others = cached_rows(nav, book), other_levels_rows(nav, book)
+    # 等级切换后列表要过一会儿才刷新，太早读到的还是上一个等级的行
+    stale = names and known[:1] != names[:1] and any(v[:1] == names[:1] for v in others.values())
+    # 选中标记读不出来时，行名属于这个等级已知的列表也算确认
+    elsewhere = {n for v in others.values() for n in v}
+    confirmed = S.selected_level(scr, info['levels']) == book or (names[:1] and names[0] in known
+                                                                    and names[0] not in elsewhere)
+    if not confirmed or stale:
+        if nav.wait(4) is None:
+            return None
+        st.pop('level', None)
+        return False
+    return READY
+
+
+def learn_rows(nav, scr, info, book, st):
+    """把看到的行名按顺序记进 st['names']，比缓存的多时写回缓存。"""
+    names = [r['name'] for r in S.nightbook_rows(scr)]
+    row, known = nav.goal['row'], cached_rows(nav, book)
+    if st['names'] is None:
+        if names and known and names[0] == known[0]:
+            st['names'] = list(known)
+        elif isinstance(row, str) and any(row in n for n in names):
+            st['names'] = []
+        else:
+            # 行号从顶部数起，而列表会记住上次的滚动位置
+            nav.log('  把列表滚到顶部')
+            nav.b.scroll(0.4, 0.45, 30)
+            st['names'] = []
+            return False
+    for n in names:
+        if n and not any(same_name(n, m) for m in st['names']):
+            st['names'].append(n)
+    if len(st['names']) > len(known) and (not known or st['names'][0] == known[0]):
+        nav.cache['names/%d' % book] = list(st['names'])
+        nav.save_cache()
+    return READY
+
+
+def open_row(nav, scr, info, book, st):
+    listed = S.nightbook_rows(scr)
+    names = [r['name'] for r in listed]
+    row = nav.goal['row']
+    if isinstance(row, str):
+        target = row
+    else:
+        target = st['names'][row] if row < len(st['names']) else None
+    idx = next((k for k, n in enumerate(names) if target and (target in n or same_name(target, n))), None)
+    if idx is None:
+        if tuple(names) in st['seen']:
+            raise NoSuchEntry(book, row, st['names'])
+        st['seen'].add(tuple(names))
+        nav.log('  %r 不在 %s 中，向下滚动' % (row, names))
+        nav.b.scroll(0.4, 0.45, -3)
+        return False
+    nav.log('  第 %r 行 -> %s' % (row, names[idx]))
+    nav.click(listed[idx]['button'])
+    nav.state['entered_row'] = names[idx]
+    st.pop('level', None)
+    return False
