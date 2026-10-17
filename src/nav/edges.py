@@ -13,6 +13,18 @@ PAGES = dict(T.PAGE_ENTRY)
 WORLD = ('world', None)
 
 
+def same_name(a, b):
+    """Row names read twice can differ by one misread character (枯萎/枯菱); numerals must match exactly."""
+    norm = lambda n: n.replace('Ⅲ', 'III').replace('Ⅱ', 'II').replace('Ⅰ', 'I').replace(' ', '')
+    a, b = norm(a), norm(b)
+    if a == b:
+        return True
+    if len(a) != len(b):
+        return False
+    diff = [(x, y) for x, y in zip(a, b) if x != y]
+    return len(diff) == 1 and not diff[0][0].isascii() and not diff[0][1].isascii()
+
+
 def route(goal):
     """Nodes from the world down to a goal given as a dict (see navigator.py)."""
     g = goal['screen']
@@ -185,13 +197,13 @@ def open_nightbook_row(nav, scr, here, nxt, info):
         else:
             st['names'] = []
     for n in names:
-        if n and n not in st['names']:
+        if n and not any(same_name(n, m) for m in st['names']):
             st['names'].append(n)
     if len(st['names']) > len(known) and (not known or st['names'][0] == known[0]):
         nav.rows['names/%d' % book] = list(st['names'])
         nav.save_rows()
     target = st['names'][row] if isinstance(row, int) and row < len(st['names']) else (row if isinstance(row, str) else None)
-    idx = next((k for k, n in enumerate(names) if target and target in n), None)
+    idx = next((k for k, n in enumerate(names) if target and (target in n or same_name(target, n))), None)
     if idx is None:
         if tuple(names) in st['seen']:
             raise NoSuchEntry(book, row, st['names'])
