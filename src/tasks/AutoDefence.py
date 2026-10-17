@@ -9,6 +9,9 @@ from src.tasks.CommissionsTask import CommissionsTask, Mission, QuickAssistTask,
 
 logger = Logger.get_logger(__name__)
 
+# 开着游戏的自动轮次时，轮次弹窗倒计时约 10 秒后会自己继续；超过这么久还在，就按没开处理
+HANDS_OFF_DIALOG_WAIT = 20
+
 
 class AutoDefence(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
 
@@ -33,6 +36,8 @@ class AutoDefence(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         self.external_recover = None
         self.external_hands_off = False
         self.external_run_limit = None
+        self.external_round_limit = None
+        self.rounds_seen = 0
         self._external_config = None
         self._merged_config_cache = None
         self.skill_tick = self.create_skill_ticker()
@@ -54,16 +59,20 @@ class AutoDefence(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         self._merged_config_cache = None
 
     def config_external_movement(self, func: Callable, config: dict, recover: Callable = None,
-                                 hands_off: bool = False, run_limit: int = None):
-        """由全自动任务注入走位和行为。
+                                 hands_off: bool = False, run_limit: int = None, round_limit: int = None):
+        """由全自动任务注入走位和行为；后面几个参数不传时和原来一样。
 
         recover：局外闲置时调用，用来重新导航回关卡。
         hands_off：游戏自带的自动轮次在打，轮次弹窗和手册弹窗交给游戏处理。
         run_limit：打完这么多局后停在结算界面。
+        round_limit：每局看到这么多个轮次弹窗就撤离，不读轮次数字。
         """
+        if hands_off and round_limit:
+            raise ValueError("hands_off 时轮次交给游戏，不能再用 round_limit")
         self.external_recover = recover
         self.external_hands_off = hands_off
         self.external_run_limit = run_limit
+        self.external_round_limit = round_limit
         if callable(func):
             self.external_movement = func
         else:
@@ -79,6 +88,7 @@ class AutoDefence(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         self.external_recover = None
         self.external_hands_off = False
         self.external_run_limit = None
+        self.external_round_limit = None
         try:
             return self.do_run()
         except TaskDisabledException:
@@ -94,29 +104,46 @@ class AutoDefence(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         if self.external_movement is not _default_movement and self.in_team():
             self.open_in_mission_menu()
 
-        idle_since = None
+        idle_since = between_since = None
         runs_done, run_live = 0, False
-        # 开始时就停在上一次的结算界面，那一局不算
-        at_result = bool(self.external_run_limit) and self.is_result_screen()
+        track_runs = bool(self.external_run_limit or self.external_hands_off)
+        stop_func = self.count_round_dialogs if self.external_round_limit else self.stop_func
         while True:
-            if self.external_run_limit or run_live:
-                was_at_result, at_result = at_result, self.is_result_screen()
-                if at_result:
-                    run_live = False
-                    if self.external_run_limit and not was_at_result:
-                        runs_done += 1
-                        self.log_info(f"已完成 {runs_done}/{self.external_run_limit} 次")
-                        if runs_done >= self.external_run_limit:
-                            return
+            if track_runs and self.is_result_screen() and run_live:
+                run_live = False
+                if self.external_run_limit:
+                    runs_done += 1
+                    self.log_info(f"已完成 {runs_done}/{self.external_run_limit} 次")
+                    if runs_done >= self.external_run_limit:
+                        return
+            stop = stop_func
             if self.in_team():
+                between_since = None
+                if track_runs and not run_live:
+                    run_live = True
+                    if self.mission_status == Mission.START:
+                        # 游戏开了自动确认时，中间的手册/密函弹窗被跳过，不会返回 Mission.START
+                        self.mission_status = None
+                        self.begin_run()
                 if self.move_on_begin():
                     self.handle_in_mission()
             elif run_live and self.external_hands_off and self.is_between_rounds():
-                # 游戏的自动轮次会自己继续，打完后自己结算；这时点「继续挑战」会让这一局一直打下去
-                self.sleep(0.5)
-                continue
+                between_since = between_since or time.time()
+                if time.time() - between_since < HANDS_OFF_DIALOG_WAIT:
+                    # 游戏的自动轮次会自己继续，打完后自己结算；这时点「继续挑战」会让这一局一直打下去
+                    self.sleep(0.5)
+                    continue
+                between_since = None
+                if self.find_action_dialog_continue() or self.find_action_dialog_retreat():
+                    self.log_info("轮次弹窗一直没自动继续，撤离")
+                    stop = lambda: True
+                else:
+                    # 这是局内轮次之间的手册弹窗，要按那一套布局来选
+                    self.mission_status = Mission.CONTINUE
+            else:
+                between_since = None
 
-            _status = self.handle_mission_interface(stop_func=self.stop_func)
+            _status = self.handle_mission_interface(stop_func=stop)
             if _status is False and self.external_recover and not self.in_team():
                 # 局外没有能处理的界面，比如走位失败放弃后回到了委托列表
                 idle_since = idle_since or time.time()
@@ -126,10 +153,8 @@ class AutoDefence(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
             else:
                 idle_since = None
             if _status == Mission.START:
-                self.wait_until(self.in_team, time_out=30)
-                self.init_all()
-                self.handle_mission_start()
-                run_live = self.in_team()
+                self.begin_run()
+                run_live = track_runs and self.in_team()
             elif _status == Mission.STOP:
                 self.log_info("任务中止")
                 self.quit_mission()
@@ -141,9 +166,21 @@ class AutoDefence(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
             self.sleep(0.1)
 
     def is_result_screen(self):
-        """结算界面。轮次之间手册弹窗的「确认选择」和「再次进行」用的是同一个金色圆环，所以还要认「委托完成」。"""
-        return (not self.in_team() and bool(self.find_result_again_btn())
-                and bool(self.ocr(0, 0.55, 0.35, 0.72, match='委托完成')))
+        """结算界面。轮次之间手册弹窗的「确认选择」和「再次进行」用的是同一个金色圆环，所以还要排除手册弹窗。"""
+        return not self.in_team() and bool(self.find_result_again_btn()) and not self.find_manual_select_btn()
+
+    def begin_run(self):
+        self.wait_until(self.in_team, time_out=30)
+        self.init_all()
+        self.handle_mission_start()
+        self.rounds_seen = 0
+
+    def count_round_dialogs(self):
+        self.rounds_seen += 1
+        # 局内轮次之间的手册弹窗按 current_round 选
+        self.current_round = self.rounds_seen
+        self.info_set("当前轮次", self.rounds_seen)
+        return self.rounds_seen >= self.external_round_limit
 
     def is_between_rounds(self):
         return bool(self.find_action_dialog_continue() or self.find_action_dialog_retreat()
