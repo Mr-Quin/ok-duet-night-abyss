@@ -102,7 +102,7 @@ class Auto65NavTask(Auto65ArtifactTask_Fast):
 
     def return_to_mission(self):
         state = self.nav.where()
-        if not state.in_run and state.screen != 'start':
+        if not state.in_run or state.screen == 'dungeon_menu':
             self.log_info(f"停在 {state.screen}，重新导航到关卡")
             self.navigate_to_mission()
 
