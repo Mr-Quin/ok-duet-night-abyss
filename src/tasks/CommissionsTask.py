@@ -675,7 +675,9 @@ class CommissionsTask(BaseDNATask):
 
         if new_round_from_ocr is not None:
             self.current_round = new_round_from_ocr
-        elif self.current_round != 0:  # OCR失败，但之前已有轮次记录，则递增
+        else:
+            # OCR 失败时按弹窗计数：上面已确认弹窗在场，每个弹窗代表打完一轮
+            # （现版弹窗是三行列表，ROUND_INFO_OCR 的固定框对不上，从 0 起也要能数）
             self.current_round += 1
 
         if prev_round != self.current_round:
