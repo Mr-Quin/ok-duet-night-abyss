@@ -49,7 +49,8 @@ class TestAutoDefenceRuns(TaskTestCase):
             return False
 
         def sleep(seconds):
-            if game.now == DIALOG:
+            # 开着游戏内自动轮次时，游戏会自己从轮次弹窗继续；没开时弹窗一直等人点
+            if hands_off and game.now == DIALOG:
                 game.advance()
 
         patches = {
