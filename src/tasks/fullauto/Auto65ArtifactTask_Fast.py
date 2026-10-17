@@ -10,7 +10,6 @@ from src.tasks.BaseCombatTask import BaseCombatTask
 from src.tasks.AutoDefence import AutoDefence
 from src.tasks.fullauto.marker_walk import MarkerWalk
 from src.nav import Nav, NavError, Nightbook, NoSuchEntry, World, WrongMission
-from src.nav import text_zh as T
 from src.nav.okscript import OkScriptBackend, ROWS_PATH
 
 logger = Logger.get_logger(__name__)
@@ -195,7 +194,7 @@ class Auto65ArtifactTask_Fast(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
             return None
         level, row = entry
         rounds = int(self.config.get("游戏内自动轮次", 0) or 0)
-        return Nightbook(level, row, mode=T.MISSIONS[8], lv=level, auto_rounds=rounds or None)
+        return Nightbook(level, row, mode='扼守/无尽', lv=level, auto_rounds=rounds or None)
 
     def navigate_to_mission(self):
         target = self.mission_target()

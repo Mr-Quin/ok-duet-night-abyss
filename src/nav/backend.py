@@ -3,8 +3,6 @@
 坐标一律用占游戏画面宽高的比例（0~1），和截图分辨率无关。接入新框架只需要实现
 `Backend` 的五个方法，ok-script 的实现见 okscript.py。
 """
-import json
-import os
 import time
 
 import cv2
@@ -87,17 +85,6 @@ class Backend:
         crop = scr.img[int(y0 * H):int(y1 * H), int(x0 * W):int(x1 * W)]
         crop = cv2.resize(crop, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
         return [dict(i, x=x0 + i['x'] * (x1 - x0), y=y0 + i['y'] * (y1 - y0)) for i in self.ocr(crop)]
-
-    def dump(self, folder, name):
-        """保存当前画面和 OCR 结果，出错时留作排查。"""
-        os.makedirs(folder, exist_ok=True)
-        scr = self.read()
-        stem = os.path.join(folder, name)
-        with open(stem + '.png', 'wb') as f:
-            f.write(cv2.imencode('.png', scr.img)[1].tobytes())
-        with open(stem + '.json', 'w', encoding='utf-8') as f:
-            json.dump(scr.items, f, ensure_ascii=False, indent=1)
-        return stem
 
     def thumb(self):
         """用来判断画面是否还在变化的小灰度图。"""
