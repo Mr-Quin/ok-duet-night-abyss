@@ -1,7 +1,7 @@
-"""What the navigator needs from an automation framework: frames, OCR and a few inputs.
+"""导航层对自动化框架的全部依赖：截图、OCR 和几种输入。
 
-Positions are fractions of the game client in both directions, so nothing here depends on
-the capture resolution.
+坐标一律用占游戏画面宽高的比例（0~1），和截图分辨率无关。接入新框架只需要实现
+`Backend` 的五个方法，ok-script 的实现见 okscript.py。
 """
 import json
 import os
@@ -12,9 +12,10 @@ import numpy as np
 
 
 class Screen:
+    """一帧画面和它的 OCR 结果。items 是 [{'t': 文字, 'x': 中心 x, 'y': 中心 y}]，坐标为比例。"""
+
     def __init__(self, img, items):
         self.img = img
-        # [{'t': text, 'x': centre x, 'y': centre y}]
         self.items = items
         self._gray = None
 
@@ -25,6 +26,7 @@ class Screen:
         return self._gray
 
     def find(self, text, region=(0, 0, 1, 1), exact=False):
+        """region 内包含（exact 时等于）text 的文字，按从上到下、从左到右排序。"""
         x0, y0, x1, y1 = region
         hits = [i for i in self.items if x0 <= i['x'] <= x1 and y0 <= i['y'] <= y1
                 and (i['t'] == text if exact else text in i['t'])]
@@ -38,8 +40,9 @@ class Screen:
         return self.gray[int(y0 * H):int(y1 * H), int(x0 * W):int(x1 * W)]
 
     def lit(self, x0, y0, x1, y1, level=200):
-        """Pixels brighter than level; selected labels are drawn white, the rest stay grey."""
-        return int((self._crop(x0, y0, x1, y1) > level).sum())
+        """区域内亮度超过 level 的像素占比。选中的标签是白字，未选中的是灰字，不会过 200。"""
+        crop = self._crop(x0, y0, x1, y1)
+        return float((crop > level).mean()) if crop.size else 0.0
 
     def brightness(self, x0, y0, x1, y1):
         crop = self._crop(x0, y0, x1, y1)
@@ -47,29 +50,29 @@ class Screen:
 
 
 class Backend:
-    """Subclasses provide frame(), ocr(), click(), key() and scroll()."""
+    """子类实现 frame / ocr / click / key / scroll，其余方法有通用实现。"""
 
     def frame(self):
-        """The current game client image, BGR."""
+        """当前游戏画面，BGR。"""
         raise NotImplementedError
 
     def ocr(self, img):
-        """[{'t', 'x', 'y'}] with x and y as fractions of img."""
+        """img 上的文字，[{'t', 'x', 'y'}]，坐标为占 img 的比例。"""
         raise NotImplementedError
 
     def click(self, x, y):
         raise NotImplementedError
 
     def key(self, name):
-        """name is 'esc' or a single letter."""
+        """name 为 'esc' 或单个字母。"""
         raise NotImplementedError
 
     def scroll(self, x, y, notches):
-        """Positive notches scroll up, like the mouse wheel."""
+        """notches 为正时向上滚，和鼠标滚轮一致。"""
         raise NotImplementedError
 
     def park(self):
-        """Move the cursor off anything hoverable; hovered tabs and rows look selected."""
+        """把鼠标移到不会悬停到按钮的地方；悬停的页签和行看起来和选中一样。"""
 
     def sleep(self, seconds):
         time.sleep(seconds)
@@ -79,14 +82,14 @@ class Backend:
         return Screen(img, self.ocr(img))
 
     def ocr_region(self, scr, x0, y0, x1, y1, scale=2.0):
-        """OCR one part of a frame, enlarged; small labels that full-frame OCR misses read fine this way."""
+        """放大后单独识别画面的一部分；整帧 OCR 漏掉的小字这样能读出来。"""
         H, W = scr.img.shape[:2]
         crop = scr.img[int(y0 * H):int(y1 * H), int(x0 * W):int(x1 * W)]
         crop = cv2.resize(crop, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
         return [dict(i, x=x0 + i['x'] * (x1 - x0), y=y0 + i['y'] * (y1 - y0)) for i in self.ocr(crop)]
 
     def dump(self, folder, name):
-        """Save the current frame and its OCR items, for looking into a failure afterwards."""
+        """保存当前画面和 OCR 结果，出错时留作排查。"""
         os.makedirs(folder, exist_ok=True)
         scr = self.read()
         stem = os.path.join(folder, name)
@@ -97,13 +100,14 @@ class Backend:
         return stem
 
     def thumb(self):
+        """用来判断画面是否还在变化的小灰度图。"""
         img = self.frame()
         small = cv2.resize(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), (192, 108), interpolation=cv2.INTER_AREA)
-        # left 70% only: the character model on the right idles constantly
+        # 只取左侧 70%：右边的角色模型一直在做待机动作
         return small[:, :134].astype('int16')
 
     def settle(self, before, change_timeout=0.7, stable_timeout=2.5):
-        """Wait for the screen to react to an action and then stop animating."""
+        """等画面对操作做出反应、再等动画停下。画面一直没变时返回 False。"""
         t0 = time.perf_counter()
         prev, changed = before, False
         while time.perf_counter() - t0 < change_timeout + stable_timeout:

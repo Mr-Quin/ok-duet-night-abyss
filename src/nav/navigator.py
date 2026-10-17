@@ -1,30 +1,21 @@
-"""Go from whatever screen the game is on to a target screen.
+"""从游戏当前所在的任意界面走到目标界面。
 
-Each step reads the screen and takes one action: finish if the screen is the target, take the
-registered edge to the next node if the screen is on the target's route, move sideways between
-sibling screens, otherwise back out with Esc. Screens of a run in progress (round dialogs,
-results, the in-run menu) have their own rules and never lose what a run has earned.
+每一步读一次画面、做一个动作：画面就是目标则结束；画面在目标路线上则走登记的那条边；
+在同级界面之间就直接切换；否则按 Esc 退一层。局内的界面（轮次弹窗、结算、局内菜单）
+有单独的处理规则，任何时候都不会丢掉本局已经拿到的奖励。
 
-What the navigator knows about screens and moves lives in graph.py's tables; this module only
-walks them. Targets are the classes in targets.py, or goal dicts:
-  {'screen': 'world'}
-  {'screen': 'main_menu'}
-  {'screen': 'menu', 'name': '背包'}
-  {'screen': 'book', 'section': '梦魔残声'}
-  {'screen': 'page', 'name': '迷津'}
-  {'screen': 'commission', 'tab': '委托' | '夜航手册' | '委托密函' | '悬赏委托'}
-  {'screen': 'start', 'via': '委托', 'mode': '扼守/无尽', 'lv': 60}
-  {'screen': 'start', 'via': '夜航手册', 'book': 65, 'row': 3 | '守护野蜂', 'mode': ..., 'lv': ...}
-  {'screen': 'start', 'via': '委托密函', 'mode': ..., 'column': '角色' | '武器' | '魔之楔'}
+对界面和操作的认识都在 graph.py 的注册表里，这里只负责照表走。目标见 targets.py。
 """
 import json
 import time
 
-from src.nav import edges
 from src.nav import graph
 from src.nav import screens as S
 from src.nav import text_zh as T
-from src.nav.graph import NavError, NoSuchEntry, WrongMission  # noqa: F401  callers catch them from here
+from src.nav.graph import NavError, NoSuchEntry, WrongMission  # noqa: F401  调用方从这里捕获
+
+# 局内一直等不到弹窗或结算时，最多等这么多次（每次约 0.4 秒加一次识别）
+MAX_RUN_WAITS = 400
 
 
 def node_of(screen, info):
@@ -33,11 +24,11 @@ def node_of(screen, info):
 
 
 def same_node(a, b):
-    # a key of None on the route means any tab or section will do
     return a[0] == b[0] and (b[1] is None or a[1] == b[1])
 
 
 def start_matches(info, goal):
+    """开始界面是否就是目标。等级不对但界面上有目标等级可选时返回 None。"""
     if goal.get('via') and info['via'] and goal['via'] != info['via']:
         return False
     if goal.get('mode') and not (info['mode'] and goal['mode'] in info['mode']):
@@ -48,16 +39,14 @@ def start_matches(info, goal):
 
 
 class Navigator:
-    def __init__(self, backend, goal, log=print, in_dungeon=False, atlas=None, rows_path=None, leave='now'):
-        # in_dungeon: the caller knows a run is in progress, so unreadable frames (combat effects over
-        # the HUD) mean "still in the run", never a menu to back out of.
-        # leave: how to get out of a run found on the way. 'after_rounds' lets the game's auto rounds
-        # finish; 'now' leaves at the first point where nothing earned is lost.
+    """一次导航。in_dungeon 表示调用方知道正处在局内，认不出的画面（技能特效盖住 HUD）
+    一律当作局内，而不是可以退出的菜单。leave 决定路上遇到局内时怎么离开：
+    'now' 在第一个不损失奖励的时机离开；'after_rounds' 让游戏的自动轮次打完。
+    """
+
+    def __init__(self, backend, target, log=print, in_dungeon=False, atlas=None, rows_path=None, leave='now'):
         self.b, self.in_dungeon, self.leave = backend, in_dungeon, leave
-        if isinstance(goal, dict):
-            self.goal, self.route = goal, edges.route(goal)
-        else:
-            self.goal, self.route = goal.goal(), goal.route()
+        self.goal, self.route = target.goal(), target.route()
         self.trace = []
 
         def log_and_trace(msg):
@@ -70,7 +59,7 @@ class Navigator:
         self.row_state = {}
         self.entered_row = None
         self.unsure = 0
-        self.dungeon_waits = 0
+        self.run_waits = 0
         self.loading = False
         self.giving_up = False
         self.idle_since = None
@@ -93,7 +82,7 @@ class Navigator:
         self.b.click(item['x'], item['y'])
 
     def wait(self, limit):
-        """Return None (wait for the game) while the screen may still be animating in."""
+        """画面可能还在淡入时先等等：前 limit 次返回 None（等待），之后返回 False。"""
         self.unsure += 1
         return None if self.unsure <= limit else False
 
@@ -101,7 +90,7 @@ class Navigator:
         scr = self.b.read()
         screen, info = S.classify(scr, self.atlas)
         if self.in_dungeon:
-            # the run HUD has the same Lv bar as the world, so only the result screen ends a run
+            # 局内 HUD 和大世界一样有 Lv 条，只有结算界面才说明这一局结束了
             if screen == 'result':
                 self.in_dungeon = False
             elif screen in ('unknown', 'other_menu', 'start', 'world', 'menu', 'page'):
@@ -117,29 +106,29 @@ class Navigator:
                 return result
         return self.follow_route(scr, screen, info)
 
-    # screens of a run in progress
+    # 局内界面
 
     def on_round_dialog(self, scr, info):
         if self.leave == 'after_rounds' and info['auto'] and info['auto'][0] < info['auto'][1]:
-            # auto rounds still running; the game continues by itself after the countdown
+            # 自动轮次还没打完，倒计时结束后游戏会自己继续
             return self.wait_in_run()
-        self.log('  retreating after round %s' % (info['auto'],))
+        self.log('  撤离，轮次 %s' % (info['auto'],))
         self.click(info['retreat'][0])
         return False
 
     def on_result(self, scr, info):
-        self.log('  leaving the result screen')
+        self.log('  退出结算界面')
         self.loading = True
         self.b.key('esc')
         return False
 
     def on_exit_confirm(self, scr, info):
         if self.giving_up and info['confirm']:
-            self.log('  confirming: the run has earned nothing yet')
+            self.log('  确认结束：本局还没有奖励')
             self.click(info['confirm'])
             self.giving_up, self.in_dungeon, self.loading = False, False, True
             return False
-        self.log('  cancelling the exit confirmation')
+        self.log('  取消结束任务的确认')
         if info['cancel']:
             self.click(info['cancel'])
         else:
@@ -148,66 +137,62 @@ class Navigator:
 
     def on_dungeon_menu(self, scr, info):
         if self.giving_up and info['nothing_earned']:
-            self.log('  giving up: the run has earned nothing yet')
+            self.log('  放弃挑战：本局还没有奖励')
             self.click(info['give_up'])
             return False
         if self.giving_up:
-            self.log('  the run has earned something; waiting for the round to end instead')
+            self.log('  本局已有奖励，改为等这一轮打完')
         self.giving_up = False
-        self.log('  resuming from the in-run menu')
+        self.log('  从局内菜单继续游戏')
         self.click(info['resume'])
         return False
 
     def on_dungeon(self, scr, info):
-        # before the first wave nobody is fighting: either we want out now, or whatever was meant to
-        # walk to the objective has stopped. Giving up then loses nothing, and the in-run menu says so.
+        # 第一波开始前没有人在打：要么调用方现在就想离开，要么本该走去目标点的逻辑已经停了。
+        # 这时放弃不损失任何东西，局内菜单的「无奖励」会再确认一次。
         if info.get('to_objective'):
             self.idle_since = self.idle_since or time.time()
             if self.leave == 'now' or time.time() - self.idle_since > 45:
-                self.log('  run not started (round %s); opening the menu to leave' % info.get('round'))
+                self.log('  本局还没开打（轮次 %s），打开菜单离开' % info.get('round'))
                 self.giving_up, self.idle_since = True, None
                 self.b.key('esc')
                 return False
         else:
             self.idle_since = None
-        # rounds finish on their own; wait for the round dialog or the result screen
         return self.wait_in_run()
 
     def on_manual_popup(self, scr, info):
         if info.get('before_run'):
-            self.log('  closing the commission-manual popup; no run has started')
+            self.log('  关掉开局前的委托手册弹窗，还没开局')
             self.b.key('esc')
             return False
         return self.wait_in_run()
 
     def wait_in_run(self):
-        self.dungeon_waits += 1
-        if self.dungeon_waits < 400:
+        self.run_waits += 1
+        if self.run_waits < MAX_RUN_WAITS:
             return None
-        raise NavError('still in the run after waiting; not giving it up automatically')
+        raise NavError('局内等了很久也没有出现轮次弹窗或结算，不会自动放弃这一局')
 
     def on_unknown(self, scr, info):
-        if self.loading and self.dungeon_waits < 400:
-            # the loading screen after a run shows tips and art, nothing recognisable
-            self.dungeon_waits += 1
+        if self.loading and self.run_waits < MAX_RUN_WAITS:
+            # 退出副本后的加载画面只有插图和提示，认不出是正常的
+            self.run_waits += 1
             return None
         return self.back_out(scr, info)
 
     on_other_menu = on_unknown
 
     def back_out(self, scr, info):
-        # often a screen still fading in; give it a moment before backing out
+        # 多半是还在淡入的界面，先等一下再退
         if self.wait(2) is None:
             return None
         self.b.key('esc')
         return False
 
     def on_start(self, scr, info):
-        if info['via'] is None and info['mode'] is None:
-            # start screen still fading in
-            result = self.wait(4)
-            if result is None:
-                return None
+        if info['via'] is None and info['mode'] is None and self.wait(4) is None:
+            return None
         g = self.goal
         if g['screen'] != 'start':
             return NotImplemented
@@ -217,7 +202,7 @@ class Navigator:
         if self.entered_row and g.get('mode') and info['mode'] and g['mode'] not in info['mode']:
             raise WrongMission(info['mode'], g['mode'])
         if g.get('via') == T.TABS[1] and g.get('row') is not None and self.entered_row is None:
-            # the same dungeon is reachable from several rows; only the one we entered counts
+            # 同一个副本可能出现在好几行里，只有从目标行进来的才算
             ok = False
         if ok:
             return True
@@ -225,10 +210,10 @@ class Navigator:
             (not g.get('mode') or (info['mode'] and g['mode'] in info['mode']))
         if same_dungeon and g.get('lv') and len(info['tiers']) > 1 and \
                 not any(t['lv'] == g['lv'] for t in info['tiers']):
-            raise NavError('%s has no Lv.%d tier; offered: %s' % (info['mode'], g['lv'], [t['lv'] for t in info['tiers']]))
+            raise NavError('%s 没有 Lv.%d，可选 %s' % (info['mode'], g['lv'], [t['lv'] for t in info['tiers']]))
         if ok is None:
             t = next(t for t in info['tiers'] if t['lv'] == g['lv'])
-            self.log('  selecting tier Lv.%d' % g['lv'])
+            self.log('  选择 Lv.%d' % g['lv'])
             self.b.click(0.08, t['y'])
             return False
         self.entered_row = None
@@ -238,7 +223,7 @@ class Navigator:
     def adjust_letter_start(self, info):
         g = self.goal
         if g.get('column') and info['column'] and g['column'] not in info['column']:
-            self.log('  wrong column %s' % info['column'])
+            self.log('  栏位不对：%s' % info['column'])
             self.b.key('esc')
             return False
         if info['mode'] and g['mode'] in info['mode']:
@@ -246,24 +231,24 @@ class Navigator:
         entry = next((e for e in info['entries'] if g['mode'] in e['mode']), None)
         if entry is None:
             if g.get('column'):
-                raise NavError('%s column offers %s, not %s' % (info['column'], [e['mode'] for e in info['entries']], g['mode']))
-            self.log('  %s not in the %s column' % (g['mode'], info['column']))
+                raise NavError('%s 栏现在是 %s，没有 %s' % (info['column'], [e['mode'] for e in info['entries']], g['mode']))
+            self.log('  %s 不在 %s 栏' % (g['mode'], info['column']))
             self.b.key('esc')
             return False
-        self.log('  selecting %s' % entry['mode'])
+        self.log('  选择 %s' % entry['mode'])
         self.b.click(0.05, entry['y'])
         return False
 
     def on_commission(self, scr, info):
         if info['tab'] is None:
-            # tab bar still animating, or the cursor is resting on a tab and turned it gold
+            # 页签还在动画中，或者鼠标停在某个页签上把它变成了金色
             if self.wait(3) is None:
                 if self.unsure == 2:
                     self.b.park()
                 return None
         return NotImplemented
 
-    # the menu tree
+    # 菜单树
 
     def follow_route(self, scr, screen, info):
         here = node_of(screen, info)
@@ -274,7 +259,7 @@ class Navigator:
         if on is not None:
             step = graph.find_edge(here, path[on + 1])
             if step is None:
-                raise NavError('no edge from %s to %s' % (here, path[on + 1]))
+                raise NavError('没有从 %s 到 %s 的路' % (here, path[on + 1]))
             return step(self, scr, here, path[on + 1], info)
         for group, move in graph.SIDEWAYS:
             target = next((n for n in path if n[0] in group), None) if here[0] in group else None
@@ -291,10 +276,10 @@ class Navigator:
             log_len = len(self.trace)
             result = self.step()
             if result:
-                self.log('reached after %d steps' % k)
+                self.log('%d 步到达' % k)
                 return True
             if result is None:
-                # waiting on the game (animation, a run still going) does not use up action steps
+                # 等游戏（动画、局内还在打）不算步数
                 waits += 1
                 self.b.sleep(0.4)
                 continue
@@ -303,9 +288,9 @@ class Navigator:
             state = tuple(self.trace[log_len:])
             seen[state] = seen.get(state, 0) + 1
             if seen[state] >= 4:
-                raise NavError('stuck repeating: %s' % ' / '.join(state))
+                raise NavError('一直在重复：%s' % ' / '.join(state))
             self.b.settle(before)
             if seen[state] >= 2:
-                # the game sometimes ignores input while it hitches; give it longer before trying again
+                # 游戏卡顿时会吞掉输入，重复同一个动作前多等一会儿
                 self.b.sleep(1.5 * (seen[state] - 1))
         return False

@@ -1,19 +1,18 @@
-"""What the navigator knows about the game, kept in tables that modules add to when imported.
+"""导航层对游戏界面的全部认识，放在几张注册表里，各模块导入时往里登记。
 
-  detectors  recognise a screen from a frame:          @detector(order) fn(scr, atlas) -> (screen, info) | None
-  edges      take one step from a screen to the next   @edge(from_screen, to_node) fn(nav, scr, here, nxt, info)
-             node on a route
-  sideways   move between sibling screens directly     @sideways(screens) fn(nav, here, target)
-             (book sections, commission tabs)
-  handlers   deal with a screen wherever it shows up   @handler(screen) fn(nav, scr, info)
-             (popups, in-run dialogs)
+  detector  从一帧认出是哪个界面         @detector(顺序) fn(scr, atlas) -> (界面, 信息) 或 None
+  edge      沿路线从一个界面走到下一个   @edge(当前界面, 下一节点) fn(nav, scr, here, nxt, info)
+  sideways  同级界面之间直接切换         @sideways(界面集合) fn(nav, here, target)
+            （手册顶栏的分区、委托页的页签）
+  handler   某个界面无论在哪出现都这样处理 @handler(界面) fn(nav, scr, info)
+            （弹窗、局内对话框）
 
-A node is (screen, key), e.g. ('commission', '夜航手册'); a key of None on a route matches any key.
-Edge and handler functions return True when the target is reached, False after acting, None to
-wait for the game, or NotImplemented to fall through to the navigator's own rules.
+节点是 (界面, 键)，比如 ('commission', '夜航手册')；路线里键为 None 表示任意键都算。
+edge / handler 返回 True 表示到达目标，False 表示做了一步操作，None 表示等画面变化，
+NotImplemented 表示交给导航器的默认规则。
 
-A mission with its own UI registers its screens, edges and handlers in its own module, and its
-target class says the route to it; nothing here or in the navigator needs to change.
+界面特殊的副本可以在自己的模块里登记界面、路线和处理方式，再写一个给出路线的目标类，
+不需要改这里或导航器。
 """
 
 DETECTORS = []
@@ -27,20 +26,20 @@ class NavError(RuntimeError):
 
 
 class NoSuchEntry(NavError):
-    """The requested 夜航手册 entry is not on its level's page."""
+    """夜航手册该等级的页面上没有要找的那一行。"""
 
     def __init__(self, level, row, names):
         self.level, self.row, self.names = level, row, names
-        wanted = 'entry %d' % (row + 1) if isinstance(row, int) else repr(row)
-        super().__init__('Lv.%d has %d entries %s; no %s' % (level, len(names), names, wanted))
+        wanted = '第 %d 个' % (row + 1) if isinstance(row, int) else repr(row)
+        super().__init__('夜航手册 Lv.%d 只有 %d 个关卡 %s，没有%s' % (level, len(names), names, wanted))
 
 
 class WrongMission(NavError):
-    """The entry exists but opens a different mission than the target asked for."""
+    """那一行存在，但进去是另一种委托。"""
 
     def __init__(self, found, wanted):
         self.found, self.wanted = found, wanted
-        super().__init__('the entry opens %s, not %s' % (found, wanted))
+        super().__init__('这个关卡是 %s，不是 %s' % (found, wanted))
 
 
 def detector(order):
@@ -52,7 +51,7 @@ def detector(order):
 
 
 def edge(from_screen, to_node):
-    """to_node is a screen name, or a full (screen, key) node for an edge that only leads to that key."""
+    """to_node 为界面名，或者完整节点 (界面, 键)，表示这条路只通向这个键。"""
     def register(fn):
         EDGES[(from_screen, to_node)] = fn
         return fn

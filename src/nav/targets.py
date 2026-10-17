@@ -1,8 +1,7 @@
-"""Screens a feature can ask for. A start-screen target can also say how the screen should be set up.
+"""功能可以请求到达的界面。开始界面类的目标还可以说明到达后要怎么设置。
 
-A target gives the navigator a goal (what the arrival screen must look like), a route (the nodes
-from the world to it) and a setup step run on arrival. New kinds of targets subclass Target and
-override whichever of those they need.
+目标给导航器三样东西：goal（到达时界面应该是什么样）、route（从大世界到它经过的节点）、
+setup（到达后执行的设置）。新的目标类型继承 Target，按需重写其中几个。
 """
 from dataclasses import dataclass, field
 from typing import Optional, Union
@@ -36,7 +35,7 @@ class MainMenu(Target):
 
 @dataclass(frozen=True)
 class Menu(Target):
-    """A screen opened from a main-menu tile, e.g. Menu('背包')."""
+    """主菜单图标打开的界面，比如 Menu('背包')。"""
     name: str
 
     def goal(self):
@@ -45,7 +44,7 @@ class Menu(Target):
 
 @dataclass(frozen=True)
 class BookSection(Target):
-    """A section of the book's top bar, e.g. BookSection('梦魔残声')."""
+    """手册顶栏的分区，比如 BookSection('梦魔残声')。"""
     name: str
 
     def goal(self):
@@ -54,7 +53,7 @@ class BookSection(Target):
 
 @dataclass(frozen=True)
 class Page(Target):
-    """A page entered from a book section: '迷津' or 'boss_map'."""
+    """从手册分区进入的页面：'迷津' 或 'boss_map'。"""
     name: str
 
     def goal(self):
@@ -71,10 +70,10 @@ class CommissionTab(Target):
 
 @dataclass(frozen=True)
 class StartScreen(Target):
-    """Base for targets that end on a mission's start screen.
+    """停在某个委托开始界面的目标的基类。
 
-    auto_rounds: the in-game 自动轮次 setting to leave the screen with: None leaves it as it is,
-    0 switches it off, 1-99 switches it on with that many rounds.
+    auto_rounds：离开开始界面前把游戏自带的自动轮次设成什么。None 不动，0 关闭，
+    1~99 打开并设成这个数（打完第一轮后游戏自动再打这么多轮）。
     """
     auto_rounds: Optional[int] = field(default=None, kw_only=True)
 
@@ -85,7 +84,7 @@ class StartScreen(Target):
 
 @dataclass(frozen=True)
 class Mission(StartScreen):
-    """A card on the 委托 tab at a given tier, e.g. Mission('扼守/无尽', lv=60)."""
+    """委托页的卡片和等级，比如 Mission('扼守/无尽', lv=60)。"""
     mode: str = ''
     lv: Optional[int] = None
 
@@ -95,9 +94,9 @@ class Mission(StartScreen):
 
 @dataclass(frozen=True)
 class Nightbook(StartScreen):
-    """A 夜航手册 entry: the level page and a row, by index from the top or by part of its name.
+    """夜航手册的一行：等级页加行号（从上往下，0 起）或行名的一部分。
 
-    mode and lv, when given, are checked on the start screen.
+    给了 mode / lv 时会在开始界面上核对。
     """
     level: int = 0
     row: Union[int, str] = 0
@@ -111,7 +110,7 @@ class Nightbook(StartScreen):
 
 @dataclass(frozen=True)
 class Letter(StartScreen):
-    """A 委托密函 mission, optionally from one column: '角色', '武器' or '魔之楔'."""
+    """委托密函里的一个委托，可以限定栏位：'角色'、'武器' 或 '魔之楔'。"""
     mode: str = ''
     column: Optional[str] = None
 

@@ -1,10 +1,9 @@
-"""Navigator backend on top of an ok-script task."""
+"""基于 ok-script 任务的导航后端。"""
 import os
 
 from src.nav.backend import Backend
 
-# where the cursor waits between clicks: hovered tabs and rows are highlighted much like
-# selected ones, which would fool the selection checks
+# 鼠标在两次点击之间停在这里：悬停的页签和行会高亮得和选中差不多，干扰选中判断
 PARK = (0.97, 0.5)
 ROWS_PATH = os.path.join('configs', 'nav_rows.json')
 
@@ -20,8 +19,7 @@ class OkScriptBackend(Backend):
 
     def ocr(self, img):
         h, w = img.shape[:2]
-        # target_height is absolute, so scale it to this image: a full frame shrinks to ocr_height,
-        # an enlarged crop keeps its enlargement
+        # target_height 是绝对高度，按游戏窗口高度换算：整帧缩到 ocr_height，放大过的局部保持放大
         target = int(h * self.ocr_height / self.task.height)
         boxes = self.task.ocr(frame=img, target_height=target, threshold=self.threshold)
         return [{'t': b.name.strip(), 'x': (b.x + b.width / 2) / w, 'y': (b.y + b.height / 2) / h}

@@ -1,8 +1,7 @@
-"""Walk to the defence objective by following its on-screen marker.
+"""跟着屏幕上的目标标记走到扼守的防守点。
 
-In the 30/65 defence the player spawns facing the objective, so the walk is a straight run:
-hold forward and sprint, nudge sideways when the marker drifts off centre, and stop once its
-distance label reads a few metres.
+30/65 扼守开局时角色正对着目标，所以就是一段直线：按住前进和冲刺，标记偏离中央时
+左右微调，标记下方的距离读到几米以内就停。
 """
 import os
 import re
@@ -11,7 +10,7 @@ import time
 import cv2
 
 TEMPLATE = os.path.join(os.path.dirname(__file__), 'marker', 'objective.png')
-# the template was cut from a 2560-wide frame
+# 模板是从 2560 宽的画面上截的
 TEMPLATE_WIDTH = 2560
 ARRIVED_METRES = 6
 
@@ -22,24 +21,24 @@ class MarkerWalk:
         self.template = cv2.imread(TEMPLATE)
 
     def find(self, frame):
-        """(x offset from centre in [-1, 1], distance in metres or None), or None when no marker is seen."""
+        """(标记相对中央的水平偏移 [-1, 1], 距离米数或 None)，看不到标记时返回 None。"""
         H, W = frame.shape[:2]
         s = W / TEMPLATE_WIDTH
         y0, y1, x0 = int(0.08 * H), int(0.78 * H), int(0.2 * W)
         roi = frame[y0:y1, x0:]
-        best = (-1.0, None, None)
-        # the marker shrinks with distance
+        best = (-1.0, None)
+        # 距离越远标记越小
         for scale in (0.6, 0.8, 1.0):
             t = cv2.resize(self.template, None, fx=scale * s, fy=scale * s, interpolation=cv2.INTER_AREA)
             res = cv2.matchTemplate(roi, t, cv2.TM_CCOEFF_NORMED)
             _, score, _, loc = cv2.minMaxLoc(res)
             if score > best[0]:
-                best = (score, (loc[0] + t.shape[1] // 2 + x0, loc[1] + t.shape[0] // 2 + y0), t.shape)
-        score, centre, _ = best
+                best = (score, (loc[0] + t.shape[1] // 2 + x0, loc[1] + t.shape[0] // 2 + y0))
+        score, centre = best
         if score < 0.8:
             return None
         cx, cy = centre
-        # the distance label sits just under the marker, e.g. 51米
+        # 距离文字就在标记正下方，比如「51米」
         label = frame[cy + int(16 * s):cy + int(60 * s), max(0, cx - int(80 * s)):cx + int(80 * s)]
         boxes = self.task.ocr(frame=label, threshold=0.5) if label.size else []
         m = re.search(r'(\d+)\s*米', ''.join(b.name for b in boxes))
@@ -54,13 +53,9 @@ class MarkerWalk:
             self.task.sleep(0.2)
         return None
 
-    def run(self, timeout=30):
-        """Walk to the objective; False when the marker was lost or never reached."""
+    def run(self, seen, timeout=30):
+        """从 wait_for_marker() 看到标记的位置出发走到目标点；标记丢失或超时没走到时返回 False。"""
         task = self.task
-        seen = self.wait_for_marker()
-        if not seen:
-            task.log_info("没找到目标标记")
-            return False
         task.log_info(f"按标记直线走，距离 {seen[1]} 米")
         dodge = task.get_dodge_key()
         task.send_key_down('w')

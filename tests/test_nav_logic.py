@@ -1,0 +1,226 @@
+# 导航层的纯逻辑测试：用假后端记录导航器做出的动作，不需要截图和 OCR
+import unittest
+
+import numpy as np
+
+from src.nav import BookSection, CommissionTab, MainMenu, Mission, Nightbook, NoSuchEntry, Page, World, WrongMission
+from src.nav import screens as S
+from src.nav import text_zh as T
+from src.nav.backend import Backend, Screen
+from src.nav.edges import open_nightbook_row, same_name
+from src.nav.navigator import Navigator, start_matches
+
+BLANK = np.zeros((90, 160, 3), np.uint8)
+
+
+def screen(*texts):
+    """texts 为 (文字, x, y)。"""
+    return Screen(BLANK, [{'t': t, 'x': x, 'y': y} for t, x, y in texts])
+
+
+class FakeBackend(Backend):
+    def __init__(self):
+        self.actions = []
+
+    def frame(self):
+        return BLANK
+
+    def ocr(self, img):
+        return []
+
+    def click(self, x, y):
+        self.actions.append(('click', round(x, 3), round(y, 3)))
+
+    def key(self, name):
+        self.actions.append(('key', name))
+
+    def scroll(self, x, y, notches):
+        self.actions.append(('scroll', notches))
+
+    def park(self):
+        self.actions.append(('park',))
+
+    def sleep(self, seconds):
+        pass
+
+
+def navigator(target, **kwargs):
+    backend = FakeBackend()
+    return Navigator(backend, target, log=lambda msg: None, atlas={}, **kwargs), backend
+
+
+class TestNames(unittest.TestCase):
+
+    def test_one_misread_character_is_the_same_row(self):
+        self.assertTrue(same_name('枯萎游击秽兽', '枯菱游击秽兽'))
+        self.assertTrue(same_name('复仇飘浮秽兽II', '复仇飘浮秽兽Ⅱ'))
+
+    def test_numerals_and_different_names_differ(self):
+        self.assertFalse(same_name('复仇飘浮秽兽II', '复仇飘浮秽兽III'))
+        self.assertFalse(same_name('守护野蜂暗箭', '守护野蜂利刃'))
+
+
+class TestLevelPositions(unittest.TestCase):
+
+    def test_misread_label_is_ignored(self):
+        # 55 被读成 50，落在拟合直线外
+        scr = screen(('20', 0.075, 0.252), ('40', 0.075, 0.398), ('50', 0.075, 0.568), ('65', 0.075, 0.69))
+        levels = S.level_positions(scr)
+        self.assertAlmostEqual(levels[65], 0.69, delta=0.01)
+        self.assertAlmostEqual(levels[50], 0.252 + 3 * S.LEVEL_STEP, delta=0.01)
+
+    def test_one_label_is_not_enough(self):
+        self.assertEqual(S.level_positions(screen(('30', 0.075, 0.3))), {})
+
+
+class TestRoutes(unittest.TestCase):
+
+    def test_nightbook_route(self):
+        self.assertEqual(Nightbook(65, 2).route(),
+                         [('world', None), ('commission', T.TABS[1]), ('start', T.TABS[1])])
+
+    def test_page_goes_through_its_book_section(self):
+        self.assertEqual(Page('boss_map').route(),
+                         [('world', None), ('book', '梦魔残声'), ('page', 'boss_map')])
+
+    def test_book_section_with_commissions_is_the_commission_page(self):
+        self.assertEqual(BookSection(T.SECTIONS[1]).route(), [('world', None), ('commission', None)])
+
+
+class TestRouteWalking(unittest.TestCase):
+
+    def test_world_opens_the_book_or_the_main_menu(self):
+        nav, backend = navigator(CommissionTab(T.TABS[0]))
+        nav.follow_route(screen(), 'world', {})
+        nav2, backend2 = navigator(MainMenu())
+        nav2.follow_route(screen(), 'world', {})
+        self.assertEqual(backend.actions, [('key', 'l')])
+        self.assertEqual(backend2.actions, [('key', 'esc')])
+
+    def test_book_section_switches_to_the_commission_page(self):
+        nav, backend = navigator(CommissionTab(T.TABS[1]))
+        nav.follow_route(screen(), 'book', {'section': '今日行程'})
+        self.assertEqual(backend.actions, [('click', S.SECTION_X[1], S.SECTION_Y)])
+
+    def test_commission_tab_switch(self):
+        nav, backend = navigator(CommissionTab(T.TABS[2]))
+        nav.follow_route(screen(), 'commission', {'tab': T.TABS[0]})
+        self.assertEqual(backend.actions, [('click', S.TAB_X[2], S.TAB_Y)])
+
+    def test_unrelated_screen_backs_out(self):
+        nav, backend = navigator(CommissionTab(T.TABS[0]))
+        nav.follow_route(screen(), 'menu', {'name': '背包'})
+        self.assertEqual(backend.actions, [('key', 'esc')])
+
+    def test_arrived(self):
+        nav, backend = navigator(CommissionTab(T.TABS[3]))
+        self.assertTrue(nav.follow_route(screen(), 'commission', {'tab': T.TABS[3]}))
+        self.assertEqual(backend.actions, [])
+
+    def test_unreadable_tab_parks_the_cursor_before_clicking(self):
+        nav, backend = navigator(CommissionTab(T.TABS[2]))
+        self.assertIsNone(nav.on_commission(screen(), {'tab': None}))
+        self.assertIsNone(nav.on_commission(screen(), {'tab': None}))
+        self.assertIn(('park',), backend.actions)
+
+
+class TestStartScreen(unittest.TestCase):
+
+    def test_other_tier_on_offer(self):
+        info = {'via': T.TABS[0], 'mode': '扼守/无尽', 'lv': 50,
+                'tiers': [{'lv': 50, 'y': 0.3}, {'lv': 60, 'y': 0.35}]}
+        self.assertIsNone(start_matches(info, Mission('扼守/无尽', lv=60).goal()))
+        self.assertFalse(start_matches(info, Mission('驱离', lv=60).goal()))
+
+    def test_entry_opening_another_mission_is_reported(self):
+        nav, backend = navigator(Nightbook(20, 0, mode='扼守/无尽', lv=20))
+        nav.entered_row = '爆破疾冲秽兽'
+        info = {'via': T.TABS[1], 'mode': '驱离', 'lv': 10, 'tiers': [{'lv': 10, 'y': 0.22}],
+                'entries': [], 'column': None}
+        with self.assertRaises(WrongMission):
+            nav.on_start(screen(), info)
+
+
+class TestNightbookRows(unittest.TestCase):
+    ROWS = ['残火暴徒秽兽', '霹雳疾冲秽兽', '枯萎游击秽兽', '凛霜疾冲秽兽']
+
+    def page(self, names):
+        texts = []
+        for k, name in enumerate(names):
+            y = 0.25 + 0.1 * k
+            texts += [(name, 0.2, y), (T.GO, 0.62, y)]
+        return screen(*texts)
+
+    def nightbook(self, row):
+        nav, backend = navigator(Nightbook(30, row))
+        nav.rows = {'names/30': list(self.ROWS)}
+        levels = {lv: 0.25 + 0.07 * k for k, lv in enumerate(S.LEVELS)}
+        return nav, backend, {'tab': T.TABS[1], 'levels': levels}
+
+    def test_selects_the_level_then_presses_the_row(self):
+        nav, backend, info = self.nightbook(2)
+        scr = self.page(self.ROWS)
+        open_nightbook_row(nav, scr, None, None, dict(info))
+        open_nightbook_row(nav, scr, None, None, dict(info))
+        self.assertEqual(backend.actions, [('click', S.LEVEL_X, round(info['levels'][30], 3)), ('click', 0.62, 0.45)])
+        self.assertEqual(nav.entered_row, '枯萎游击秽兽')
+
+    def test_misread_name_does_not_add_a_row(self):
+        nav, backend, info = self.nightbook(4)
+        scr = self.page(['残火暴徒秽兽', '霹雳疾冲秽兽', '枯菱游击秽兽', '凛霜疾冲秽兽'])
+        with self.assertRaises(NoSuchEntry) as raised:
+            for _ in range(4):
+                open_nightbook_row(nav, scr, None, None, dict(info))
+        self.assertEqual(len(raised.exception.names), 4)
+
+
+class TestLeavingARun(unittest.TestCase):
+
+    def test_unstarted_run_is_given_up_now(self):
+        nav, backend = navigator(World(), leave='now')
+        nav.on_dungeon(screen(), {'to_objective': True, 'round': 1})
+        self.assertEqual(backend.actions, [('key', 'esc')])
+        self.assertTrue(nav.giving_up)
+
+    def test_unstarted_run_waits_while_rounds_should_finish(self):
+        nav, backend = navigator(World(), leave='after_rounds')
+        self.assertIsNone(nav.on_dungeon(screen(), {'to_objective': True, 'round': 1}))
+        self.assertEqual(backend.actions, [])
+
+    def test_gives_up_only_when_nothing_is_earned(self):
+        menu = {'resume': {'x': 0.5, 'y': 0.9}, 'give_up': {'x': 0.9, 'y': 0.9}}
+        nav, backend = navigator(World())
+        nav.giving_up = True
+        nav.on_dungeon_menu(screen(), dict(menu, nothing_earned=True))
+        nav2, backend2 = navigator(World())
+        nav2.giving_up = True
+        nav2.on_dungeon_menu(screen(), dict(menu, nothing_earned=False))
+        self.assertEqual(backend.actions, [('click', 0.9, 0.9)])
+        self.assertEqual(backend2.actions, [('click', 0.5, 0.9)])
+        self.assertFalse(nav2.giving_up)
+
+    def test_exit_confirmation_is_cancelled_unless_giving_up(self):
+        confirm = {'cancel': {'x': 0.4, 'y': 0.6}, 'confirm': {'x': 0.6, 'y': 0.6}}
+        nav, backend = navigator(World())
+        nav.on_exit_confirm(screen(), confirm)
+        nav2, backend2 = navigator(World())
+        nav2.giving_up = True
+        nav2.on_exit_confirm(screen(), confirm)
+        self.assertEqual(backend.actions, [('click', 0.4, 0.6)])
+        self.assertEqual(backend2.actions, [('click', 0.6, 0.6)])
+
+    def test_round_dialog_waits_for_auto_rounds_then_retreats(self):
+        retreat = [{'x': 0.33, 'y': 0.69}]
+        nav, backend = navigator(World(), leave='after_rounds')
+        self.assertIsNone(nav.on_round_dialog(screen(), {'auto': (1, 3), 'retreat': retreat}))
+        nav.on_round_dialog(screen(), {'auto': (3, 3), 'retreat': retreat})
+        self.assertEqual(backend.actions, [('click', 0.33, 0.69)])
+
+    def test_manual_popup_before_a_run_is_closed(self):
+        nav, backend = navigator(World())
+        nav.on_manual_popup(screen(), {'before_run': True})
+        self.assertEqual(backend.actions, [('key', 'esc')])
+
+
+if __name__ == '__main__':
+    unittest.main()
