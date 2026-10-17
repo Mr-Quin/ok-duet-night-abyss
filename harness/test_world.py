@@ -2,8 +2,10 @@
 
     python -m unittest harness/test_world.py
 """
+import glob
 import json
 import os
+import re
 import shutil
 import tempfile
 import unittest
@@ -15,6 +17,7 @@ from src.nav import Nav, NavError, targets
 from src.nav import screens as S
 from src.nav.backend import Screen
 
+from harness import privacy
 from harness.sim import TraceBackend
 from harness.world import World, signature
 
@@ -113,6 +116,46 @@ class TestRecordedWorld(unittest.TestCase):
             except NavError as e:
                 outcome = type(e).__name__
             self.assertEqual(outcome, entry['outcome'], 'step %d: %s' % (k, target))
+
+
+# numbers the game shows to everyone: reward amounts, forge costs, maze progress
+PUBLIC_NUMBERS = {'30000', '0/36000', '280000'}
+
+
+def saved_images():
+    return glob.glob(os.path.join(FIXTURES, '*.jpg')) + glob.glob(os.path.join(WORLD, 'states', '*.jpg'))
+
+
+def saved_texts():
+    for path in glob.glob(os.path.join(FIXTURES, '*.json')) + glob.glob(os.path.join(WORLD, 'states', '*.json')):
+        with open(path, encoding='utf-8') as f:
+            data = json.load(f)
+        yield path, data['items'] if isinstance(data, dict) else data
+    if os.path.exists(os.path.join(WORLD, 'world.json')):
+        for sid, state in World.load(WORLD).states.items():
+            for items in state.get('regions', {}).values():
+                yield sid, items
+
+
+class TestPrivacy(unittest.TestCase):
+    def test_uid_is_blacked_out_everywhere(self):
+        x0, y0, x1, y1 = privacy.UID
+        for path in saved_images():
+            with self.subTest(image=os.path.basename(path)):
+                img = cv2.imdecode(np.fromfile(path, dtype=np.uint8), cv2.IMREAD_GRAYSCALE)
+                h, w = img.shape
+                self.assertLess(img[int(y0 * h) + 2:int(y1 * h) - 2, int(x0 * w) + 2:int(x1 * w) - 2].max(), 40)
+
+    def test_no_long_numbers_in_saved_text(self):
+        # the nightbook level labels often come out run together, like 2005550
+        x0, y0, x1, y1 = S.LEVEL_COLUMN
+        for path, items in saved_texts():
+            for i in items:
+                number = i['t'].replace(',', '')
+                if x0 <= i['x'] <= x1 and y0 <= i['y'] <= y1:
+                    continue
+                if re.search(r'\d{5,}', number) and number not in PUBLIC_NUMBERS:
+                    self.fail('%s: %r' % (os.path.basename(path), i['t']))
 
 
 if __name__ == '__main__':
