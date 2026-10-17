@@ -3,7 +3,8 @@ import unittest
 
 import numpy as np
 
-from src.nav import BookSection, CommissionTab, MainMenu, Mission, Nightbook, NoSuchEntry, Page, World, WrongMission
+from src.nav import (BookSection, CommissionTab, MainMenu, Mission, NavError, Nightbook, NoSuchEntry, Page, World,
+                     WrongMission)
 from src.nav import screens as S
 from src.nav import text_zh as T
 from src.nav.backend import Backend, Screen
@@ -71,6 +72,33 @@ class TestLevelPositions(unittest.TestCase):
 
     def test_one_label_is_not_enough(self):
         self.assertEqual(S.level_positions(screen(('30', 0.075, 0.3))), {})
+
+
+class SwallowingBackend(FakeBackend):
+    """主菜单上前几次按 esc 被游戏吞掉，之后才回到大世界。"""
+
+    def __init__(self, swallowed):
+        super().__init__()
+        self.swallowed = swallowed
+
+    def read(self):
+        if self.actions.count(('key', 'esc')) <= self.swallowed:
+            return screen((T.UID, 0.1, 0.1), (T.SHOP, 0.2, 0.3))
+        return screen((T.LV, 0.05, 0.95))
+
+
+class TestStuck(unittest.TestCase):
+
+    def test_last_allowed_retry_is_checked_before_giving_up(self):
+        backend = SwallowingBackend(swallowed=3)
+        nav = Navigator(backend, World(), log=lambda msg: None, atlas={})
+        self.assertTrue(nav.run())
+        self.assertEqual(backend.actions.count(('key', 'esc')), 4)
+
+    def test_input_that_never_works_is_reported(self):
+        nav = Navigator(SwallowingBackend(swallowed=99), World(), log=lambda msg: None, atlas={})
+        with self.assertRaisesRegex(NavError, '一直在重复'):
+            nav.run()
 
 
 class TestRoutes(unittest.TestCase):
