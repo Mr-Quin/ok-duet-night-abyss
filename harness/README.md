@@ -12,6 +12,7 @@ python -m unittest harness/test_world.py
 Needs only `numpy` and `opencv-python`; no OCR model and no ok-script. The fork CI runs it on
 every push to `nav-harness`.
 
+- `TestPrivacy` checks the saved images and OCR text for personal details (see below).
 - `TestFixtures` classifies 30 masked screenshots in `fixtures/` with their stored OCR
   results and checks the screen kind and what was read from it (tab, level, auto rounds...).
 - `TestRecordedWorld` uses a recorded journey in `world/`:
@@ -42,6 +43,8 @@ Look through `world/states/*.jpg` by eye before committing a recording.
 quest and map names, the party HUD and character, team presets, and on screens drawn over a
 run (results, in-run menu, round and confirm dialogs, main menu) everything except the panels
 the navigator reads. OCR items inside blacked-out regions are dropped from the JSON too.
+`TestPrivacy` fails if any saved image shows something in the UID box or any saved OCR text
+has a long number in it (HP, currency, IDs), so a new recording cannot slip one in.
 
 ## On the game PC
 
