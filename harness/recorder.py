@@ -1,4 +1,6 @@
 """Wrap a live backend and record every screen and transition the navigator goes through."""
+import json
+
 from src.nav import screens as S
 from src.nav.backend import Backend
 
@@ -13,6 +15,8 @@ class RecordingBackend(Backend):
         self.start = None
         self.current = None
         self.pending = []
+        # every read in order, with the inputs sent before the next one
+        self.trace = []
 
     def frame(self):
         return self.inner.frame()
@@ -27,6 +31,9 @@ class RecordingBackend(Backend):
         self.start = self.start or sid
         if self.current is not None and (self.pending or sid != self.current):
             self.world.add_transition(self.current, self.pending, sid)
+        if self.trace:
+            self.trace[-1]['actions'] = list(self.pending)
+        self.trace.append({'state': sid, 'actions': []})
         self.current, self.pending = sid, []
         return scr
 
@@ -54,5 +61,11 @@ class RecordingBackend(Backend):
     def settle(self, before, *args, **kwargs):
         return self.inner.settle(before, *args, **kwargs)
 
-    def save(self):
+    def save(self, trace_path=None):
         self.world.save()
+        if trace_path:
+            if self.trace:
+                self.trace[-1]['actions'] = list(self.pending)
+            with open(trace_path, 'w', encoding='utf-8') as f:
+                json.dump([dict(step, actions=[list(a) for a in step['actions']]) for step in self.trace], f,
+                          ensure_ascii=False, indent=0)

@@ -1,15 +1,19 @@
 """Replay a recorded world as a backend, so the navigator can run without the game.
 
-The simulator shows the current state's image and OCR items. Inputs are buffered until the
-navigator next looks at the screen (read or settle); the buffered inputs then pick the
-transition recorded for them. Inputs that were never recorded from this state raise
-Unexplored, which means the navigator took a path the recording does not cover.
+TraceBackend replays one recorded journey exactly: it shows the screens in the order they were
+read and checks that the navigator sends the same inputs it sent live. Any difference raises
+Diverged, which is what a regression test wants.
+
+SimBackend treats the world as a graph instead, so the navigator can be sent to targets in an
+order that was never recorded. Inputs are buffered until the navigator next looks at the
+screen; they then pick a recorded transition, and inputs never recorded from that screen
+raise Unexplored, meaning the recording does not cover that path.
 """
 import cv2
 
 from src.nav.backend import Backend, Screen
 
-from harness.world import World
+from harness.world import World, same_action
 
 
 class Unexplored(AssertionError):
@@ -18,11 +22,62 @@ class Unexplored(AssertionError):
         super().__init__('no recorded transition from %s (%s) for %s' % (state, info.get('signature'), actions))
 
 
+class Diverged(AssertionError):
+    pass
+
+
+class TraceBackend(Backend):
+    def __init__(self, world, trace):
+        self.world = world if isinstance(world, World) else World.load(world)
+        self.trace = trace
+        self.step = -1
+        self.buffer = []
+
+    def frame(self):
+        return self.world.image(self.trace[max(self.step, 0)]['state'])
+
+    def ocr(self, img):
+        return self.world.items(self.trace[max(self.step, 0)]['state'])
+
+    def read(self):
+        if self.step >= 0:
+            expected = [tuple(a) for a in self.trace[self.step]['actions']]
+            if len(expected) != len(self.buffer) or not all(same_action(a, b) for a, b in zip(expected, self.buffer)):
+                info = self.world.states[self.trace[self.step]['state']]
+                raise Diverged('step %d on %s: sent %s, recorded %s'
+                               % (self.step, info['signature'], self.buffer, expected))
+        self.step += 1
+        self.buffer = []
+        if self.step >= len(self.trace):
+            raise Diverged('the navigator kept going after the recording ended')
+        sid = self.trace[self.step]['state']
+        return Screen(self.world.image(sid), self.world.items(sid))
+
+    def click(self, x, y):
+        self.buffer.append(('click', x, y))
+
+    def key(self, name):
+        self.buffer.append(('key', name))
+
+    def scroll(self, x, y, notches):
+        self.buffer.append(('scroll', notches))
+
+    def sleep(self, seconds):
+        pass
+
+    def thumb(self):
+        return cv2.resize(cv2.cvtColor(self.frame(), cv2.COLOR_BGR2GRAY), (32, 18)).astype('int16')
+
+    def settle(self, before, *args, **kwargs):
+        return True
+
+
 class SimBackend(Backend):
     def __init__(self, world, start):
         self.world = world if isinstance(world, World) else World.load(world)
         self.state = start
         self.buffer = []
+        self.tries = {}
         self.path = [start]
 
     def frame(self):
@@ -32,15 +87,20 @@ class SimBackend(Backend):
         return self.world.items(self.state)
 
     def _advance(self):
-        if self.buffer:
-            nxt = self.world.follow(self.state, self.buffer)
-            if nxt is None:
-                raise Unexplored(self.world, self.state, self.buffer)
-            self.buffer = []
-        else:
-            # nothing sent: the screen may still move on by itself (a loading screen ending)
-            nxt = self.world.follow(self.state, [])
-        if nxt and nxt != self.state:
+        actions, self.buffer = self.buffer, []
+        # with nothing sent, the screen may still move on by itself (a loading screen ending)
+        outcomes = self.world.outcomes(self.state, actions)
+        if not outcomes:
+            if actions:
+                raise Unexplored(self.world, self.state, actions)
+            return
+        # repeating an input that has several recorded outcomes tries them in turn, the way
+        # retrying an ignored key in the game eventually gets through
+        key = (self.state, repr(actions))
+        tries = self.tries.get(key, 0)
+        self.tries[key] = tries + 1
+        nxt = outcomes[tries % len(outcomes)]
+        if nxt != self.state:
             self.state = nxt
             self.path.append(nxt)
 

@@ -20,8 +20,14 @@ MENU_TEAM = (0.57, 0.72, 1.0, 0.868)
 MAP_PLACES = [(0.82, 0.83, 1.0, 0.905), (0.06, 0.84, 0.2, 0.905)]
 
 
+ALL = [UID, WALLET, CHAT, PARTY, SKILLS, CHARACTER, QUEST, LEVEL_BANNER, TEAM_PRESET, MENU_TEAM] + PROFILE + MAP_PLACES
+
+
 def regions(screen, info=None):
     info = info or {}
+    if screen in ('unknown', 'other_menu'):
+        # a frame caught mid-transition can be anything, a fading main menu included
+        return ALL
     out = [UID, WALLET]
     if screen == 'world':
         out += [PARTY, SKILLS, CHARACTER, QUEST]
