@@ -1,0 +1,42 @@
+name: Fork Tests
+
+on:
+  push:
+    branches: [ nav-harness ]
+  workflow_dispatch:
+
+jobs:
+  harness:
+    name: Navigator without the game
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: pip install numpy opencv-python-headless
+      - run: python -m unittest harness/test_world.py -v
+
+  project:
+    name: Project tests
+    runs-on: windows-latest
+    env:
+      PYTHONIOENCODING: 'UTF-8'
+    steps:
+      - name: Configure git
+        run: git config --global core.autocrlf false
+      - uses: actions/checkout@v6
+        with:
+          submodules: true
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: pip install -r requirements.txt
+      - name: Run tests
+        run: |
+          $failed = @()
+          Get-ChildItem -Path ".\tests\test_*.py" | ForEach-Object {
+              python -m unittest $_.FullName
+              if ($LASTEXITCODE -ne 0) { $failed += $_.Name }
+          }
+          if ($failed) { Write-Error "failed: $($failed -join ', ')"; exit 1 }
