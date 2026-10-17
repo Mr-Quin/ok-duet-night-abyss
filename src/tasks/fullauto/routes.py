@@ -1,8 +1,10 @@
 """从出生点走到扼守目标点的录好的路线。
 
 扼守的地图是一块块房间拼起来的，同一个出生房间会出现在好几张图里，转的方向不同、周围的房间
-不同，但出生时的画面和目标标记的位置都一样，从那里走过去的路线也一样。所以路线按出生画面
-（画面上半部分的场景）加上标记在画面上的位置来认，不按地图认。
+不同，但出生时的画面和目标标记的位置都一样，从那里走过去的路线也一样。所以路线先按标记在
+画面上的位置认，再看地图对不对得上；地图没对上时，出生画面（画面上半部分的场景）很像也算，
+这样一条路线能用到同一个出生房间的别的图上。只靠画面不行：同一张图每次出生的光线不一样，
+画面相关系数能低到 0.2。
 
 一条路线是一串带时间的按键和镜头转动，和 MarkerWalk.steps 的格式相同：
     {'t': 秒, 'down': 键} / {'t': 秒, 'up': 键} / {'t': 秒, 'turn': [dx, dy]}
@@ -43,14 +45,16 @@ def _similarity(a, b):
 class Route:
     def __init__(self, path, data):
         self.path = path
+        self.data = data
         self.name = os.path.splitext(os.path.basename(path))[0]
         self.steps = data['steps']
         self.marker = tuple(data['marker'])
+        self.maps = set(data.get('maps', []))
         self.view = np.array(data['view'], dtype=np.float32).reshape(VIEW_SIZE[1], VIEW_SIZE[0])
 
-    def matches(self, view, marker):
+    def matches(self, view, marker, map_name=None):
         close = abs(marker[0] - self.marker[0]) < SAME_MARKER and abs(marker[1] - self.marker[1]) < SAME_MARKER
-        return close and _similarity(view, self.view) >= SAME_VIEW
+        return close and (map_name in self.maps or _similarity(view, self.view) >= SAME_VIEW)
 
 
 class RouteLibrary:
@@ -61,20 +65,39 @@ class RouteLibrary:
                 with open(path, encoding='utf-8') as f:
                     self.routes.append(Route(path, json.load(f)))
 
-    def find(self, frame, marker):
+    def find(self, frame, marker, map_name=None):
         view = view_feature(frame)
-        return next((r for r in self.routes if r.matches(view, marker)), None)
+        return next((r for r in self.routes if r.matches(view, marker, map_name)), None)
 
-    def save(self, frame, marker, steps, folder=LEARNED_DIR, name=None):
+    def closest(self, frame, marker):
+        """(最像的路线, 画面相关系数, 标记位置差)，没对上时用来查是哪一项差得多。"""
+        view = view_feature(frame)
+        scored = [(r, _similarity(view, r.view), max(abs(marker[0] - r.marker[0]), abs(marker[1] - r.marker[1])))
+                  for r in self.routes]
+        return max(scored, key=lambda s: s[1] - s[2], default=(None, 0.0, 1.0))
+
+    def save(self, frame, marker, steps, map_name=None, folder=LEARNED_DIR, name=None):
         os.makedirs(folder, exist_ok=True)
         name = name or time.strftime('learned_%Y%m%d_%H%M%S')
         path = os.path.join(folder, name + '.json')
-        data = {'marker': [round(marker[0], 3), round(marker[1], 3)],
+        data = {'marker': [round(marker[0], 3), round(marker[1], 3)], 'maps': [map_name] if map_name else [],
                 'view': [round(float(v), 3) for v in view_feature(frame).ravel()], 'steps': steps}
-        with open(path, 'w', encoding='utf-8') as f:
-            json.dump(data, f)
+        _write(path, data)
         self.routes.append(Route(path, data))
         return path
+
+    def remember_map(self, route, map_name):
+        """路线在一张新的图上走通了，记下来，下次这张图光线不同也能认出来。随程序发布的路线不改。"""
+        if not map_name or map_name in route.maps or not route.path.startswith(LEARNED_DIR):
+            return
+        route.maps.add(map_name)
+        route.data['maps'] = sorted(route.maps)
+        _write(route.path, route.data)
+
+
+def _write(path, data):
+    with open(path, 'w', encoding='utf-8') as f:
+        json.dump(data, f)
 
 
 def play(task, route):
