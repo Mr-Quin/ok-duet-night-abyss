@@ -1,0 +1,571 @@
+{
+ "start": "dd0e874c1b",
+ "plan": [
+  {
+   "target": "CommissionTab",
+   "fields": {
+    "tab": "委托"
+   },
+   "outcome": "ok",
+   "detail": ""
+  },
+  {
+   "target": "Menu",
+   "fields": {
+    "name": "铸造"
+   },
+   "outcome": "ok",
+   "detail": ""
+  },
+  {
+   "target": "CommissionTab",
+   "fields": {
+    "tab": "悬赏委托"
+   },
+   "outcome": "ok",
+   "detail": ""
+  },
+  {
+   "target": "Nightbook",
+   "fields": {
+    "auto_rounds": null,
+    "level": 65,
+    "row": 1,
+    "mode": null,
+    "lv": null
+   },
+   "outcome": "ok",
+   "detail": ""
+  },
+  {
+   "target": "MainMenu",
+   "fields": {},
+   "outcome": "ok",
+   "detail": ""
+  },
+  {
+   "target": "Menu",
+   "fields": {
+    "name": "地图"
+   },
+   "outcome": "ok",
+   "detail": ""
+  },
+  {
+   "target": "Nightbook",
+   "fields": {
+    "auto_rounds": null,
+    "level": 65,
+    "row": 7,
+    "mode": null,
+    "lv": null
+   },
+   "outcome": "ok",
+   "detail": ""
+  },
+  {
+   "target": "Nightbook",
+   "fields": {
+    "auto_rounds": null,
+    "level": 30,
+    "row": 1,
+    "mode": null,
+    "lv": null
+   },
+   "outcome": "ok",
+   "detail": ""
+  },
+  {
+   "target": "Menu",
+   "fields": {
+    "name": "地图"
+   },
+   "outcome": "ok",
+   "detail": ""
+  },
+  {
+   "target": "CommissionTab",
+   "fields": {
+    "tab": "委托密函"
+   },
+   "outcome": "ok",
+   "detail": ""
+  },
+  {
+   "target": "Nightbook",
+   "fields": {
+    "auto_rounds": null,
+    "level": 30,
+    "row": 3,
+    "mode": null,
+    "lv": null
+   },
+   "outcome": "ok",
+   "detail": ""
+  },
+  {
+   "target": "MainMenu",
+   "fields": {},
+   "outcome": "ok",
+   "detail": ""
+  },
+  {
+   "target": "Nightbook",
+   "fields": {
+    "auto_rounds": null,
+    "level": 30,
+    "row": 1,
+    "mode": null,
+    "lv": null
+   },
+   "outcome": "ok",
+   "detail": ""
+  },
+  {
+   "target": "BookSection",
+   "fields": {
+    "name": "梦魔残声"
+   },
+   "outcome": "ok",
+   "detail": ""
+  },
+  {
+   "target": "MainMenu",
+   "fields": {},
+   "outcome": "ok",
+   "detail": ""
+  },
+  {
+   "target": "Menu",
+   "fields": {
+    "name": "地图"
+   },
+   "outcome": "ok",
+   "detail": ""
+  },
+  {
+   "target": "Mission",
+   "fields": {
+    "auto_rounds": null,
+    "mode": "扼守/无尽",
+    "lv": 60
+   },
+   "outcome": "ok",
+   "detail": ""
+  },
+  {
+   "target": "CommissionTab",
+   "fields": {
+    "tab": "悬赏委托"
+   },
+   "outcome": "ok",
+   "detail": ""
+  },
+  {
+   "target": "Menu",
+   "fields": {
+    "name": "背包"
+   },
+   "outcome": "ok",
+   "detail": ""
+  },
+  {
+   "target": "Page",
+   "fields": {
+    "name": "迷津"
+   },
+   "outcome": "ok",
+   "detail": ""
+  },
+  {
+   "target": "Menu",
+   "fields": {
+    "name": "背包"
+   },
+   "outcome": "ok",
+   "detail": ""
+  },
+  {
+   "target": "Nightbook",
+   "fields": {
+    "auto_rounds": null,
+    "level": 30,
+    "row": 2,
+    "mode": null,
+    "lv": null
+   },
+   "outcome": "ok",
+   "detail": ""
+  },
+  {
+   "target": "CommissionTab",
+   "fields": {
+    "tab": "悬赏委托"
+   },
+   "outcome": "ok",
+   "detail": ""
+  },
+  {
+   "target": "MainMenu",
+   "fields": {},
+   "outcome": "ok",
+   "detail": ""
+  },
+  {
+   "target": "Nightbook",
+   "fields": {
+    "auto_rounds": null,
+    "level": 65,
+    "row": 7,
+    "mode": null,
+    "lv": null
+   },
+   "outcome": "ok",
+   "detail": ""
+  },
+  {
+   "target": "Nightbook",
+   "fields": {
+    "auto_rounds": null,
+    "level": 30,
+    "row": 2,
+    "mode": null,
+    "lv": null
+   },
+   "outcome": "ok",
+   "detail": ""
+  },
+  {
+   "target": "Menu",
+   "fields": {
+    "name": "地图"
+   },
+   "outcome": "ok",
+   "detail": ""
+  },
+  {
+   "target": "Page",
+   "fields": {
+    "name": "迷津"
+   },
+   "outcome": "ok",
+   "detail": ""
+  },
+  {
+   "target": "Nightbook",
+   "fields": {
+    "auto_rounds": null,
+    "level": 65,
+    "row": 1,
+    "mode": null,
+    "lv": null
+   },
+   "outcome": "ok",
+   "detail": ""
+  },
+  {
+   "target": "Nightbook",
+   "fields": {
+    "auto_rounds": null,
+    "level": 65,
+    "row": 0,
+    "mode": null,
+    "lv": null
+   },
+   "outcome": "ok",
+   "detail": ""
+  },
+  {
+   "target": "Nightbook",
+   "fields": {
+    "auto_rounds": null,
+    "level": 30,
+    "row": 2,
+    "mode": null,
+    "lv": null
+   },
+   "outcome": "ok",
+   "detail": ""
+  },
+  {
+   "target": "MainMenu",
+   "fields": {},
+   "outcome": "ok",
+   "detail": ""
+  },
+  {
+   "target": "Nightbook",
+   "fields": {
+    "auto_rounds": null,
+    "level": 30,
+    "row": 3,
+    "mode": null,
+    "lv": null
+   },
+   "outcome": "ok",
+   "detail": ""
+  },
+  {
+   "target": "Nightbook",
+   "fields": {
+    "auto_rounds": null,
+    "level": 30,
+    "row": 2,
+    "mode": null,
+    "lv": null
+   },
+   "outcome": "ok",
+   "detail": ""
+  },
+  {
+   "target": "CommissionTab",
+   "fields": {
+    "tab": "委托密函"
+   },
+   "outcome": "ok",
+   "detail": ""
+  },
+  {
+   "target": "MainMenu",
+   "fields": {},
+   "outcome": "ok",
+   "detail": ""
+  },
+  {
+   "target": "Page",
+   "fields": {
+    "name": "迷津"
+   },
+   "outcome": "ok",
+   "detail": ""
+  },
+  {
+   "target": "MainMenu",
+   "fields": {},
+   "outcome": "ok",
+   "detail": ""
+  },
+  {
+   "target": "Nightbook",
+   "fields": {
+    "auto_rounds": null,
+    "level": 30,
+    "row": 2,
+    "mode": null,
+    "lv": null
+   },
+   "outcome": "ok",
+   "detail": ""
+  },
+  {
+   "target": "Nightbook",
+   "fields": {
+    "auto_rounds": null,
+    "level": 65,
+    "row": 8,
+    "mode": null,
+    "lv": null
+   },
+   "outcome": "ok",
+   "detail": ""
+  },
+  {
+   "target": "Menu",
+   "fields": {
+    "name": "铸造"
+   },
+   "outcome": "ok",
+   "detail": ""
+  },
+  {
+   "target": "CommissionTab",
+   "fields": {
+    "tab": "委托"
+   },
+   "outcome": "ok",
+   "detail": ""
+  },
+  {
+   "target": "Mission",
+   "fields": {
+    "auto_rounds": null,
+    "mode": "扼守/无尽",
+    "lv": 60
+   },
+   "outcome": "ok",
+   "detail": ""
+  },
+  {
+   "target": "Menu",
+   "fields": {
+    "name": "铸造"
+   },
+   "outcome": "ok",
+   "detail": ""
+  },
+  {
+   "target": "Nightbook",
+   "fields": {
+    "auto_rounds": null,
+    "level": 30,
+    "row": 2,
+    "mode": null,
+    "lv": null
+   },
+   "outcome": "ok",
+   "detail": ""
+  },
+  {
+   "target": "Menu",
+   "fields": {
+    "name": "地图"
+   },
+   "outcome": "ok",
+   "detail": ""
+  },
+  {
+   "target": "Nightbook",
+   "fields": {
+    "auto_rounds": null,
+    "level": 30,
+    "row": 3,
+    "mode": null,
+    "lv": null
+   },
+   "outcome": "ok",
+   "detail": ""
+  },
+  {
+   "target": "Page",
+   "fields": {
+    "name": "boss_map"
+   },
+   "outcome": "ok",
+   "detail": ""
+  },
+  {
+   "target": "Nightbook",
+   "fields": {
+    "auto_rounds": null,
+    "level": 30,
+    "row": 2,
+    "mode": null,
+    "lv": null
+   },
+   "outcome": "ok",
+   "detail": ""
+  },
+  {
+   "target": "Nightbook",
+   "fields": {
+    "auto_rounds": null,
+    "level": 65,
+    "row": 7,
+    "mode": null,
+    "lv": null
+   },
+   "outcome": "ok",
+   "detail": ""
+  },
+  {
+   "target": "Nightbook",
+   "fields": {
+    "auto_rounds": null,
+    "level": 65,
+    "row": 1,
+    "mode": null,
+    "lv": null
+   },
+   "outcome": "ok",
+   "detail": ""
+  },
+  {
+   "target": "BookSection",
+   "fields": {
+    "name": "今日行程"
+   },
+   "outcome": "ok",
+   "detail": ""
+  },
+  {
+   "target": "Menu",
+   "fields": {
+    "name": "地图"
+   },
+   "outcome": "ok",
+   "detail": ""
+  },
+  {
+   "target": "Nightbook",
+   "fields": {
+    "auto_rounds": null,
+    "level": 30,
+    "row": 3,
+    "mode": null,
+    "lv": null
+   },
+   "outcome": "ok",
+   "detail": ""
+  },
+  {
+   "target": "Nightbook",
+   "fields": {
+    "auto_rounds": null,
+    "level": 30,
+    "row": 2,
+    "mode": null,
+    "lv": null
+   },
+   "outcome": "ok",
+   "detail": ""
+  },
+  {
+   "target": "Nightbook",
+   "fields": {
+    "auto_rounds": null,
+    "level": 65,
+    "row": 1,
+    "mode": null,
+    "lv": null
+   },
+   "outcome": "ok",
+   "detail": ""
+  },
+  {
+   "target": "BookSection",
+   "fields": {
+    "name": "梦魔残声"
+   },
+   "outcome": "ok",
+   "detail": ""
+  },
+  {
+   "target": "CommissionTab",
+   "fields": {
+    "tab": "委托密函"
+   },
+   "outcome": "ok",
+   "detail": ""
+  },
+  {
+   "target": "Menu",
+   "fields": {
+    "name": "地图"
+   },
+   "outcome": "ok",
+   "detail": ""
+  },
+  {
+   "target": "Nightbook",
+   "fields": {
+    "auto_rounds": null,
+    "level": 30,
+    "row": 2,
+    "mode": null,
+    "lv": null
+   },
+   "outcome": "ok",
+   "detail": ""
+  }
+ ]
+}

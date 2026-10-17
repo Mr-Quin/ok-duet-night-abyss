@@ -1,0 +1,2587 @@
+[
+{
+"state": "dd0e874c1b",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "5bbbffe096",
+"actions": [
+[
+"click",
+0.137,
+0.157
+]
+]
+},
+{
+"state": "e22efe3d27",
+"actions": []
+},
+{
+"state": "3ae459a03e",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "7c211433f0",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "a87d7423b1",
+"actions": [
+[
+"click",
+0.1576,
+0.5447
+]
+]
+},
+{
+"state": "b2f9bed141",
+"actions": []
+},
+{
+"state": "b2f9bed141",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "a87d7423b1",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "7c211433f0",
+"actions": [
+[
+"key",
+"l"
+]
+]
+},
+{
+"state": "ff05f6f3a3",
+"actions": [
+[
+"click",
+0.302,
+0.027
+]
+]
+},
+{
+"state": "8f6bea8bb0",
+"actions": [
+[
+"click",
+0.6,
+0.157
+]
+]
+},
+{
+"state": "8c54df2972",
+"actions": []
+},
+{
+"state": "8c54df2972",
+"actions": [
+[
+"click",
+0.29,
+0.157
+]
+]
+},
+{
+"state": "5bbbffe096",
+"actions": [
+[
+"click",
+0.075,
+0.6907
+]
+]
+},
+{
+"state": "1f9a3078a8",
+"actions": [
+[
+"click",
+0.6208,
+0.3731
+]
+]
+},
+{
+"state": "f5e8f86213",
+"actions": []
+},
+{
+"state": "f5e8f86213",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "4eb7e19e08",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "7c211433f0",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "a87d7423b1",
+"actions": []
+},
+{
+"state": "a87d7423b1",
+"actions": [
+[
+"click",
+0.1573,
+0.772
+]
+]
+},
+{
+"state": "7e8254e375",
+"actions": []
+},
+{
+"state": "7e8254e375",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "a87d7423b1",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "7c211433f0",
+"actions": [
+[
+"key",
+"l"
+]
+]
+},
+{
+"state": "7c211433f0",
+"actions": [
+[
+"key",
+"l"
+]
+]
+},
+{
+"state": "b48dbe9e5f",
+"actions": [
+[
+"click",
+0.302,
+0.027
+]
+]
+},
+{
+"state": "8f6bea8bb0",
+"actions": [
+[
+"click",
+0.29,
+0.157
+]
+]
+},
+{
+"state": "cc6224871a",
+"actions": [
+[
+"scroll",
+-3
+]
+]
+},
+{
+"state": "8c63584058",
+"actions": [
+[
+"scroll",
+-3
+]
+]
+},
+{
+"state": "2b94b8061b",
+"actions": [
+[
+"scroll",
+-3
+]
+]
+},
+{
+"state": "7786684257",
+"actions": [
+[
+"scroll",
+-3
+]
+]
+},
+{
+"state": "1ad43e9656",
+"actions": [
+[
+"click",
+0.6208,
+0.6241
+]
+]
+},
+{
+"state": "59a5b99378",
+"actions": []
+},
+{
+"state": "59a5b99378",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "1ad43e9656",
+"actions": [
+[
+"click",
+0.075,
+0.325
+]
+]
+},
+{
+"state": "de81bb73fc",
+"actions": [
+[
+"scroll",
+30
+]
+]
+},
+{
+"state": "5bbbffe096",
+"actions": [
+[
+"click",
+0.6208,
+0.363
+]
+]
+},
+{
+"state": "a7e5a6aba3",
+"actions": []
+},
+{
+"state": "a7e5a6aba3",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "5bbbffe096",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "7c211433f0",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "a87d7423b1",
+"actions": [
+[
+"click",
+0.1573,
+0.772
+]
+]
+},
+{
+"state": "7e8254e375",
+"actions": []
+},
+{
+"state": "7e8254e375",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "a87d7423b1",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "7c211433f0",
+"actions": [
+[
+"key",
+"l"
+]
+]
+},
+{
+"state": "7dfb211782",
+"actions": []
+},
+{
+"state": "b48dbe9e5f",
+"actions": [
+[
+"click",
+0.302,
+0.027
+]
+]
+},
+{
+"state": "8f6bea8bb0",
+"actions": [
+[
+"click",
+0.445,
+0.157
+]
+]
+},
+{
+"state": "8f6bea8bb0",
+"actions": [
+[
+"click",
+0.445,
+0.157
+]
+]
+},
+{
+"state": "3537d52822",
+"actions": []
+},
+{
+"state": "3537d52822",
+"actions": [
+[
+"click",
+0.29,
+0.157
+]
+]
+},
+{
+"state": "5bbbffe096",
+"actions": [
+[
+"click",
+0.6208,
+0.569
+]
+]
+},
+{
+"state": "dd0e874c1b",
+"actions": []
+},
+{
+"state": "dd0e874c1b",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "5bbbffe096",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "7c211433f0",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "a87d7423b1",
+"actions": []
+},
+{
+"state": "a87d7423b1",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "7c211433f0",
+"actions": [
+[
+"key",
+"l"
+]
+]
+},
+{
+"state": "7c211433f0",
+"actions": [
+[
+"key",
+"l"
+]
+]
+},
+{
+"state": "7c211433f0",
+"actions": [
+[
+"key",
+"l"
+]
+]
+},
+{
+"state": "b48dbe9e5f",
+"actions": [
+[
+"click",
+0.302,
+0.027
+]
+]
+},
+{
+"state": "8f6bea8bb0",
+"actions": [
+[
+"click",
+0.29,
+0.157
+]
+]
+},
+{
+"state": "82bc687486",
+"actions": []
+},
+{
+"state": "5bbbffe096",
+"actions": [
+[
+"click",
+0.6208,
+0.363
+]
+]
+},
+{
+"state": "a7e5a6aba3",
+"actions": []
+},
+{
+"state": "a7e5a6aba3",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "5bbbffe096",
+"actions": [
+[
+"click",
+0.422,
+0.027
+]
+]
+},
+{
+"state": "9b219684ed",
+"actions": []
+},
+{
+"state": "9b219684ed",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "7c211433f0",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "a87d7423b1",
+"actions": []
+},
+{
+"state": "a87d7423b1",
+"actions": [
+[
+"click",
+0.1573,
+0.772
+]
+]
+},
+{
+"state": "7e8254e375",
+"actions": []
+},
+{
+"state": "7e8254e375",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "a87d7423b1",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "7c211433f0",
+"actions": [
+[
+"key",
+"l"
+]
+]
+},
+{
+"state": "ff05f6f3a3",
+"actions": [
+[
+"click",
+0.302,
+0.027
+]
+]
+},
+{
+"state": "82bc687486",
+"actions": []
+},
+{
+"state": "8f6bea8bb0",
+"actions": [
+[
+"scroll",
+-45
+]
+]
+},
+{
+"state": "dae4f1a724",
+"actions": [
+[
+"click",
+0.5026,
+0.42
+]
+]
+},
+{
+"state": "dae4f1a724",
+"actions": [
+[
+"click",
+0.5026,
+0.42
+]
+]
+},
+{
+"state": "6431b33402",
+"actions": [
+[
+"click",
+0.08,
+0.3296
+]
+]
+},
+{
+"state": "20ec5ee3d3",
+"actions": []
+},
+{
+"state": "20ec5ee3d3",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "dae4f1a724",
+"actions": [
+[
+"click",
+0.6,
+0.157
+]
+]
+},
+{
+"state": "8c54df2972",
+"actions": []
+},
+{
+"state": "8c54df2972",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "7c211433f0",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "a87d7423b1",
+"actions": [
+[
+"click",
+0.1576,
+0.4308
+]
+]
+},
+{
+"state": "d0adae20c5",
+"actions": []
+},
+{
+"state": "d0adae20c5",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "a87d7423b1",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "7c211433f0",
+"actions": [
+[
+"key",
+"l"
+]
+]
+},
+{
+"state": "b48dbe9e5f",
+"actions": [
+[
+"click",
+0.541,
+0.027
+]
+]
+},
+{
+"state": "5306bf5b58",
+"actions": [
+[
+"click",
+0.5552,
+0.656
+]
+]
+},
+{
+"state": "202c29a7ac",
+"actions": []
+},
+{
+"state": "202c29a7ac",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "5306bf5b58",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "7c211433f0",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "a87d7423b1",
+"actions": [
+[
+"click",
+0.1576,
+0.4308
+]
+]
+},
+{
+"state": "d0adae20c5",
+"actions": []
+},
+{
+"state": "d0adae20c5",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "a87d7423b1",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "7c211433f0",
+"actions": [
+[
+"key",
+"l"
+]
+]
+},
+{
+"state": "7dfb211782",
+"actions": []
+},
+{
+"state": "b48dbe9e5f",
+"actions": [
+[
+"click",
+0.302,
+0.027
+]
+]
+},
+{
+"state": "8f6bea8bb0",
+"actions": [
+[
+"click",
+0.29,
+0.157
+]
+]
+},
+{
+"state": "e76f7be8ff",
+"actions": [
+[
+"click",
+0.6206,
+0.4718
+]
+]
+},
+{
+"state": "5bbbffe096",
+"actions": [
+[
+"click",
+0.6208,
+0.4657
+]
+]
+},
+{
+"state": "dd0e874c1b",
+"actions": []
+},
+{
+"state": "dd0e874c1b",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "5bbbffe096",
+"actions": [
+[
+"click",
+0.6,
+0.157
+]
+]
+},
+{
+"state": "8c54df2972",
+"actions": []
+},
+{
+"state": "8c54df2972",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "7c211433f0",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "a87d7423b1",
+"actions": []
+},
+{
+"state": "a87d7423b1",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "a87d7423b1",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "7c211433f0",
+"actions": [
+[
+"key",
+"l"
+]
+]
+},
+{
+"state": "7c211433f0",
+"actions": [
+[
+"key",
+"l"
+]
+]
+},
+{
+"state": "b48dbe9e5f",
+"actions": [
+[
+"click",
+0.302,
+0.027
+]
+]
+},
+{
+"state": "8f6bea8bb0",
+"actions": [
+[
+"click",
+0.29,
+0.157
+]
+]
+},
+{
+"state": "e76f7be8ff",
+"actions": [
+[
+"click",
+0.075,
+0.6903
+]
+]
+},
+{
+"state": "d5281f6d71",
+"actions": [
+[
+"scroll",
+-3
+]
+]
+},
+{
+"state": "8c63584058",
+"actions": [
+[
+"scroll",
+-3
+]
+]
+},
+{
+"state": "2b94b8061b",
+"actions": [
+[
+"scroll",
+-3
+]
+]
+},
+{
+"state": "7786684257",
+"actions": [
+[
+"scroll",
+-3
+]
+]
+},
+{
+"state": "1ad43e9656",
+"actions": [
+[
+"click",
+0.6208,
+0.6241
+]
+]
+},
+{
+"state": "59a5b99378",
+"actions": []
+},
+{
+"state": "59a5b99378",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "1ad43e9656",
+"actions": [
+[
+"click",
+0.075,
+0.3252
+]
+]
+},
+{
+"state": "e76f7be8ff",
+"actions": [
+[
+"click",
+0.6206,
+0.4727
+]
+]
+},
+{
+"state": "dd0e874c1b",
+"actions": []
+},
+{
+"state": "dd0e874c1b",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "dd0e874c1b",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "7c211433f0",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "a87d7423b1",
+"actions": [
+[
+"click",
+0.1573,
+0.772
+]
+]
+},
+{
+"state": "7e8254e375",
+"actions": []
+},
+{
+"state": "7e8254e375",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "a87d7423b1",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "7c211433f0",
+"actions": [
+[
+"key",
+"l"
+]
+]
+},
+{
+"state": "b48dbe9e5f",
+"actions": [
+[
+"click",
+0.541,
+0.027
+]
+]
+},
+{
+"state": "5306bf5b58",
+"actions": [
+[
+"click",
+0.5552,
+0.656
+]
+]
+},
+{
+"state": "202c29a7ac",
+"actions": []
+},
+{
+"state": "202c29a7ac",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "5306bf5b58",
+"actions": [
+[
+"click",
+0.302,
+0.027
+]
+]
+},
+{
+"state": "8f6bea8bb0",
+"actions": [
+[
+"click",
+0.29,
+0.157
+]
+]
+},
+{
+"state": "e76f7be8ff",
+"actions": [
+[
+"click",
+0.075,
+0.6907
+]
+]
+},
+{
+"state": "4eb7e19e08",
+"actions": [
+[
+"click",
+0.6208,
+0.363
+]
+]
+},
+{
+"state": "f5e8f86213",
+"actions": []
+},
+{
+"state": "f5e8f86213",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "4eb7e19e08",
+"actions": [
+[
+"click",
+0.6208,
+0.2606
+]
+]
+},
+{
+"state": "f5e8f86213",
+"actions": []
+},
+{
+"state": "f5e8f86213",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "4eb7e19e08",
+"actions": [
+[
+"click",
+0.075,
+0.3252
+]
+]
+},
+{
+"state": "e76f7be8ff",
+"actions": [
+[
+"click",
+0.6206,
+0.4736
+]
+]
+},
+{
+"state": "dd0e874c1b",
+"actions": []
+},
+{
+"state": "dd0e874c1b",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "5bbbffe096",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "7c211433f0",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "a87d7423b1",
+"actions": []
+},
+{
+"state": "a87d7423b1",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "7dfb211782",
+"actions": []
+},
+{
+"state": "7c211433f0",
+"actions": [
+[
+"key",
+"l"
+]
+]
+},
+{
+"state": "b48dbe9e5f",
+"actions": [
+[
+"click",
+0.302,
+0.027
+]
+]
+},
+{
+"state": "8f6bea8bb0",
+"actions": [
+[
+"click",
+0.29,
+0.157
+]
+]
+},
+{
+"state": "5bbbffe096",
+"actions": [
+[
+"click",
+0.6208,
+0.569
+]
+]
+},
+{
+"state": "dd0e874c1b",
+"actions": []
+},
+{
+"state": "dd0e874c1b",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "5bbbffe096",
+"actions": [
+[
+"click",
+0.6208,
+0.4657
+]
+]
+},
+{
+"state": "dd0e874c1b",
+"actions": []
+},
+{
+"state": "dd0e874c1b",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "5bbbffe096",
+"actions": [
+[
+"click",
+0.445,
+0.157
+]
+]
+},
+{
+"state": "3537d52822",
+"actions": []
+},
+{
+"state": "3537d52822",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "7c211433f0",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "a87d7423b1",
+"actions": []
+},
+{
+"state": "a87d7423b1",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "7c211433f0",
+"actions": [
+[
+"key",
+"l"
+]
+]
+},
+{
+"state": "b48dbe9e5f",
+"actions": [
+[
+"click",
+0.541,
+0.027
+]
+]
+},
+{
+"state": "5306bf5b58",
+"actions": [
+[
+"click",
+0.5552,
+0.656
+]
+]
+},
+{
+"state": "202c29a7ac",
+"actions": []
+},
+{
+"state": "202c29a7ac",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "5306bf5b58",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "7c211433f0",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "a87d7423b1",
+"actions": []
+},
+{
+"state": "a87d7423b1",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "7dfb211782",
+"actions": []
+},
+{
+"state": "7c211433f0",
+"actions": [
+[
+"key",
+"l"
+]
+]
+},
+{
+"state": "b48dbe9e5f",
+"actions": [
+[
+"click",
+0.302,
+0.027
+]
+]
+},
+{
+"state": "8f6bea8bb0",
+"actions": [
+[
+"click",
+0.29,
+0.157
+]
+]
+},
+{
+"state": "e76f7be8ff",
+"actions": [
+[
+"click",
+0.6206,
+0.4718
+]
+]
+},
+{
+"state": "dd0e874c1b",
+"actions": []
+},
+{
+"state": "dd0e874c1b",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "5bbbffe096",
+"actions": [
+[
+"click",
+0.075,
+0.6907
+]
+]
+},
+{
+"state": "4eb7e19e08",
+"actions": [
+[
+"scroll",
+-3
+]
+]
+},
+{
+"state": "8c63584058",
+"actions": [
+[
+"scroll",
+-3
+]
+]
+},
+{
+"state": "2b94b8061b",
+"actions": [
+[
+"scroll",
+-3
+]
+]
+},
+{
+"state": "7786684257",
+"actions": [
+[
+"scroll",
+-3
+]
+]
+},
+{
+"state": "1ad43e9656",
+"actions": [
+[
+"scroll",
+-3
+]
+]
+},
+{
+"state": "0ce264ed3e",
+"actions": [
+[
+"click",
+0.6208,
+0.6389
+]
+]
+},
+{
+"state": "f5e8f86213",
+"actions": []
+},
+{
+"state": "f5e8f86213",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "0ce264ed3e",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "7c211433f0",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "a87d7423b1",
+"actions": [
+[
+"click",
+0.1576,
+0.5447
+]
+]
+},
+{
+"state": "b2f9bed141",
+"actions": []
+},
+{
+"state": "b2f9bed141",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "a87d7423b1",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "7dfb211782",
+"actions": []
+},
+{
+"state": "7c211433f0",
+"actions": [
+[
+"key",
+"l"
+]
+]
+},
+{
+"state": "7dfb211782",
+"actions": []
+},
+{
+"state": "b48dbe9e5f",
+"actions": [
+[
+"click",
+0.302,
+0.027
+]
+]
+},
+{
+"state": "8f6bea8bb0",
+"actions": []
+},
+{
+"state": "8f6bea8bb0",
+"actions": [
+[
+"scroll",
+-45
+]
+]
+},
+{
+"state": "dae4f1a724",
+"actions": [
+[
+"click",
+0.5021,
+0.42
+]
+]
+},
+{
+"state": "dae4f1a724",
+"actions": [
+[
+"click",
+0.5023,
+0.42
+]
+]
+},
+{
+"state": "6431b33402",
+"actions": [
+[
+"click",
+0.08,
+0.3296
+]
+]
+},
+{
+"state": "20ec5ee3d3",
+"actions": []
+},
+{
+"state": "20ec5ee3d3",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "dae4f1a724",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "7c211433f0",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "a87d7423b1",
+"actions": [
+[
+"click",
+0.1576,
+0.5447
+]
+]
+},
+{
+"state": "b2f9bed141",
+"actions": []
+},
+{
+"state": "b2f9bed141",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "a87d7423b1",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "7c211433f0",
+"actions": [
+[
+"key",
+"l"
+]
+]
+},
+{
+"state": "ff05f6f3a3",
+"actions": [
+[
+"click",
+0.302,
+0.027
+]
+]
+},
+{
+"state": "8f6bea8bb0",
+"actions": [
+[
+"click",
+0.29,
+0.157
+]
+]
+},
+{
+"state": "4eb7e19e08",
+"actions": [
+[
+"click",
+0.075,
+0.3245
+]
+]
+},
+{
+"state": "61af1f3308",
+"actions": [
+[
+"scroll",
+30
+]
+]
+},
+{
+"state": "5bbbffe096",
+"actions": [
+[
+"click",
+0.6208,
+0.4657
+]
+]
+},
+{
+"state": "dd0e874c1b",
+"actions": []
+},
+{
+"state": "dd0e874c1b",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "5bbbffe096",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "7c211433f0",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "a87d7423b1",
+"actions": [
+[
+"click",
+0.1573,
+0.772
+]
+]
+},
+{
+"state": "7e8254e375",
+"actions": []
+},
+{
+"state": "7e8254e375",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "a87d7423b1",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "7c211433f0",
+"actions": [
+[
+"key",
+"l"
+]
+]
+},
+{
+"state": "b48dbe9e5f",
+"actions": [
+[
+"click",
+0.302,
+0.027
+]
+]
+},
+{
+"state": "82bc687486",
+"actions": []
+},
+{
+"state": "8f6bea8bb0",
+"actions": [
+[
+"click",
+0.29,
+0.157
+]
+]
+},
+{
+"state": "5bbbffe096",
+"actions": [
+[
+"click",
+0.6208,
+0.569
+]
+]
+},
+{
+"state": "dd0e874c1b",
+"actions": []
+},
+{
+"state": "dd0e874c1b",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "5bbbffe096",
+"actions": [
+[
+"click",
+0.422,
+0.027
+]
+]
+},
+{
+"state": "9b219684ed",
+"actions": [
+[
+"click",
+0.5495,
+0.6593
+]
+]
+},
+{
+"state": "62fc2c0889",
+"actions": []
+},
+{
+"state": "62fc2c0889",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "7e8254e375",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "9b219684ed",
+"actions": [
+[
+"click",
+0.302,
+0.027
+]
+]
+},
+{
+"state": "5bbbffe096",
+"actions": [
+[
+"click",
+0.6208,
+0.4657
+]
+]
+},
+{
+"state": "dd0e874c1b",
+"actions": []
+},
+{
+"state": "dd0e874c1b",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "5bbbffe096",
+"actions": [
+[
+"click",
+0.075,
+0.6907
+]
+]
+},
+{
+"state": "4eb7e19e08",
+"actions": [
+[
+"scroll",
+-3
+]
+]
+},
+{
+"state": "8c63584058",
+"actions": [
+[
+"scroll",
+-3
+]
+]
+},
+{
+"state": "2b94b8061b",
+"actions": [
+[
+"scroll",
+-3
+]
+]
+},
+{
+"state": "7786684257",
+"actions": [
+[
+"scroll",
+-3
+]
+]
+},
+{
+"state": "1ad43e9656",
+"actions": [
+[
+"click",
+0.6208,
+0.6241
+]
+]
+},
+{
+"state": "59a5b99378",
+"actions": []
+},
+{
+"state": "59a5b99378",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "1ad43e9656",
+"actions": [
+[
+"scroll",
+30
+]
+]
+},
+{
+"state": "4eb7e19e08",
+"actions": [
+[
+"click",
+0.6208,
+0.363
+]
+]
+},
+{
+"state": "f5e8f86213",
+"actions": []
+},
+{
+"state": "f5e8f86213",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "4eb7e19e08",
+"actions": [
+[
+"click",
+0.182,
+0.027
+]
+]
+},
+{
+"state": "b48dbe9e5f",
+"actions": []
+},
+{
+"state": "b48dbe9e5f",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "7c211433f0",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "a87d7423b1",
+"actions": [
+[
+"click",
+0.1573,
+0.772
+]
+]
+},
+{
+"state": "7e8254e375",
+"actions": []
+},
+{
+"state": "7e8254e375",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "a87d7423b1",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "7c211433f0",
+"actions": [
+[
+"key",
+"l"
+]
+]
+},
+{
+"state": "b48dbe9e5f",
+"actions": [
+[
+"click",
+0.302,
+0.027
+]
+]
+},
+{
+"state": "c55d09c918",
+"actions": [
+[
+"click",
+0.29,
+0.157
+]
+]
+},
+{
+"state": "cc6224871a",
+"actions": [
+[
+"click",
+0.075,
+0.3252
+]
+]
+},
+{
+"state": "5bbbffe096",
+"actions": [
+[
+"click",
+0.6208,
+0.569
+]
+]
+},
+{
+"state": "dd0e874c1b",
+"actions": []
+},
+{
+"state": "dd0e874c1b",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "5bbbffe096",
+"actions": [
+[
+"click",
+0.6208,
+0.4662
+]
+]
+},
+{
+"state": "dd0e874c1b",
+"actions": []
+},
+{
+"state": "dd0e874c1b",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "5bbbffe096",
+"actions": [
+[
+"click",
+0.075,
+0.6905
+]
+]
+},
+{
+"state": "d5281f6d71",
+"actions": [
+[
+"scroll",
+-3
+]
+]
+},
+{
+"state": "8c63584058",
+"actions": [
+[
+"click",
+0.6208,
+0.275
+]
+]
+},
+{
+"state": "f5e8f86213",
+"actions": []
+},
+{
+"state": "f5e8f86213",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "8c63584058",
+"actions": [
+[
+"click",
+0.422,
+0.027
+]
+]
+},
+{
+"state": "9b219684ed",
+"actions": []
+},
+{
+"state": "9b219684ed",
+"actions": [
+[
+"click",
+0.302,
+0.027
+]
+]
+},
+{
+"state": "8c63584058",
+"actions": [
+[
+"click",
+0.445,
+0.157
+]
+]
+},
+{
+"state": "4d7bab1c54",
+"actions": []
+},
+{
+"state": "3537d52822",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "7c211433f0",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "a87d7423b1",
+"actions": [
+[
+"click",
+0.1573,
+0.772
+]
+]
+},
+{
+"state": "7e8254e375",
+"actions": []
+},
+{
+"state": "7e8254e375",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "a87d7423b1",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "a87d7423b1",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "a87d7423b1",
+"actions": [
+[
+"key",
+"esc"
+]
+]
+},
+{
+"state": "7c211433f0",
+"actions": [
+[
+"key",
+"l"
+]
+]
+},
+{
+"state": "ff05f6f3a3",
+"actions": [
+[
+"click",
+0.302,
+0.027
+]
+]
+},
+{
+"state": "8f6bea8bb0",
+"actions": [
+[
+"click",
+0.29,
+0.157
+]
+]
+},
+{
+"state": "4eb7e19e08",
+"actions": [
+[
+"click",
+0.075,
+0.3252
+]
+]
+},
+{
+"state": "5bbbffe096",
+"actions": [
+[
+"click",
+0.6208,
+0.4662
+]
+]
+},
+{
+"state": "dd0e874c1b",
+"actions": []
+}
+]
