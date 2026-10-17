@@ -6,12 +6,15 @@
 界面导航读的是简体中文界面上的文字，所以这个任务只支持简体中文客户端；原来的
 「自动30/65级魔之楔本」不受影响。
 """
+import os
+
 from ok import Logger, TaskDisabledException
 from src.nav import Mission, Nav, NavError, Nightbook, NoSuchEntry, World, WrongMission
 from src.nav.okscript import CACHE_PATH, OkScriptBackend
 from src.tasks.AutoDefence import AutoDefence
 from src.tasks.DNAOneTimeTask import DNAOneTimeTask
 from src.tasks.fullauto.Auto65ArtifactTask_Fast import Auto65ArtifactTask_Fast
+from src.tasks.fullauto import routes
 from src.tasks.fullauto.marker_walk import MarkerWalk
 from src.tasks.fullauto.minimap import MapLibrary
 
@@ -54,6 +57,7 @@ class Auto65NavTask(Auto65ArtifactTask_Fast):
         self.config_type["走位方式"] = {"type": "drop_down", "options": WALK_MODES}
         self._nav = None
         self._maps = None
+        self._routes = None
 
     @property
     def nav(self):
@@ -135,7 +139,23 @@ class Auto65NavTask(Auto65ArtifactTask_Fast):
         if seen is None:
             logger.info("没找到目标标记，改用录制路线")
             return self.walk_to_aim(0)
-        if walker.run(seen):
+        if self._routes is None:
+            self._routes = routes.RouteLibrary()
+        spawn, marker = self.next_frame(), (seen[0], walker.last_y)
+        route = self._routes.find(spawn, marker)
+        if route is not None:
+            self.log_info(f"按路线 {route.name} 走")
+            routes.play(self, route)
+            seen = walker.wait_for_marker(timeout=3)
+            if seen is not None and walker.run(seen):
+                return
+            if route.path.startswith(routes.LEARNED_DIR):
+                # 学来的路线这次没走到，删掉，下次重新学
+                os.remove(route.path)
+                self._routes.routes.remove(route)
+        elif walker.run(seen):
+            path = self._routes.save(spawn, marker, walker.steps)
+            self.log_info(f"记下这条路线：{os.path.basename(path)}")
             return
         # 已经走了一段，离目标点旁的复位点最近
         if not self.reset_and_transport():
