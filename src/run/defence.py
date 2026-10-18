@@ -59,13 +59,14 @@ class Defence:
         self.wave, self.wave_since = -1, time.time()
         self.task.reset_wave_info()
 
-    def wave_started(self, timeout=3):
+    def wave_started(self, timeout=3, quiet=False):
         """到了目标点波次就会开始；没开始说明其实没到（比如距离读错了）。"""
         task = self.task
         task.current_wave = -1
         if task.wait_until(lambda: task.current_wave != -1, post_action=task.get_wave_info, time_out=timeout):
             return True
-        task.log_info("走到了但波次没开始")
+        if not quiet:
+            task.log_info("走到了但波次没开始")
         return False
 
     def reach(self, walker, seen):
@@ -106,6 +107,10 @@ class Defence:
         if route is not None:
             task.log_info(f"按路线 {route.name} 走")
             routes.play(task, route)
+            # 回放直接走进了防守范围时标记已经消失，距离也读不出来
+            if self.wave_started(timeout=1, quiet=True):
+                self.routes.remember_map(route, map_name)
+                return True
             seen = walker.wait_for_marker(timeout=3)
             if seen is not None and self.reach(walker, seen):
                 self.routes.remember_map(route, map_name)

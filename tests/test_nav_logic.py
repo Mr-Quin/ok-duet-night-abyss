@@ -391,15 +391,15 @@ class TestLeavingARun(unittest.TestCase):
         self.assertEqual(backend2.actions, [('click', 0.5, 0.9)])
         self.assertFalse(nav2.state['giving_up'])
 
-    def test_exit_confirmation_is_cancelled_unless_giving_up(self):
+    def test_exit_is_confirmed_only_after_the_menu_showed_no_reward(self):
         confirm = {'cancel': {'x': 0.4, 'y': 0.6}, 'confirm': {'x': 0.6, 'y': 0.6}}
-        nav, backend = navigator(World())
-        H.on_exit_confirm(nav, screen(), confirm)
-        nav2, backend2 = navigator(World())
-        nav2.state['giving_up'] = True
-        H.on_exit_confirm(nav2, screen(), confirm)
-        self.assertEqual(backend.actions, [('click', 0.4, 0.6)])
-        self.assertEqual(backend2.actions, [('click', 0.6, 0.6)])
+        clicks = []
+        for state in ({}, {'giving_up': True}, {'giving_up': True, 'no_reward_seen': True}):
+            nav, backend = navigator(World())
+            nav.state.update(state)
+            H.on_exit_confirm(nav, screen(), confirm)
+            clicks.append(backend.actions)
+        self.assertEqual(clicks, [[('click', 0.4, 0.6)], [('click', 0.4, 0.6)], [('click', 0.6, 0.6)]])
 
     def test_round_dialog_retreats(self):
         nav, backend = navigator(World())
