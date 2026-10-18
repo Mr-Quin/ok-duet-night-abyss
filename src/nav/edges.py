@@ -198,7 +198,7 @@ def select_level(nav, scr, info, book, st):
         st.pop('level', None)
         return False
     if st.get('level') != book:
-        st.update(level=book, names=None, seen=set(), at_top=False)
+        st.update(level=book, names=None, seen=[], at_top=False, top_read=None)
         if S.selected_level(scr, info['levels']) != book:
             nav.log('  选择 Lv.%d' % book)
             nav.b.click(S.LEVEL_X, y)
@@ -236,12 +236,18 @@ def learn_rows(nav, scr, info, book, st):
             nav.b.scroll(0.4, 0.45, 30)
             st['at_top'] = True
             return False
+        # 刚切换等级时列表是一行行出来的；滚到顶部也要一会儿，两次读到同样的几行才算停稳
+        if len(names) < 3 and nav.wait(3) is None:
+            return None
+        if st.get('at_top') and st.get('top_read') != names:
+            st['top_read'] = names
+            return None
         st['names'], st['offset'] = list(names), 0
     elif st['offset'] is not None:
         offset = align(st['names'], names)
         if offset is None:
             nav.log('  对不上已经看到的行 %s，重新从顶部数' % names)
-            st.update(names=None, at_top=False)
+            st.update(names=None, at_top=False, seen=[], top_read=None)
             return False
         st['offset'] = offset
         st['names'] += names[len(st['names']) - offset:]
@@ -265,11 +271,13 @@ def open_row(nav, scr, info, book, st):
         if idx >= len(listed):
             idx = None
     if idx is None:
-        if tuple(names) in st['seen']:
+        # 滚到两组之间时一次滚动有时不动，连着三次都是这几行才算到底
+        repeats = st['seen'].count(tuple(names))
+        if repeats >= 2:
             raise NoSuchEntry(book, row, st['names'])
-        st['seen'].add(tuple(names))
+        st['seen'].append(tuple(names))
         nav.log('  第 %r 行不在 %s 中，向下滚动' % (row, names))
-        nav.b.scroll(0.4, 0.45, -3)
+        nav.b.scroll(0.4, 0.45, -3 - 2 * repeats)
         return False
     nav.log('  第 %r 行 -> %s' % (row, names[idx]))
     nav.click(listed[idx]['button'])

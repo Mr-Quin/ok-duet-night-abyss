@@ -43,6 +43,7 @@ class RunLoop:
         self.observer = observer or O.Observer(task)
         self.clock = clock
         self.behaviour = None
+        self.mode = ''
         self.hands_off = False
         self.runs_done = 0
         self.live = False
@@ -54,16 +55,20 @@ class RunLoop:
     def enter(self):
         """导航到关卡的开始界面，读出关卡类型，扼守再设好游戏的自动轮次。"""
         self.nav.go(self.job.target)
-        mode = self.nav.where().info.get('mode') or ''
-        kind = next((b for b in self.behaviours if any(n in mode for n in b.names)), None)
+        info = self.nav.where().info
+        self.mode = info.get('mode') or ''
+        kind = next((b for b in self.behaviours if any(n in self.mode for n in b.names)), None)
         if kind is None:
-            raise UnsupportedMission(mode)
+            raise UnsupportedMission(self.mode)
         if not isinstance(self.behaviour, kind):
             self.behaviour = kind(self.task)
         self.hands_off = kind.uses_rounds and self.job.rounds > 1
         if kind.uses_rounds:
             # 游戏的自动轮次 N 表示打完第一轮后再自动打 N 轮，0 就是关掉
             self.nav.set_auto_rounds(self.job.rounds - 1)
+        elif info.get('auto_on'):
+            # 不按轮次打的关卡开着自动轮次时，游戏会自己一局接一局，和这里数局数、点再次进行抢
+            self.nav.set_auto_rounds(0)
         self.live = False
 
     def run(self):
@@ -94,7 +99,7 @@ class RunLoop:
         if not self.live:
             self.live = True
             self.rounds_seen = 0
-            self.task.log_info(f"第 {self.runs_done + 1} 局开始（{self.behaviour.name}）")
+            self.task.log_info(f"第 {self.runs_done + 1} 局开始（{self.mode}）")
             if not self.behaviour.begin():
                 self.live = False
         elif not self.behaviour.tick():

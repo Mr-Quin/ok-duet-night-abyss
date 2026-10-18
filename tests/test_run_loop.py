@@ -33,15 +33,16 @@ class FakeTask:
 
 
 class FakeNav:
-    def __init__(self, mode):
+    def __init__(self, mode, auto_on=False):
         self.mode = mode
+        self.auto_on = auto_on
         self.calls = []
 
     def go(self, target):
         self.calls.append(('go', target))
 
     def where(self):
-        return type('State', (), {'info': {'mode': self.mode}})()
+        return type('State', (), {'info': {'mode': self.mode, 'auto_on': self.auto_on}})()
 
     def set_auto_rounds(self, n):
         self.calls.append(('auto', n))
@@ -112,6 +113,15 @@ class TestRunLoop(unittest.TestCase):
                                                   mode='é©±ç¦»')
         self.assertEqual(expulsion.log, ['begin'])
         self.assertFalse(any(c[0] == 'auto' for c in nav.calls))
+
+    def test_turns_off_the_games_auto_rounds_for_missions_without_rounds(self):
+        task, nav = FakeTask(), FakeNav('避险', auto_on=True)
+        frames = [O.IN_RUN] * 2 + [O.RESULT] * 2
+        look = lambda t: frames.pop(0) if len(frames) > 1 else frames[0]
+        hazard = behaviour('避险', False)
+        L.RunLoop(task, nav, L.Job('target', rounds=3, runs=1), observer=O.Observer(task, look),
+                  clock=lambda: task.now, behaviours=(hazard,)).run()
+        self.assertIn(('auto', 0), nav.calls)
 
     def test_an_unsupported_mission_type_stops_before_doing_anything(self):
         with self.assertRaises(L.UnsupportedMission):
