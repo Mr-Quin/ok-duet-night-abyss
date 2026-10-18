@@ -192,6 +192,8 @@ class RunLoop:
         self.start(now)
 
     def on_start(self, now):
+        # 到了开始界面说明上一局已经结束，结算界面没看到也一样，不然下一局会跳过 begin
+        self.live = False
         if self.done():
             return True
         self.start(now)

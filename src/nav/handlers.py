@@ -3,7 +3,7 @@
 局内的规则保证路上遇到正在进行的一局时，在第一个不损失奖励的时机离开：轮次弹窗撤离、
 结算界面退出，或者在本局还没有任何奖励时放弃。
 
-用到的 nav.state 键：giving_up（正在放弃本局）、loading（刚离开副本或正在启动游戏，在等加载）、
+用到的 nav.state 键：giving_up（正在放弃本局）、no_reward_seen（局内菜单上看到了「无奖励」，只有这时才能确认放弃）、loading（刚离开副本或正在启动游戏，在等加载）、
 run_waits（局内等了几次）、login_waits（启动时在登录这一步等了几次）、
 entered_row（从夜航手册哪一行进的开始界面，edges.py 写入）。
 """
@@ -55,10 +55,10 @@ def on_result(nav, scr, info):
 
 @graph.handler('exit_confirm')
 def on_exit_confirm(nav, scr, info):
-    if nav.state.get('giving_up') and info['confirm']:
+    if nav.state.get('giving_up') and nav.state.get('no_reward_seen') and info['confirm']:
         nav.log('  确认结束：本局还没有奖励')
         nav.click(info['confirm'])
-        nav.state.update(giving_up=False, loading=True)
+        nav.state.update(giving_up=False, no_reward_seen=False, loading=True)
         return False
     nav.log('  取消结束任务的确认')
     if info['cancel']:
@@ -72,6 +72,7 @@ def on_exit_confirm(nav, scr, info):
 def on_dungeon_menu(nav, scr, info):
     if nav.state.get('giving_up') and info['nothing_earned']:
         nav.log('  放弃挑战：本局还没有奖励')
+        nav.state['no_reward_seen'] = True
         nav.click(info['give_up'])
         return False
     if nav.state.get('giving_up'):

@@ -21,7 +21,7 @@ class FakeTask:
     def log_info(self, msg):
         pass
 
-    def give_up_mission(self):
+    def exit_mission(self):
         self.gave_up = True
 
 
