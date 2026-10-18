@@ -29,12 +29,20 @@ MIN_AGREEMENT = 0.97
 
 
 def recorded(root):
+    """(full-size frame, row); the label is the hand-checked one from corrections.json when there is one."""
+    corrections = {}
+    path = os.path.join(root, 'corrections.json')
+    if os.path.exists(path):
+        with open(path, encoding='utf-8') as f:
+            corrections = {os.path.normpath(k): v for k, v in json.load(f).items()}
     for index in sorted(glob.glob(os.path.join(root, '**', 'labels.jsonl'), recursive=True)):
         folder = os.path.dirname(index)
         with open(index, encoding='utf-8') as f:
             for line in f:
                 row = json.loads(line)
                 if row.get('full'):
+                    key = os.path.normpath(os.path.relpath(os.path.join(folder, row['file']), root))
+                    row['label'] = corrections.get(key, row['label'])
                     yield os.path.join(folder, 'full', row['file']), row
 
 
