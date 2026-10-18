@@ -150,6 +150,24 @@ class TestRunLoop(unittest.TestCase):
         self.assertEqual(manual[0], ('manual', None))
         self.assertEqual(manual[-1][1], L.Mission.CONTINUE)
 
+    def test_a_navigation_error_on_the_way_in_is_retried_from_the_open_world(self):
+        task, nav = FakeTask(), FakeNav('扼守')
+        failures = [L.NavError('一直在重复')]
+        real_go = nav.go
+
+        def go(target):
+            real_go(target)
+            if target == 'target' and failures:
+                raise failures.pop()
+        nav.go = go
+        frames = [O.IN_RUN] * 2 + [O.ROUND_DIALOG] * 2 + [O.RESULT] * 2
+        look = lambda t: frames.pop(0) if len(frames) > 1 else frames[0]
+        loop = L.RunLoop(task, nav, L.Job('target', rounds=1, runs=1), observer=O.Observer(task, look),
+                         clock=lambda: task.now, behaviours=(behaviour('扼守', True),))
+        loop.run()
+        self.assertEqual(loop.runs_done, 1)
+        self.assertEqual([c[1] for c in nav.calls if c[0] == 'go'][:3], ['target', L.World(), 'target'])
+
     def test_an_unrecognised_screen_for_too_long_navigates_back(self):
         task, nav, loop, _, _ = run([O.OTHER, O.IN_RUN, O.RESULT], L.Job('target', runs=1), hold=120)
         self.assertEqual([c for c in nav.calls if c == ('go', 'target')], [('go', 'target')] * 2)
