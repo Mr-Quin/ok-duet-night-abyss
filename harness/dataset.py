@@ -17,6 +17,16 @@ EVERY = 0.5
 # full-size frames for replaying the rule-based detectors offline: on every label change, and
 # now and then while the label stays the same
 FULL_EVERY = 10
+# blanked before anything is written: the UID under the screen and the chat line bottom left
+MASKS = [(0.44, 0.965, 0.56, 1.0), (0.14, 0.95, 0.42, 1.0)]
+
+
+def masked(frame):
+    out = frame.copy()
+    H, W = out.shape[:2]
+    for x0, y0, x1, y1 in MASKS:
+        out[int(y0 * H):int(y1 * H), int(x0 * W):int(x1 * W)] = 0
+    return out
 
 
 class Dataset:
@@ -35,6 +45,7 @@ class Dataset:
         self.last[source] = now
         name = '%06d.jpg' % self.count
         self.count += 1
+        frame = masked(frame)
         small = cv2.resize(frame, SIZE, interpolation=cv2.INTER_AREA)
         cv2.imwrite(os.path.join(self.dir, name), small, [cv2.IMWRITE_JPEG_QUALITY, 85])
         row = dict(file=name, t=round(now, 2), source=source, label=label, **extra)

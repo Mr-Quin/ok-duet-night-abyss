@@ -29,15 +29,39 @@ STD = np.array([0.229, 0.224, 0.225], dtype=np.float32)
 
 
 def load(root, source):
-    train, test = [], []
+    """(train, test) lists of (path, label). Whole sessions are held out once there are enough of
+    them; with fewer, the last fifth of each session. Hand corrections win over recorded labels."""
+    corrections = {}
+    path = os.path.join(root, 'corrections.json')
+    if os.path.exists(path):
+        with open(path, encoding='utf-8') as f:
+            corrections = {os.path.normpath(k): v for k, v in json.load(f).items()}
+    sessions = []
     for index in sorted(glob.glob(os.path.join(root, '**', 'labels.jsonl'), recursive=True)):
         folder = os.path.dirname(index)
         with open(index, encoding='utf-8') as f:
             rows = [json.loads(line) for line in f]
-        rows = [r for r in rows if r['source'] == source and r['label'] is not None]
-        cut = int(len(rows) * (1 - HOLD_OUT))
-        for k, r in enumerate(rows):
-            (train if k < cut else test).append((os.path.join(folder, r['file']), r['label']))
+        items = []
+        for r in rows:
+            if r['source'] != source:
+                continue
+            p = os.path.join(folder, r['file'])
+            label = corrections.get(os.path.normpath(os.path.relpath(p, root)), r['label'])
+            if label is not None and label != 'skip':
+                items.append((p, label))
+        if items:
+            sessions.append(items)
+    train, test = [], []
+    if len(sessions) >= 5:
+        total, held = sum(map(len, sessions)), 0
+        for items in reversed(sessions):
+            (test if held < HOLD_OUT * total else train).extend(items)
+            held += len(items)
+    else:
+        for items in sessions:
+            cut = int(len(items) * (1 - HOLD_OUT))
+            train += items[:cut]
+            test += items[cut:]
     return train, test
 
 
@@ -85,9 +109,17 @@ def main():
     print('train counts', collections.Counter(l for _, l in train).most_common(), flush=True)
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     net = model_for(len(classes)).to(device)
-    loader = torch.utils.data.DataLoader(Frames(train, classes), batch_size=BATCH, shuffle=True, num_workers=0)
+    if os.environ.get('FROZEN'):
+        # baseline: only the last layer learns, the ImageNet features stay as they are
+        for name, p in net.named_parameters():
+            p.requires_grad = name.startswith('classifier.3')
+    # every class drawn about equally often, so in_run does not drown the rare screens
+    counts = collections.Counter(label for _, label in train)
+    weights = [1.0 / counts[label] for _, label in train]
+    sampler = torch.utils.data.WeightedRandomSampler(weights, num_samples=len(train), replacement=True)
+    loader = torch.utils.data.DataLoader(Frames(train, classes), batch_size=BATCH, sampler=sampler, num_workers=0)
     test_loader = torch.utils.data.DataLoader(Frames(test, classes), batch_size=BATCH, num_workers=0)
-    opt = torch.optim.AdamW(net.parameters(), lr=1e-3, weight_decay=1e-4)
+    opt = torch.optim.AdamW([p for p in net.parameters() if p.requires_grad], lr=1e-3, weight_decay=1e-4)
     loss_fn = nn.CrossEntropyLoss()
     for epoch in range(EPOCHS):
         net.train()
@@ -102,6 +134,12 @@ def main():
         print('epoch %d loss %.4f test acc %.4f (%.0fs)' % (epoch, total / len(train), acc, time.time() - t0), flush=True)
     acc, confusion = evaluate(net, test_loader, device, classes)
     print('final test acc %.4f' % acc)
+    for c in classes:
+        tp = confusion[c, c]
+        actual = sum(v for (a, b), v in confusion.items() if a == c)
+        predicted = sum(v for (a, b), v in confusion.items() if b == c)
+        if actual or predicted:
+            print('  %-14s recall %5.3f (%d)  precision %5.3f' % (c, tp / max(1, actual), actual, tp / max(1, predicted)))
     for (a, b), v in sorted(confusion.items()):
         if a != b:
             print('  %s -> %s: %d' % (a, b, v))
