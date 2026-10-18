@@ -43,6 +43,33 @@ sample, replay detectors offline, and look for the visual cue that separates the
 classes. A learned model would likely latch onto the same cue; here a 48x76 template was enough
 and needs no training or retraining.
 
+## Model results (25 sessions, 3,277 frames, every fifth session held out)
+
+| Model | Screen (339 test frames) | Phase (762 test frames) |
+|---|---|---|
+| MobileNetV3-small fine-tuned, 320x180, class-balanced | 92.3% | 99.0% |
+| Same, frozen ImageNet features, last layer only | 91.0% | 96.7% |
+| 1-NN on frozen features, 1 / 5 / 20 examples per class | 59 / 69 / 58% | 42 / 51 / 90% |
+| Unseen class flagged by distance, at 95% of known kept | about 24% | 2 to 12% |
+
+Latency 14 to 23 ms per frame on the 4060 or the CPU. Labels are the rules' own (with 36
+hand corrections), so these numbers measure imitation, and the earlier sessions still carry
+uncorrected world/run mislabels in both train and test.
+
+- The phase model is close to the rules (in_run recall 99.5%) but still wrong about once a
+  hundred looks; at several looks a second it would need the same hysteresis and navigator
+  confirmation the rules use, and it would still not beat them.
+- The screen model has systematic errors (21 run frames called result, result precision 0.125).
+- **Few-shot on off-the-shelf features does not work**: 59 to 69% accuracy and a weak
+  unseen-screen signal. "Add five frames for a new screen" would need embeddings trained for
+  this game (metric learning), which brings retraining back.
+
+**Verdict for screen/phase recognition: not worth pursuing now.** Rules plus the data loop
+(record, audit, replay, find the separating cue) are faster, more accurate and cheaper to
+change for a new screen. The model route becomes interesting only where rules cannot see at
+all (enemy positions, attack tells for real combat), and the same recorder and audit tooling is
+what that would need first.
+
 ## Open questions being tested
 
 - Can a classifier tell the open world from a run? The rule-based in_team() check cannot (it

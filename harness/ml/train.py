@@ -41,9 +41,14 @@ def load(root, source):
         folder = os.path.dirname(index)
         with open(index, encoding='utf-8') as f:
             rows = [json.loads(line) for line in f]
+        if os.path.basename(folder) < os.environ.get('SINCE', ''):
+            continue
         items = []
         for r in rows:
             if r['source'] != source:
+                continue
+            # in_run before the loop confirmed the run may be the open world (the HUD template matches both)
+            if r['source'] == 'phase' and r['label'] == 'in_run' and r.get('live') is False:
                 continue
             p = os.path.join(folder, r['file'])
             label = corrections.get(os.path.normpath(os.path.relpath(p, root)), r['label'])
@@ -53,10 +58,9 @@ def load(root, source):
             sessions.append(items)
     train, test = [], []
     if len(sessions) >= 5:
-        total, held = sum(map(len, sessions)), 0
-        for items in reversed(sessions):
-            (test if held < HOLD_OUT * total else train).extend(items)
-            held += len(items)
+        # every fifth session, so the test set spans the night instead of whatever ran last
+        for k, items in enumerate(sessions):
+            (test if k % 5 == 4 else train).extend(items)
     else:
         for items in sessions:
             cut = int(len(items) * (1 - HOLD_OUT))
