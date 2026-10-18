@@ -21,6 +21,7 @@ HANDS_OFF_DIALOG_WAIT = 20
 ESC_MENU_WAIT = 3
 MAX_FAILURES = 3
 RETRY_SECONDS = 10
+RUN_HUD_WAIT = 8
 
 
 class UnsupportedMission(Exception):
@@ -73,9 +74,13 @@ class RunLoop:
 
     def run(self):
         self.enter_with_retries()
+        last = None
         while True:
             now = self.clock()
             state = self.observer.next(now)
+            if state != last:
+                self.task.log_info(f"阶段：{state}")
+                last = state
             if state is not None:
                 try:
                     if getattr(self, 'on_' + state)(now):
@@ -109,6 +114,11 @@ class RunLoop:
 
     def on_in_run(self, now):
         if not self.live:
+            # in_run 只认得出 HUD，大世界里也有；开局前用导航确认真的在局内，HUD 刚进局时还没画出来，等几秒
+            if not self.task.wait_until(lambda: self.nav.where().in_run, time_out=RUN_HUD_WAIT, raise_if_not_found=False):
+                self.task.log_info("看着像局内但不是，重新导航到关卡")
+                self.enter()
+                return
             self.live = True
             self.rounds_seen = 0
             self.task.log_info(f"第 {self.runs_done + 1} 局开始（{self.mode}）")
