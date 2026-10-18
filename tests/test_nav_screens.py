@@ -7,6 +7,7 @@ from src.config import config
 from src.nav import screens as S
 from src.nav import text_zh as T
 from src.nav.okscript import OkScriptBackend
+from src.run import observe as O
 from src.tasks.AutoDefence import AutoDefence
 from src.tasks.fullauto.marker_walk import MarkerWalk
 
@@ -128,9 +129,9 @@ class TestNavScreens(TaskTestCase):
 
     def test_result_screen_is_not_the_between_round_popup(self):
         self.set_image(IMAGES + 'result_defence.png')
-        self.assertTrue(self.task.is_result_screen())
+        self.assertEqual(O.observe(self.task), O.RESULT)
         self.set_image(IMAGES + 'manual_select_next_round.png')
-        self.assertFalse(self.task.is_result_screen())
+        self.assertEqual(O.observe(self.task), O.MANUAL)
 
 
 if __name__ == '__main__':
