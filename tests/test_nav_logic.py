@@ -351,6 +351,19 @@ class TestLeavingARun(unittest.TestCase):
         self.assertIsNone(H.on_dungeon(nav, screen(), {'to_objective': False, 'round': 2}))
         self.assertEqual(backend.actions, [])
 
+    def test_a_run_without_rounds_checks_the_menu_once_then_waits(self):
+        nav, backend = navigator(World())
+        info = {'to_objective': False, 'round': None, 'mode': '驱逐'}
+        self.assertFalse(H.on_dungeon(nav, screen(), info))
+        self.assertEqual(backend.actions, [('key', 'esc')])
+        self.assertTrue(nav.state['giving_up'])
+        self.assertIsNone(H.on_dungeon(nav, screen(), info))
+        self.assertEqual(backend.actions, [('key', 'esc')])
+
+    def test_a_run_without_rounds_is_recognised_by_its_mode_title(self):
+        screen_name, info = S.detect_dungeon(screen(('驱逐', 0.033, 0.274), ('驱逐敌人', 0.07, 0.31)), None)
+        self.assertEqual((screen_name, info['mode']), ('dungeon', '驱逐'))
+
     def test_gives_up_only_when_nothing_is_earned(self):
         menu = {'resume': {'x': 0.5, 'y': 0.9}, 'give_up': {'x': 0.9, 'y': 0.9}}
         nav, backend = navigator(World())
