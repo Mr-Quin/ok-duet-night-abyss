@@ -37,6 +37,9 @@ def signature(scr, screen, info):
     parts = [screen] + [str(info.get(k)) for k in KEYS.get(screen, ())]
     if screen == 'commission' and info.get('tab') == '夜航手册':
         parts.append(str(S.selected_level(scr, info.get('levels'))))
+        # full-frame OCR rarely reads the level column, so the line above is usually None; the ring
+        # around the selected level is what the navigator checks, so keep visits with it elsewhere apart
+        parts.append(ring_position(scr))
         parts.append('|'.join(r['name'] or '?' for r in S.nightbook_rows(scr)))
         # the level column scrolls on its own; two visits with it in different places read differently
         parts.append(','.join(sorted(i['t'] for i in scr.items if i['x'] < 0.11 and re.fullmatch(r'\d\d', i['t']))))
@@ -47,6 +50,14 @@ def signature(scr, screen, info):
     elif screen in ('unknown', 'other_menu'):
         parts.append(dhash(scr.img))
     return '/'.join(parts)
+
+
+def ring_position(scr):
+    from src.nav import screens as S
+    x0, x1 = S.LEVEL_RING_X
+    scores = [(scr.lit(x0, y / 100 - 0.03, x1, y / 100 + 0.03, level=120), y) for y in range(20, 83, 2)]
+    best, y = max(scores)
+    return 'ring%d' % (round(y / 4) * 4) if best >= S.SELECTED_LIT else 'ring-'
 
 
 def dhash(img):
