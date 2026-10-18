@@ -27,6 +27,7 @@ SAME_VIEW = 0.75
 SAME_MARKER = 0.05
 # 录制工具和 ok-script 对左 Shift 的叫法不同
 KEY_NAMES = {'shift_l': 'lshift', 'shift_r': 'rshift'}
+MOVE_KEYS = ('w', 'a', 's', 'd')
 
 
 def view_feature(frame):
@@ -102,7 +103,7 @@ def _write(path, data):
 
 def play(task, route):
     """按时间线重放一条路线，结束时松开所有还按着的键。"""
-    t0, held = time.time(), set()
+    t0, held, dodge = time.time(), [], task.get_dodge_key()
     try:
         for step in route.steps:
             wait = step['t'] - (time.time() - t0)
@@ -110,14 +111,21 @@ def play(task, route):
                 task.sleep(wait)
             if 'down' in step:
                 key = KEY_NAMES.get(step['down'], step['down'])
+                if key == dodge and not any(k in MOVE_KEYS for k in held):
+                    # 不带方向的闪避是向后撤
+                    continue
                 task.send_key_down(key)
-                held.add(key)
+                held.append(key)
             elif 'up' in step:
                 key = KEY_NAMES.get(step['up'], step['up'])
-                task.send_key_up(key)
-                held.discard(key)
+                if key in MOVE_KEYS and dodge in held:
+                    task.send_key_up(dodge)
+                    held.remove(dodge)
+                if key in held:
+                    task.send_key_up(key)
+                    held.remove(key)
             elif 'turn' in step:
                 task.move_mouse_relative(step['turn'][0], step['turn'][1])
     finally:
-        for key in held:
+        for key in sorted(held, key=lambda k: k in MOVE_KEYS):
             task.send_key_up(key)

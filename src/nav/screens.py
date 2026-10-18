@@ -24,11 +24,14 @@ LEVELS = [20, 30, 40, 50, 55, 60, 65, 70, 75, 80]
 LEVEL_X = 0.075
 LEVEL_STEP = 0.0731
 LEVEL_COLUMN = (0.03, 0.15, 0.11, 0.95)
+# 夜航手册相邻两行「前往」按钮的距离，占画面高度的比例
+BOOK_ROW_PITCH = 0.103
 # 选中等级外面圆圈的右半边，比白字暗，所以亮度阈值用 120
 LEVEL_RING_X = (0.086, 0.095)
 
-# 开始界面的自动轮次面板：开关和标签在同一行，按钮在计数下面一行
+# 开始界面的自动轮次面板：开关和标签在同一行，计数在下一行，按钮再下一行
 AUTO_SWITCH_X = 0.9375
+AUTO_LABEL_DY = 0.039
 AUTO_BUTTONS_DY = 0.039
 AUTO_MIN_X, AUTO_MINUS_X, AUTO_PLUS_X, AUTO_MAX_X = 0.612, 0.648, 0.919, 0.955
 # 滑块手柄在轮次 1 时的中心，以及每一轮移动的距离（99 时在 0.894）
@@ -86,13 +89,22 @@ def selected_level(scr, levels):
 
 
 def nightbook_rows(scr):
-    """夜航手册页面上的行，[{'name', 'button'}]，从上到下。"""
-    out = []
-    for b in scr.find(T.GO, (0.55, 0.2, 0.7, 0.9)):
+    """夜航手册页面上的行，[{'name', 'button'}]，从上到下，一格一行。
+
+    行距是固定的，所以按「前往」按钮的高度排格子。只露出一半的行名字读不出来（会读成列表顶上
+    的花纹 HTHHHIHRYH），name 为 None；没认出按钮的格子 button 为 None。
+    """
+    buttons = sorted(scr.find(T.GO, (0.55, 0.2, 0.7, 0.9)), key=lambda b: b['y'])
+    if not buttons:
+        return []
+    slots = {}
+    for b in buttons:
         names = [i for i in scr.items if 0.1 < i['x'] < 0.3 and abs(i['y'] - b['y']) < 0.03
                  and not any(w in i['t'] for w in T.DROP_WORDS)]
-        out.append({'name': names[0]['t'].replace(' ', '') if names else '', 'button': b})
-    return out
+        name = names[0]['t'].replace(' ', '') if names else ''
+        readable = sum('一' <= c <= '鿿' for c in name) >= 2
+        slots[round((b['y'] - buttons[0]['y']) / BOOK_ROW_PITCH)] = {'name': name if readable else None, 'button': b}
+    return [slots.get(k, {'name': None, 'button': None}) for k in range(max(slots) + 1)]
 
 
 def start_info(scr):
@@ -136,9 +148,11 @@ def auto_round_info(scr):
     """
     label = next(iter(scr.find(T.AUTO_LABEL, (0.55, 0.4, 0.75, 0.8))), None)
     count = next(((i, re.search(T.AUTO_ROUNDS, i['t'])) for i in scr.items if re.search(T.AUTO_ROUNDS, i['t'])), None)
-    return {'auto_on': bool(count) if label else None,
+    # 标签有时读不出来；读到了轮次数就说明开着，标签就在轮次那一行上面
+    label_y = label['y'] if label else (count[0]['y'] - AUTO_LABEL_DY if count else None)
+    return {'auto_on': bool(count) if label_y is not None else None,
             'auto_rounds': int(count[1].group(1)) if count else None,
-            'auto_switch': (AUTO_SWITCH_X, label['y']) if label else None,
+            'auto_switch': (AUTO_SWITCH_X, label_y) if label_y is not None else None,
             'auto_buttons_y': count[0]['y'] + AUTO_BUTTONS_DY if count else None}
 
 
@@ -230,6 +244,10 @@ def detect_dungeon(scr, atlas):
     if any(scr.find(t, hud) for t in T.ROUND_HUD):
         m = next((re.search(T.ROUND_NOW, i['t']) for i in scr.find(T.ROUND_HUD[0], hud) if re.search(T.ROUND_NOW, i['t'])), None)
         return 'dungeon', {'round': int(m.group(1)) if m else None, 'to_objective': bool(scr.find(T.TO_OBJECTIVE, hud))}
+    # 不按轮次打的关卡没有轮次栏，任务栏顶上只写着关卡类型
+    title = next((i['t'] for i in scr.items if i['x'] < 0.08 and 0.25 < i['y'] < 0.3 and i['t'] in T.RUN_MODES), None)
+    if title:
+        return 'dungeon', {'round': None, 'to_objective': False, 'mode': title}
 
 
 @graph.detector(80)
