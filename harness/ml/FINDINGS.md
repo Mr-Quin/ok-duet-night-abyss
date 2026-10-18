@@ -74,11 +74,42 @@ uncorrected world/run mislabels in both train and test.
   unseen-screen signal. "Add five frames for a new screen" would need embeddings trained for
   this game (metric learning), which brings retraining back.
 
+A blind audit (harness/ml/audit.py) settled whether the screen model's misses were label noise:
+on 40 held-out frames where model and recorded label disagreed, judged by eye without seeing
+either label, the recorded label was right 34 times and the model 5 times; on 30 sampled
+agreements both were right 30 times. The misses are real model errors, mostly frames from one
+dark defence map called `result`, which looks like a map-appearance shortcut rather than
+reading the HUD.
+
+What these results do and do not show (after a second opinion): off-the-shelf features with
+1-NN fail at few-shot, and this fine-tuned classifier is not ready to replace rules. They do not
+prove game-specific metric learning is required; fine-tuned-encoder prototypes with the new
+class withheld from training would be the next, cheap test. Speed: OCR is about 41% of a
+navigation step, so a screen classifier could save up to about 4 s per navigation, but only on
+steps that do not need OCR anyway, and that is 0.4 to 1.1% of a ten-run job.
+
 **Verdict for screen/phase recognition: not worth pursuing now.** Rules plus the data loop
 (record, audit, replay, find the separating cue) are faster, more accurate and cheaper to
 change for a new screen. The model route becomes interesting only where rules cannot see at
 all (enemy positions, attack tells for real combat), and the same recorder and audit tooling is
 what that would need first.
+
+## What the offline harness can and cannot show
+
+- Detector replay (test_replay) checks recorded frames against hand-checked labels, offline.
+- The recorded world replays one journey exactly, and as a graph in random target orders
+  (test_sim_fuzz). On a 60-target recording that was 69 covered successes and 111 coverage gaps
+  out of 180 attempts: most attempts were inconclusive, so "no navigator errors" only covers the
+  recorded paths. Larger recordings shrink the gaps.
+- Replay cannot show how the game reacts to a different action, so live soaks stay the
+  end-to-end test; the harness is a fast regression gate before them.
+
+## Next experiment worth running
+
+Learned marker/distance perception for the walker, scored by the walking decisions it would
+cause (wrong steering, false or missed arrival) against the current template + OCR. The
+recorder now saves a crop and the walker's reading at every marker lookup, so the overnight
+soak collects the footage it needs.
 
 ## Open questions being tested
 
