@@ -32,14 +32,16 @@ class AutoNightbookTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         super().__init__(*args, **kwargs)
         self.icon = FluentIcon.FLAG
         self.name = "自动夜航手册"
-        self.description = "从任意界面导航到夜航手册的关卡，支持扼守和驱离；仅支持简体中文客户端"
+        self.description = "从任意界面导航到夜航手册的关卡，支持扼守、驱离、驱逐和避险；仅支持简体中文客户端"
         self.group_name = "全自动"
         self.group_icon = FluentIcon.CAFE
 
         self.setup_commission_config()
         self.setup_mission_start_config()
         self.setup_combat_detection_config()
-        self.default_config.pop("轮次", None)
+        for unused in ("轮次", "随机游走"):
+            self.default_config.pop(unused, None)
+            self.config_description.pop(unused, None)
         self.default_config.update({
             "来源": SOURCES[0],
             "等级": f"Lv.{BOOK_LEVELS[1]}",

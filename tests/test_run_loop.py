@@ -1,4 +1,4 @@
-﻿# æŒ‰é˜¶æ®µè·‘å±€ï¼šæ•°å±€æ•°ã€è½®æ¬¡å¼¹çª—æ€Žä¹ˆå¤„ç†ã€æŒ‰å…³å¡ç±»åž‹é€‰æ‰“æ³•ã€å¡ä½æ—¶é‡æ–°å¯¼èˆª
+# 按阶段跑局：数局数、轮次弹窗怎么处理、按关卡类型选打法、卡住时重新导航
 import unittest
 
 from src.run import loop as L
@@ -70,18 +70,15 @@ def behaviour(kind_name, rounds, begins=None):
 
         def tick(self):
             return True
-
-        def next_round(self):
-            Fake.log.append('next_round')
     return Fake
 
 
-def run(script, job, mode='æ‰¼å®ˆ/æ— å°½', begins=None, hold=1):
-    """script é‡Œæ¯ä¸ªé˜¶æ®µè¿žç€çœ‹åˆ° hold æ‹ï¼›ç”¨å®ŒåŽåœåœ¨æœ€åŽä¸€ä¸ªé˜¶æ®µã€‚"""
+def run(script, job, mode='扼守/无尽', begins=None, hold=1):
+    """script 里每个阶段连着看到 hold 拍；用完后停在最后一个阶段。"""
     task, nav = FakeTask(), FakeNav(mode)
     frames = [s for s in script for _ in range(hold * O.Observer.SETTLE)]
     look = lambda t: frames.pop(0) if len(frames) > 1 else frames[0]
-    defence, expulsion = behaviour('æ‰¼å®ˆ', True, begins), behaviour('é©±ç¦»', False, begins)
+    defence, expulsion = behaviour('扼守', True, begins), behaviour('驱离', False, begins)
     loop = L.RunLoop(task, nav, job, observer=O.Observer(task, look), clock=lambda: task.now,
                      behaviours=(defence, expulsion))
     loop.run()
@@ -115,7 +112,7 @@ class TestRunLoop(unittest.TestCase):
 
     def test_picks_the_behaviour_from_the_mission_type(self):
         task, nav, loop, defence, expulsion = run([O.IN_RUN, O.RESULT], L.Job('target', rounds=3, runs=1),
-                                                  mode='é©±ç¦»')
+                                                  mode='驱离')
         self.assertEqual(expulsion.log, ['begin'])
         self.assertFalse(any(c[0] == 'auto' for c in nav.calls))
 
@@ -130,7 +127,7 @@ class TestRunLoop(unittest.TestCase):
 
     def test_an_unsupported_mission_type_stops_before_doing_anything(self):
         with self.assertRaises(L.UnsupportedMission):
-            run([O.IN_RUN], L.Job('target', runs=1), mode='æŽ¢é™©/æ— å°½')
+            run([O.IN_RUN], L.Job('target', runs=1), mode='探险/无尽')
 
     def test_a_run_that_was_given_up_does_not_count(self):
         task, _, loop, defence, _ = run([O.IN_RUN, O.START, O.IN_RUN, O.ROUND_DIALOG, O.RESULT],
@@ -155,11 +152,11 @@ class TestRunLoop(unittest.TestCase):
         self.assertEqual(sum(1 for c in nav.calls if c[0] == 'go'), 1 + 2 + 1)
 
     def test_a_single_frame_of_the_result_screen_mid_run_is_ignored(self):
-        task, nav = FakeTask(), FakeNav('æ‰¼å®ˆ')
+        task, nav = FakeTask(), FakeNav('扼守')
         frames = [O.IN_RUN] * 4 + [O.RESULT] + [O.IN_RUN] * 4 + [O.ROUND_DIALOG] * 2 + [O.RESULT] * 2
         look = lambda t: frames.pop(0) if len(frames) > 1 else frames[0]
         loop = L.RunLoop(task, nav, L.Job('target', rounds=1, runs=1), observer=O.Observer(task, look),
-                         clock=lambda: task.now, behaviours=(behaviour('æ‰¼å®ˆ', True),))
+                         clock=lambda: task.now, behaviours=(behaviour('扼守', True),))
         loop.run()
         self.assertEqual(loop.runs_done, 1)
         self.assertEqual(task.calls.count('quit_mission'), 1)
