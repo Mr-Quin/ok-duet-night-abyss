@@ -28,13 +28,13 @@ class RecordingBackend(Backend):
     def read(self):
         scr = self.inner.read()
         screen, info = S.classify(scr, self.atlas)
-        sid = self.world.add_state(scr, screen, info)
+        sid, oid = self.world.add_state(scr, screen, info)
         self.start = self.start or sid
         if self.current is not None and (self.pending or sid != self.current):
             self.world.add_transition(self.current, self.pending, sid)
         if self.trace:
             self.trace[-1]['actions'] = list(self.pending)
-        self.trace.append({'state': sid, 'actions': []})
+        self.trace.append({'state': sid, 'actions': []} if oid == sid else {'state': sid, 'obs': oid, 'actions': []})
         self.current, self.pending = sid, []
         return scr
 

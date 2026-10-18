@@ -33,11 +33,15 @@ class TraceBackend(Backend):
         self.step = -1
         self.buffer = []
 
+    def seen(self, step):
+        entry = self.trace[step]
+        return entry.get('obs', entry['state'])
+
     def frame(self):
-        return self.world.image(self.trace[max(self.step, 0)]['state'])
+        return self.world.image(self.seen(max(self.step, 0)))
 
     def ocr(self, img):
-        return self.world.items(self.trace[max(self.step, 0)]['state'])
+        return self.world.items(self.seen(max(self.step, 0)))
 
     def ocr_region(self, scr, x0, y0, x1, y1, scale=2.0):
         step = self.trace[self.step]
@@ -57,8 +61,8 @@ class TraceBackend(Backend):
         self.buffer = []
         if self.step >= len(self.trace):
             raise Diverged('the navigator kept going after the recording ended')
-        sid = self.trace[self.step]['state']
-        return Screen(self.world.image(sid), self.world.items(sid))
+        seen = self.seen(self.step)
+        return Screen(self.world.image(seen), self.world.items(seen))
 
     def click(self, x, y):
         self.buffer.append(('click', x, y))
