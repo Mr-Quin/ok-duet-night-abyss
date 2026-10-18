@@ -118,7 +118,13 @@ def main():
             if dev == 'cuda':
                 torch.cuda.synchronize()
         print('latency on %s: %.1f ms per frame' % (dev, 1000 * (time.perf_counter() - t0) / 50))
-    torch.save({'state': net.cpu().state_dict(), 'classes': classes}, os.path.join(out, '%s.pt' % source))
+    net = net.cpu()
+    torch.save({'state': net.state_dict(), 'classes': classes}, os.path.join(out, '%s.pt' % source))
+    # ok-dna's own Python has OpenVINO but no torch, so the live shadow check loads ONNX
+    torch.onnx.export(net, x.cpu(), os.path.join(out, '%s.onnx' % source), input_names=['frame'],
+                      output_names=['logits'], opset_version=17)
+    with open(os.path.join(out, '%s.json' % source), 'w', encoding='utf-8') as f:
+        json.dump({'classes': classes, 'size': [x.shape[3], x.shape[2]], 'test_acc': acc}, f, ensure_ascii=False)
 
 
 if __name__ == '__main__':

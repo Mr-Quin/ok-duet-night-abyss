@@ -11,6 +11,7 @@ from ok import Logger, TaskDisabledException
 from src.nav import Mission, Nav, NavError, Nightbook, NoSuchEntry
 from src.nav.okscript import CACHE_PATH, OkScriptBackend
 from harness import dataset
+from harness.ml import shadow
 from src.run.loop import Job, RunLoop, UnsupportedMission
 from src.run.observe import Observer
 from src.tasks.BaseCombatTask import BaseCombatTask
@@ -76,6 +77,7 @@ class AutoNightbookTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         try:
             observer = Observer(self)
             dataset.install(observer)
+            shadow.install(observer)
             RunLoop(self, self.nav, job, observer=observer).run()
         except TaskDisabledException:
             pass
