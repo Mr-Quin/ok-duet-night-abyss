@@ -34,19 +34,46 @@ def same_node(a, b):
     return a[0] == b[0] and (b[1] is None or a[1] == b[1])
 
 
+class SentInputs:
+    """转发给 backend，同时记下这一步发出去的输入。"""
+
+    def __init__(self, inner):
+        self.inner = inner
+        self.sent = []
+
+    def __getattr__(self, name):
+        return getattr(self.inner, name)
+
+    def click(self, x, y):
+        self.sent.append(('click', round(x, 3), round(y, 3)))
+        self.inner.click(x, y)
+
+    def drag(self, x0, y0, x1, y1):
+        self.sent.append(('drag', round(x0, 3), round(y0, 3), round(x1, 3), round(y1, 3)))
+        self.inner.drag(x0, y0, x1, y1)
+
+    def key(self, name):
+        self.sent.append(('key', name))
+        self.inner.key(name)
+
+    def scroll(self, x, y, notches):
+        self.sent.append(('scroll', notches))
+        self.inner.scroll(x, y, notches)
+
+
 class Navigator:
     """一次导航。"""
 
     def __init__(self, backend, target, log=None, atlas=None, cache_path=None):
-        self.b = backend
+        self.b = SentInputs(backend)
         self.goal, self.route = target.goal(), target.route()
-        self.trace = []
+        self.step_log = []
         log = log or (lambda msg: None)
 
-        def log_and_trace(msg):
-            self.trace.append(msg)
+        def log_step(msg):
+            self.step_log.append(msg)
             log(msg)
-        self.log = log_and_trace
+        self.log = log_step
         self.atlas = atlas if atlas is not None else S.load_atlas()
         self.cache_path = cache_path
         self.cache = self._load_cache()
@@ -83,6 +110,7 @@ class Navigator:
     def step(self):
         scr = self.b.read()
         screen, info = S.classify(scr, self.atlas)
+        self.seen_now = (screen, tuple(sorted(i['t'] for i in scr.items)))
         shown = {k: v for k, v in info.items() if isinstance(v, (str, int, float, bool, type(None)))}
         self.log('%s %s' % (screen, shown))
         handler = graph.HANDLERS.get(screen)
@@ -115,7 +143,7 @@ class Navigator:
         k = waits = 0
         while k < max_steps and waits < MAX_WAITS:
             before = self.b.thumb()
-            log_len = len(self.trace)
+            self.step_log, self.b.sent = [], []
             result = self.step()
             if result:
                 self.log('%d 步到达' % k)
@@ -126,10 +154,11 @@ class Navigator:
                 continue
             k += 1
             self.unsure = 0
-            state = tuple(self.trace[log_len:])
+            # 同一个画面上发同样的输入算重复；文字里有在变的（滚动后的行名）就不算
+            state = self.seen_now + (tuple(self.b.sent),)
             seen[state] = seen.get(state, 0) + 1
             if seen[state] > MAX_REPEATS:
-                raise NavError('一直在重复：%s' % ' / '.join(state))
+                raise NavError('一直在重复：%s' % ' / '.join(self.step_log))
             self.b.settle(before)
             if seen[state] >= 2:
                 # 游戏卡顿时会吞掉输入，重复同一个动作前多等一会儿

@@ -24,10 +24,9 @@ class Expulsion:
     def begin(self):
         task = self.task
         task.skill_tick.reset()
-        task._mission_started = False
         # 刚进局内的一两秒里按 ESC 不出菜单，「开局重置角色位置」会因为找不到菜单报错
         task.sleep(2)
-        if not task.move_on_begin():
+        if not task.apply_afk_mode():
             return False
         self.since = time.time()
         self.progress, self.pending, self.read_at = None, None, 0
@@ -59,6 +58,3 @@ class Expulsion:
         box = task.box_of_screen(*PROGRESS_BOX, name='expulsion_progress')
         texts = task.ocr(box=box, match=re.compile(r'\d'))
         return ''.join(re.findall(r'\d', ''.join(t.name for t in texts))) or None
-
-    def next_round(self):
-        self.since = time.time()

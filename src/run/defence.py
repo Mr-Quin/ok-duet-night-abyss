@@ -55,10 +55,6 @@ class Defence:
             task.skill_tick()
         return True
 
-    def next_round(self):
-        self.wave, self.wave_since = -1, time.time()
-        self.task.reset_wave_info()
-
     def wave_started(self, timeout=3, quiet=False):
         """到了目标点波次就会开始；没开始说明其实没到（比如距离读错了）。"""
         task = self.task
