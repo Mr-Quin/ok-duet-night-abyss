@@ -10,7 +10,7 @@ from qfluentwidgets import FluentIcon
 from ok import Logger, TaskDisabledException
 from src.nav import Mission, Nav, NavError, Nightbook, NoSuchEntry
 from src.nav.okscript import CACHE_PATH, OkScriptBackend
-from src.run.loop import Job, RunLoop, UnsupportedMission
+from src.run.loop import GaveUpTooOften, Job, RunLoop, UnsupportedMission
 from src.tasks.BaseCombatTask import BaseCombatTask
 from src.tasks.CommissionsTask import CommissionsTask
 from src.tasks.DNAOneTimeTask import DNAOneTimeTask
@@ -78,7 +78,9 @@ class AutoNightbookTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         except NoSuchEntry as e:
             raise Exception(f"夜航手册 Lv.{e.level} 现在只有 {len(e.names)} 行，选的是第 {job.target.row + 1} 行")
         except UnsupportedMission as e:
-            raise Exception(f"{self.describe(job.target)}是「{e.mode}」，现在只支持扼守和驱离")
+            raise Exception(f"{self.describe(job.target)}是「{e.mode}」，现在只支持扼守、驱离、驱逐和避险")
+        except GaveUpTooOften as e:
+            raise Exception(f"{self.describe(job.target)}{e}，先停下")
         except NavError as e:
             raise Exception(f"自动导航失败：{e}")
 
