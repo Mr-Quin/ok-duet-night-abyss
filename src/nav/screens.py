@@ -29,8 +29,9 @@ BOOK_ROW_PITCH = 0.103
 # 选中等级外面圆圈的右半边，比白字暗，所以亮度阈值用 120
 LEVEL_RING_X = (0.086, 0.095)
 
-# 开始界面的自动轮次面板：开关和标签在同一行，按钮在计数下面一行
+# 开始界面的自动轮次面板：开关和标签在同一行，计数在下一行，按钮再下一行
 AUTO_SWITCH_X = 0.9375
+AUTO_LABEL_DY = 0.039
 AUTO_BUTTONS_DY = 0.039
 AUTO_MIN_X, AUTO_MINUS_X, AUTO_PLUS_X, AUTO_MAX_X = 0.612, 0.648, 0.919, 0.955
 # 滑块手柄在轮次 1 时的中心，以及每一轮移动的距离（99 时在 0.894）
@@ -147,9 +148,11 @@ def auto_round_info(scr):
     """
     label = next(iter(scr.find(T.AUTO_LABEL, (0.55, 0.4, 0.75, 0.8))), None)
     count = next(((i, re.search(T.AUTO_ROUNDS, i['t'])) for i in scr.items if re.search(T.AUTO_ROUNDS, i['t'])), None)
-    return {'auto_on': bool(count) if label else None,
+    # 标签有时读不出来；读到了轮次数就说明开着，标签就在轮次那一行上面
+    label_y = label['y'] if label else (count[0]['y'] - AUTO_LABEL_DY if count else None)
+    return {'auto_on': bool(count) if label_y is not None else None,
             'auto_rounds': int(count[1].group(1)) if count else None,
-            'auto_switch': (AUTO_SWITCH_X, label['y']) if label else None,
+            'auto_switch': (AUTO_SWITCH_X, label_y) if label_y is not None else None,
             'auto_buttons_y': count[0]['y'] + AUTO_BUTTONS_DY if count else None}
 
 
