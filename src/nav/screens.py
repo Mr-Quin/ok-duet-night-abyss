@@ -3,6 +3,7 @@ import json
 import os
 import re
 
+import cv2
 import numpy as np
 
 from src.nav import graph
@@ -19,6 +20,26 @@ SECTION_Y = 0.027
 SELECTED_LIT = 0.03
 
 IN_RUN = ('dungeon', 'dungeon_menu', 'round_dialog', 'exit_confirm', 'result')
+
+# 左上角的图标：局内是退出的门，大世界是三条横线的菜单。不靠 OCR，任务栏的小字整帧 OCR 常常读不出来。
+# 录到的帧里局内都在 0.77 以上，大世界都在 0.53 以下
+RUN_EXIT_BOX = (0.008, 0.015, 0.045, 0.075)
+RUN_EXIT_MIN = 0.7
+_RUN_EXIT = []
+
+
+def run_exit_score(img):
+    if not _RUN_EXIT:
+        tpl = cv2.imread(os.path.join(os.path.dirname(__file__), 'run_exit.png'), cv2.IMREAD_GRAYSCALE)
+        _RUN_EXIT.append(tpl.astype(np.float32))
+    tpl = _RUN_EXIT[0]
+    H, W = img.shape[:2]
+    x0, y0, x1, y1 = RUN_EXIT_BOX
+    crop = cv2.cvtColor(img[int(y0 * H):int(y1 * H), int(x0 * W):int(x1 * W)], cv2.COLOR_BGR2GRAY)
+    crop = cv2.resize(crop, (tpl.shape[1], tpl.shape[0]), interpolation=cv2.INTER_AREA).astype(np.float32)
+    a = (crop - crop.mean()) / (crop.std() + 1e-6)
+    b = (tpl - tpl.mean()) / (tpl.std() + 1e-6)
+    return float((a * b).mean())
 
 LEVELS = [20, 30, 40, 50, 55, 60, 65, 70, 75, 80]
 LEVEL_X = 0.075
@@ -246,8 +267,8 @@ def detect_dungeon(scr, atlas):
         return 'dungeon', {'round': int(m.group(1)) if m else None, 'to_objective': bool(scr.find(T.TO_OBJECTIVE, hud))}
     # 不按轮次打的关卡没有轮次栏，任务栏顶上只写着关卡类型
     title = next((i['t'] for i in scr.items if i['x'] < 0.08 and 0.25 < i['y'] < 0.3 and i['t'] in T.RUN_MODES), None)
-    if title:
-        return 'dungeon', {'round': None, 'to_objective': False, 'mode': title}
+    if title or (scr.img is not None and run_exit_score(scr.img) >= RUN_EXIT_MIN):
+        return 'dungeon', {'round': None, 'to_objective': False, 'mode': title or '局内'}
 
 
 @graph.detector(80)
