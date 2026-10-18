@@ -1,4 +1,4 @@
-"""Soak test for the 30/65 task: run cases through the real ok-dna task on the game PC.
+"""Soak test for the nightbook task: run cases through the real ok-dna task on the game PC.
 
 Each case puts the game in a known place with the navigator, starts the task with a config,
 waits for the run count to be reached in ok-dna's log, and checks the game is back in the
@@ -9,7 +9,7 @@ open world. Run on the game PC with the live service up and the game in the fore
 
 The task is started through a scheduled task, so ok-dna runs in the desktop session even when
 this script is started over ssh. The scheduled task must run `main.py -t <n>`, n being the 1-based
-position of Auto65NavTask in src/config.py's onetime_tasks, with its output redirected to
+position of AutoNightbookTask in src/config.py's onetime_tasks, with its output redirected to
 logs/run.txt, the way run_plan.cmd does.
 """
 import json
@@ -21,26 +21,34 @@ import sys
 import time
 
 from src.nav import MainMenu, Nav, Nightbook, World
-from src.tasks.fullauto.Auto65NavTask import COMMISSION_LEVELS, NIGHTBOOK_ENTRIES
+from src.tasks.fullauto.AutoNightbookTask import BOOK_LEVELS, COMMISSION_LEVELS, SOURCES
 
 from harness.live.backend import LiveBackend
 
 SCHEDULED_TASK = 'okdna_fork'
-TASK_CONFIG = os.path.join('configs', 'Auto65NavTask.json')
+TASK_CONFIG = os.path.join('configs', 'AutoNightbookTask.json')
 RUN_LOG = os.path.join('logs', 'run.txt')
 CACHE = os.path.join('configs', 'nav_cache.json')
 # ok-dna's log says 已完成 n/m after every finished run
 DONE = '已完成 %d/%d'
-EVENTS = re.compile(r'地图 |导航到|按标记|按路线|没有对上|已到达目标|当作到了|波次没开始|被挡住|没找到目标标记|标记丢失|'
-                    r'走到目标超时|复位|当前轮次|终止任务|已完成 |exception stopped|^Exception')
+EVENTS = re.compile(r'地图 |导航到|局开始|按标记|按路线|没有对上|已到达目标|当作到了|波次没开始|被挡住|没找到目标标记|标记丢失|'
+                    r'走到目标超时|复位|超时|撤离|放弃|处理出错|认不出|当前轮次|已完成 |exception stopped|^Exception')
 
 
-def entry(lv, i):
-    return 'Lv.%d 第%d个 %s' % (lv, i + 1, NIGHTBOOK_ENTRIES[lv][i])
+def book(lv, row, rounds=2, runs=1):
+    return {'超时时间': 90, '来源': SOURCES[0], '等级': 'Lv.%d' % lv, '第几个': row, '每局轮次': rounds, '刷几次': runs}
 
 
-def cfg(target, rounds=2, runs=1, walk='按标记直线走'):
-    return {'超时时间': 90, '关卡': target, '每局轮次': rounds, '刷几次': runs, '走位方式': walk}
+def commission(lv, rounds=1, runs=4):
+    return {'超时时间': 90, '来源': SOURCES[1], '等级': 'Lv.%d' % lv, '每局轮次': rounds, '刷几次': runs}
+
+
+def book_rows(lv):
+    try:
+        with open(CACHE, encoding='utf-8') as f:
+            return len(json.load(f).get('names/%d' % lv, []))
+    except OSError:
+        return 0
 
 
 class Soak:
@@ -128,44 +136,54 @@ class Soak:
         return self.finish(name, self.wait_for(DONE % (runs, runs), timeout), t0)
 
     def restart_inside_run(self, name):
-        """Stop ok-dna once combat has started, then start the task again from inside the run."""
+        """Stop ok-dna once a run has started, then start the task again from inside the run."""
         self.ensure_world()
         t0 = time.time()
-        self.start(cfg(entry(30, 1)))
-        self.wait_for('战斗开始', 240)
+        self.start(book(30, 2))
+        self.wait_for('局开始', 240)
+        time.sleep(10)
         self.stop_okdna()
         time.sleep(5)
-        self.start(cfg(entry(30, 1)))
+        self.start(book(30, 2))
         return self.finish(name, self.wait_for(DONE % (1, 1), 600), t0)
 
 
 def cases(soak):
-    for lv in (30, 65):
-        for i in range(len(NIGHTBOOK_ENTRIES[lv])):
-            yield 'sweep Lv.%d #%d' % (lv, i + 1), lambda lv=lv, i=i: soak.run_case(
-                'sweep Lv.%d #%d' % (lv, i + 1), cfg(entry(lv, i)))
-    yield 'multi-run Lv.65 #5 2x3', lambda: soak.run_case(
-        'multi-run Lv.65 #5 2x3', cfg(entry(65, 4), rounds=3, runs=3), runs=3, timeout=900)
+    # every row the navigator has seen on each book page, one run each
+    for lv in BOOK_LEVELS:
+        for row in range(1, book_rows(lv) + 1):
+            name = 'book Lv.%d #%d' % (lv, row)
+            yield name, lambda name=name, lv=lv, row=row: soak.run_case(name, book(lv, row))
+    yield 'multi-run Lv.65 #5 3x3', lambda: soak.run_case(
+        'multi-run Lv.65 #5 3x3', book(65, 5, rounds=3, runs=3), runs=3, timeout=900)
+    yield 'multi-run 驱离 Lv.60 #1 x3', lambda: soak.run_case(
+        'multi-run 驱离 Lv.60 #1 x3', book(60, 1, runs=3), runs=3, timeout=900)
     yield 'from main menu', lambda: soak.run_case(
-        'from main menu', cfg(entry(30, 2)), before=lambda nav: nav.go(MainMenu()))
+        'from main menu', book(30, 3), before=lambda nav: nav.go(MainMenu()))
     yield 'from another start screen', lambda: soak.run_case(
-        'from another start screen', cfg(entry(30, 0)), before=lambda nav: nav.go(Nightbook(65, 3)))
+        'from another start screen', book(30, 1), before=lambda nav: nav.go(Nightbook(65, 3)))
     yield 'restart inside a run', lambda: soak.restart_inside_run('restart inside a run')
+    yield 'one round per run', lambda: soak.run_case(
+        'one round per run', book(30, 2, rounds=1), timeout=600)
     for lv in COMMISSION_LEVELS:
-        # 每次「再次进行」都从这个等级的地图里重新抽一张，看哪些图直线走得到
+        # 每次「再次进行」都从这个等级的地图里重新抽一张
         yield 'maps Lv.%d' % lv, lambda lv=lv: soak.run_case(
-            'maps Lv.%d' % lv, cfg('委托 扼守 Lv.%d' % lv, rounds=1, runs=4), runs=4, timeout=1200)
+            'maps Lv.%d' % lv, commission(lv), runs=4, timeout=1200)
     for lv in COMMISSION_LEVELS:
         yield 'pool Lv.%d' % lv, lambda lv=lv: soak.run_case(
-            'pool Lv.%d' % lv, cfg('委托 扼守 Lv.%d' % lv, rounds=1, runs=10), runs=10, timeout=2400)
-    yield 'one round per run', lambda: soak.run_case(
-        'one round per run', cfg(entry(30, 1), rounds=1), timeout=600)
+            'pool Lv.%d' % lv, commission(lv, runs=10), runs=10, timeout=2400)
 
 
 def main():
     out, pick = sys.argv[1], (sys.argv[2] if len(sys.argv) > 2 else '')
     soak = Soak(out)
-    results = [case() for name, case in cases(soak) if pick in name]
+    # "row 60 1 2,row 30 2 2" runs book rows directly: level, row, runs
+    rows = [p.split()[1:] for p in pick.split(',') if p.startswith('row ')]
+    if rows:
+        results = [soak.run_case('row Lv.%s #%s x%s' % (lv, row, runs), book(int(lv), int(row), runs=int(runs)),
+                                 runs=int(runs), timeout=600 * int(runs)) for lv, row, runs in rows]
+    else:
+        results = [case() for name, case in cases(soak) if pick in name]
     soak.ensure_world()
     print('passed %d/%d' % (sum(results), len(results)), flush=True)
     sys.exit(0 if all(results) else 1)
