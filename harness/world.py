@@ -66,6 +66,10 @@ def dhash(img):
     return '%016x' % int(''.join('1' if b else '0' for b in bits), 2)
 
 
+def _hamming(a, b):
+    return bin(int(a, 16) ^ int(b, 16)).count('1')
+
+
 def region_key(box):
     return ','.join('%.3f' % v for v in box)
 
@@ -105,10 +109,14 @@ class World:
             json.dump(data, f, ensure_ascii=False, indent=1)
 
     def add_state(self, scr, screen, info):
-        """Store the screen (masked, downscaled) if it is new; return its id.
+        """Store the screen (masked, downscaled) if it is new; return (state id, observation id).
 
         The signature is taken from the stored copy, not the live frame, so replaying the
-        world sees exactly what was recorded.
+        world sees exactly what was recorded. A state stands for every visit with the same
+        signature, but visits can differ in what the navigator acts on (a page still loading,
+        a list scrolled a little), so a visit that differs from the state's copy is also kept
+        as an observation for the exact replay. The observation id is the state id when the
+        visit matches the state's copy.
         """
         from src.nav import screens as S
         from src.nav.backend import Screen
@@ -130,7 +138,18 @@ class World:
             with open(os.path.join(folder, sid + '.json'), 'w', encoding='utf-8') as f:
                 json.dump(items, f, ensure_ascii=False, indent=0)
             self.states[sid] = {'screen': stored_screen, 'signature': sig}
-        return sid
+            return sid, sid
+        if items == self.items(sid) and _hamming(dhash(stored.img), dhash(self.image(sid))) <= 4:
+            return sid, sid
+        state = self.states[sid]
+        state['observations'] = state.get('observations', 0) + 1
+        oid = '%s-%d' % (sid, state['observations'])
+        folder = os.path.join(self.root, 'states')
+        with open(os.path.join(folder, oid + '.jpg'), 'wb') as f:
+            f.write(data.tobytes())
+        with open(os.path.join(folder, oid + '.json'), 'w', encoding='utf-8') as f:
+            json.dump(items, f, ensure_ascii=False, indent=0)
+        return sid, oid
 
     def add_transition(self, src, actions, dst):
         for t in self.transitions:
