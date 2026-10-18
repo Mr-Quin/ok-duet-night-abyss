@@ -22,7 +22,8 @@ from harness.sim import TraceBackend
 from harness.world import World, signature
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-WORLD = os.path.join(HERE, 'world')
+# DNA_WORLD points at another recording, e.g. a fresh one to check before committing it
+WORLD = os.environ.get('DNA_WORLD') or os.path.join(HERE, 'world')
 FIXTURES = os.path.join(HERE, 'fixtures')
 
 # fixture -> (screen, expected info); the fixtures come from capture_fixtures.py

@@ -23,8 +23,8 @@ from harness.recorder import RecordingBackend
 
 ENTRIES = {20: 6, 30: 4, 40: 5, 50: 7, 55: 6, 60: 19, 65: 10, 70: 16, 75: 21, 80: 4}
 
-# the quests menu is left out: it shows story progress
-POOL = [World(), MainMenu(), Menu('背包'), Menu('地图'), Menu('铸造'),
+# the quests menu is left out: it shows story progress; the forge lists owned items and material counts
+POOL = [World(), MainMenu(), Menu('背包'), Menu('地图'),
         BookSection('今日行程'), BookSection('梦魔残声'), BookSection('歧路足音'),
         Page('迷津'), Page('boss_map')] \
     + [CommissionTab(t) for t in T.TABS] \
