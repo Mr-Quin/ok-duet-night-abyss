@@ -20,6 +20,7 @@ SECTION_Y = 0.027
 # 选中项的白字、亮线或圆圈所占比例在 0.05 以上，未选中的是 0
 SELECTED_LIT = 0.03
 
+POPUPS = ('manual_popup', 'letter_popup')
 IN_RUN = ('dungeon', 'dungeon_menu', 'round_dialog', 'exit_confirm', 'result')
 
 # 左上角的图标：局内是退出的门，大世界是三条横线的菜单。不靠 OCR，任务栏的小字整帧 OCR 常常读不出来。
@@ -254,6 +255,9 @@ def detect_dungeon_menu(scr, atlas):
 def detect_manual_popup(scr, atlas):
     # 手册弹窗上也有开始界面的按钮文字，所以要排在开始界面前面
     if scr.find(T.MANUAL_SKIP) and scr.find('Space'):
+        # 选密函的弹窗也有「不使用」；开局前的那个能「放弃」，轮次之间的只有确认
+        if scr.find(T.LETTER_TITLE, (0.3, 0.25, 0.7, 0.4)):
+            return 'letter_popup', {'before_run': bool(scr.find(T.LETTER_GIVE_UP))}
         # 开局前的弹窗有「取消」和「开始挑战」，轮次之间的只有一个确认按钮
         return 'manual_popup', {'before_run': bool(scr.find(T.CANCEL))}
 
