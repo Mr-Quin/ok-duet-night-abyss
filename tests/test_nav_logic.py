@@ -373,7 +373,7 @@ class TestLeavingARun(unittest.TestCase):
     def test_the_auto_rounds_switch_is_found_from_the_count_when_the_label_is_unreadable(self):
         info = S.auto_round_info(screen(('轮次99/99', 0.784, 0.644)))
         self.assertTrue(info['auto_on'])
-        self.assertAlmostEqual(info['auto_switch'][1], 0.644 - S.AUTO_LABEL_DY)
+        self.assertAlmostEqual(info['auto_switch'][1], 0.644 - S.AUTO_ROW_DY)
 
     def test_a_run_without_rounds_is_recognised_by_its_mode_title(self):
         screen_name, info = S.detect_dungeon(screen(('驱逐', 0.033, 0.274), ('驱逐敌人', 0.07, 0.31)), None)
