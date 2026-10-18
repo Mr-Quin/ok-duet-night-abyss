@@ -63,7 +63,7 @@ class AutoNightbookTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
     @property
     def nav(self):
         if self._nav is None:
-            self._nav = Nav(OkScriptBackend(self), log=self.log_debug, cache_path=CACHE_PATH)
+            self._nav = Nav(OkScriptBackend(self), log=self.log_info, cache_path=CACHE_PATH)
         return self._nav
 
     def run(self):
