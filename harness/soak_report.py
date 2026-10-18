@@ -24,6 +24,7 @@ PATTERNS = [
     ('walk: reset failed, gave up', r'复位后也没开始波次'),
     ('give up: wave timeout', r'波次超时，放弃这一局'),
     ('give up: no progress (驱离/驱逐/避险)', r'进度停在 .* 不动'),
+    ('stopped: gave up too many runs in a row', r'连续放弃了 \d+ 局'),
     ('round dialog stuck, retreated', r'轮次弹窗一直没自动继续'),
     ('handler error, re-navigated', r'处理出错'),
     ('false in-run, re-navigated', r'看着像局内但不是'),
