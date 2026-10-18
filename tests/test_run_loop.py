@@ -138,6 +138,11 @@ class TestRunLoop(unittest.TestCase):
         self.assertEqual(defence.log.count('begin'), 2)
         self.assertEqual(loop.runs_done, 1)
 
+    def test_a_missed_result_screen_does_not_skip_the_next_runs_start(self):
+        _, _, loop, defence, _ = run([O.IN_RUN, O.START, O.IN_RUN, O.ROUND_DIALOG, O.RESULT],
+                                     L.Job('target', rounds=1, runs=1))
+        self.assertEqual(defence.log.count('begin'), 2)
+
     def test_stops_after_giving_up_too_many_runs_in_a_row(self):
         with self.assertRaises(L.GaveUpTooOften):
             run([O.IN_RUN, O.START] * 3 + [O.IN_RUN, O.RESULT], L.Job('target', rounds=1, runs=1),
