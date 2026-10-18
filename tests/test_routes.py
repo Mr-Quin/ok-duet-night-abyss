@@ -24,6 +24,9 @@ class FakeTask:
     def log_info(self, msg):
         pass
 
+    def screenshot(self, name, frame=None):
+        pass
+
     def sleep(self, seconds):
         pass
 
@@ -67,6 +70,7 @@ class TestMarkerWalk(unittest.TestCase):
         # 标记在右边就往右转
         self.assertTrue(turns and turns[0][1] > 0)
         self.assertEqual(task.actions[-2:], [('up', 'lshift'), ('up', 'w')])
+        self.assertEqual(task.actions[:2], [('down', 'w'), ('down', 'lshift')])
 
     def test_jumps_when_stuck_then_gives_up(self):
         task = FakeTask()
@@ -151,8 +155,17 @@ class TestRoutes(unittest.TestCase):
                  folder=self.folder, name='room')
         task = FakeTask()
         R.play(task, lib.routes[-1])
-        self.assertEqual(task.actions[:5], [('down', 'w'), ('turn', 10, -2), ('down', 'lshift'), ('down', 'f'), ('up', 'f')])
-        self.assertEqual(sorted(task.actions[5:]), [('up', 'lshift'), ('up', 'w')])
+        self.assertEqual(task.actions, [('down', 'w'), ('turn', 10, -2), ('down', 'lshift'), ('down', 'f'), ('up', 'f'),
+                                        ('up', 'lshift'), ('up', 'w')])
+
+    def test_play_never_holds_dodge_without_a_direction(self):
+        lib = R.RouteLibrary(folders=())
+        lib.save(self.room, (0, 0), [{'t': 0, 'down': 'shift_l'}, {'t': 0, 'down': 'w'}, {'t': 0.1, 'down': 'shift_l'},
+                                     {'t': 0.2, 'up': 'w'}, {'t': 0.3, 'up': 'shift_l'}],
+                 folder=self.folder, name='room')
+        task = FakeTask()
+        R.play(task, lib.routes[-1])
+        self.assertEqual(task.actions, [('down', 'w'), ('down', 'lshift'), ('up', 'lshift'), ('up', 'w')])
 
     def test_the_shipped_grapple_route_loads(self):
         lib = R.RouteLibrary(folders=(R.SHIPPED_DIR,))

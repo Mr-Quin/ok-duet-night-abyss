@@ -307,6 +307,46 @@ class TestNightbookRows(unittest.TestCase):
                 open_nightbook_row(nav, scr, None, None, dict(info))
         self.assertEqual(len(raised.exception.names), 4)
 
+    def test_rows_are_counted_by_position_across_a_scroll(self):
+        rows = ['爆破疾冲秽兽', '猩红游击秽兽', '守护飘浮秽兽Ⅱ', '凛霜灼心秽兽', '复仇蒙恩的先锋', '霜狱蒙恩的执事']
+        nav, backend = navigator(Nightbook(20, 5))
+        nav.cache = {'names/20': rows[:5]}
+        levels = {lv: 0.25 + 0.07 * k for k, lv in enumerate(S.LEVELS)}
+        info = {'tab': T.TABS[1], 'levels': levels}
+        nav.state['nightbook'] = {'level': 20, 'names': None, 'seen': []}
+        # 滚动后「Ⅱ」读成了「ⅡI」，按名字去重会多出一行，按位置对齐不会
+        first = self.page(rows[:5])
+        second = self.page(['猩红游击秽兽', '守护飘浮秽兽ⅡI', '凛霜灼心秽兽', '复仇蒙恩的先锋', '霜狱蒙恩的执事'])
+        for scr in (first, second):
+            open_nightbook_row(nav, scr, None, None, dict(info))
+        self.assertEqual(nav.state['entered_row'], '霜狱蒙恩的执事')
+        self.assertEqual(nav.cache['names/20'][-1], '霜狱蒙恩的执事')
+        self.assertEqual(len(nav.cache['names/20']), 6)
+
+    def test_the_level_column_read_once_is_remembered_on_the_page(self):
+        nav, backend, info = self.nightbook(5)
+        rows = ['残火暴徒秽兽', '霹雳疾冲秽兽', '枯萎游击秽兽', '凛霜疾冲秽兽', '复仇蒙恩的先锋', '霜狱蒙恩的执事']
+        nav.cache = {'names/30': rows[:4]}
+        open_nightbook_row(nav, self.page(rows[:4]), None, None, dict(info))
+        open_nightbook_row(nav, self.page(rows[:4]), None, None, dict(info))
+        # 滚动后等级栏读不出来（FakeBackend 的 OCR 什么都读不到），还按记下的位置走
+        open_nightbook_row(nav, self.page(rows[1:]), None, None, {'tab': T.TABS[1]})
+        self.assertEqual(nav.state['entered_row'], '霜狱蒙恩的执事')
+
+    def test_a_half_hidden_row_keeps_its_place_without_a_name(self):
+        # 只露出一半的行，名字的位置上读到的是列表顶上的花纹
+        scr = self.page(['HTHHHIHRYH', '残火暴徒秽兽', '霹雳疾冲秽兽'])
+        self.assertEqual([r['name'] for r in S.nightbook_rows(scr)], [None, '残火暴徒秽兽', '霹雳疾冲秽兽'])
+
+    def test_a_row_whose_name_is_unreadable_still_aligns(self):
+        from src.nav.edges import align
+        known = ['爆破疾冲秽兽', '猩红游击秽兽', '守护飘浮秽兽Ⅱ', '凛霜灼心秽兽', '复仇蒙恩的先锋']
+        self.assertEqual(align(known, [None, '守护飘浮秽兽ⅡI', '凛霜灼心秽兽', '复仇蒙恩的先锋', None]), 1)
+        self.assertIsNone(align(known, [None, None, '霜狱蒙恩的执事']))
+        # 只露出一半的边上那行读成了别的字
+        self.assertEqual(align(known, ['相以', '凛霜灼心秽兽', '复仇蒙恩的先锋', '霜狱蒙恩的执事']), 2)
+        self.assertIsNone(align(known, ['猩红游击秽兽', '相以', '凛霜灼心秽兽']))
+
 
 class TestLeavingARun(unittest.TestCase):
 
@@ -320,6 +360,24 @@ class TestLeavingARun(unittest.TestCase):
         nav, backend = navigator(World())
         self.assertIsNone(H.on_dungeon(nav, screen(), {'to_objective': False, 'round': 2}))
         self.assertEqual(backend.actions, [])
+
+    def test_a_run_without_rounds_checks_the_menu_once_then_waits(self):
+        nav, backend = navigator(World())
+        info = {'to_objective': False, 'round': None, 'mode': '驱逐'}
+        self.assertFalse(H.on_dungeon(nav, screen(), info))
+        self.assertEqual(backend.actions, [('key', 'esc')])
+        self.assertTrue(nav.state['giving_up'])
+        self.assertIsNone(H.on_dungeon(nav, screen(), info))
+        self.assertEqual(backend.actions, [('key', 'esc')])
+
+    def test_the_auto_rounds_switch_is_found_from_the_count_when_the_label_is_unreadable(self):
+        info = S.auto_round_info(screen(('轮次99/99', 0.784, 0.644)))
+        self.assertTrue(info['auto_on'])
+        self.assertAlmostEqual(info['auto_switch'][1], 0.644 - S.AUTO_LABEL_DY)
+
+    def test_a_run_without_rounds_is_recognised_by_its_mode_title(self):
+        screen_name, info = S.detect_dungeon(screen(('驱逐', 0.033, 0.274), ('驱逐敌人', 0.07, 0.31)), None)
+        self.assertEqual((screen_name, info['mode']), ('dungeon', '驱逐'))
 
     def test_gives_up_only_when_nothing_is_earned(self):
         menu = {'resume': {'x': 0.5, 'y': 0.9}, 'give_up': {'x': 0.9, 'y': 0.9}}
