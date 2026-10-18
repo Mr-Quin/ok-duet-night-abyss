@@ -21,7 +21,7 @@ from src.nav import text_zh as T
 from harness.live.backend import LiveBackend
 from harness.recorder import RecordingBackend
 
-ENTRIES = {30: 4, 65: 10}
+ENTRIES = {20: 6, 30: 4, 40: 5, 50: 7, 55: 6, 60: 19, 65: 10, 70: 16, 75: 21, 80: 4}
 
 # the quests menu is left out: it shows story progress
 POOL = [World(), MainMenu(), Menu('背包'), Menu('地图'), Menu('铸造'),
