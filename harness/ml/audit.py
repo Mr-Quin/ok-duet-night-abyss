@@ -15,13 +15,10 @@ import os
 import random
 import sys
 
-import cv2
-import numpy as np
 import torch
 
 from harness.ml.train import load, model_for, tensor
-
-COLS, ROWS, TILE = 6, 5, (320, 180)
+from harness.sheets import tile
 
 
 def predict(model_dir, source, items):
@@ -35,18 +32,6 @@ def predict(model_dir, source, items):
             x = torch.stack([tensor(p) for p, _ in items[k:k + 64]])
             out += [ck['classes'][i] for i in net(x).argmax(1).tolist()]
     return out
-
-
-def sheets(items, out):
-    for s in range(0, len(items), COLS * ROWS):
-        sheet = np.zeros((ROWS * TILE[1], COLS * TILE[0], 3), np.uint8)
-        for k, (n, path) in enumerate(items[s:s + COLS * ROWS]):
-            img = cv2.resize(cv2.imread(path), TILE)
-            cv2.rectangle(img, (0, 0), (60, 22), (0, 0, 0), -1)
-            cv2.putText(img, str(n), (4, 16), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 255, 255), 1)
-            y, x = divmod(k, COLS)
-            sheet[y * TILE[1]:(y + 1) * TILE[1], x * TILE[0]:(x + 1) * TILE[0]] = img
-        cv2.imwrite(os.path.join(out, 'audit_%03d.jpg' % (s // (COLS * ROWS))), sheet, [cv2.IMWRITE_JPEG_QUALITY, 85])
 
 
 def score(out):
@@ -84,9 +69,8 @@ def main():
            for n, (p, label, pred) in enumerate(chosen)}
     with open(os.path.join(out, 'key.json'), 'w', encoding='utf-8') as f:
         json.dump(key, f, ensure_ascii=False, indent=0)
-    sheets([(n, p) for n, (p, _, _) in enumerate(chosen)], out)
-    print('%d disagreements, %d agreements sampled, %d sheets' % (len(disagree), min(agreements, len(agree)),
-                                                                   (len(chosen) + COLS * ROWS - 1) // (COLS * ROWS)))
+    count = tile([(p, str(n)) for n, (p, _, _) in enumerate(chosen)], out, 'audit')
+    print('%d disagreements, %d agreements sampled, %d sheets' % (len(disagree), min(agreements, len(agree)), count))
 
 
 if __name__ == '__main__':

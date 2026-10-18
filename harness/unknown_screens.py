@@ -13,10 +13,7 @@ import os
 import sys
 import time
 
-import cv2
-import numpy as np
-
-COLS, ROWS, TILE = 4, 3, (480, 270)
+from harness.sheets import tile
 
 
 def stretches(root, min_seconds):
@@ -47,23 +44,6 @@ def stretches(root, min_seconds):
             run = []
 
 
-def sheets(found, out):
-    os.makedirs(out, exist_ok=True)
-    per = COLS * ROWS
-    for s in range(0, len(found), per):
-        sheet = np.zeros((ROWS * TILE[1], COLS * TILE[0], 3), np.uint8)
-        for k, item in enumerate(found[s:s + per]):
-            img = cv2.imread(item['frame']) if item['frame'] else None
-            if img is None:
-                continue
-            img = cv2.resize(img, TILE)
-            cv2.rectangle(img, (0, 0), (50, 24), (0, 0, 0), -1)
-            cv2.putText(img, str(s + k), (4, 18), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 1)
-            y, x = divmod(k, COLS)
-            sheet[y * TILE[1]:(y + 1) * TILE[1], x * TILE[0]:(x + 1) * TILE[0]] = img
-        cv2.imwrite(os.path.join(out, 'unknown_%03d.jpg' % (s // per)), sheet, [cv2.IMWRITE_JPEG_QUALITY, 85])
-
-
 def main():
     root = sys.argv[1]
     out = sys.argv[2] if len(sys.argv) > 2 else None
@@ -75,7 +55,8 @@ def main():
             item['after'], item['then'], os.path.basename(item['frame'] or '-')))
     print('%d stretches of %gs or more' % (len(found), min_seconds))
     if out:
-        sheets(found, out)
+        tile([(item['frame'], str(n)) for n, item in enumerate(found) if item['frame']], out, 'unknown',
+             cols=4, rows=3, size=(480, 270))
 
 
 if __name__ == '__main__':
