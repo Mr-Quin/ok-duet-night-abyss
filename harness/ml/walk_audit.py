@@ -18,10 +18,7 @@ import os
 import random
 import sys
 
-import cv2
-import numpy as np
-
-COLS, ROWS, TILE = 8, 5, (240, 135)
+from harness.sheets import tile
 
 
 def looks(root):
@@ -69,21 +66,9 @@ def main():
     rows = list(looks(root))
     random.Random(5).shuffle(rows)
     rows = rows[:samples]
-    key = {}
-    for s in range(0, len(rows), COLS * ROWS):
-        sheet = np.zeros((ROWS * TILE[1], COLS * TILE[0], 3), np.uint8)
-        for k, r in enumerate(rows[s:s + COLS * ROWS]):
-            n = s + k
-            img = cv2.imread(r['path'])
-            if img is None:
-                continue
-            img = cv2.resize(img, TILE)
-            cv2.rectangle(img, (0, 0), (44, 20), (0, 0, 0), -1)
-            cv2.putText(img, str(n), (3, 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 1)
-            y, x = divmod(k, COLS)
-            sheet[y * TILE[1]:(y + 1) * TILE[1], x * TILE[0]:(x + 1) * TILE[0]] = img
-            key[str(n)] = {'path': os.path.relpath(r['path'], root), 'seen': r['seen'], 'metres': r['metres']}
-        cv2.imwrite(os.path.join(out, 'walk_%03d.jpg' % (s // (COLS * ROWS))), sheet, [cv2.IMWRITE_JPEG_QUALITY, 90])
+    tile([(r['path'], str(n)) for n, r in enumerate(rows)], out, 'walk', cols=8, rows=5, size=(240, 135))
+    key = {str(n): {'path': os.path.relpath(r['path'], root), 'seen': r['seen'], 'metres': r['metres']}
+           for n, r in enumerate(rows)}
     with open(os.path.join(out, 'key.json'), 'w', encoding='utf-8') as f:
         json.dump(key, f, ensure_ascii=False, indent=0)
     print('%d walker looks available, %d on sheets' % (len(list(looks(root))), len(key)))

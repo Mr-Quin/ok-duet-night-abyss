@@ -15,11 +15,7 @@ import os
 import random
 import sys
 
-import cv2
-import numpy as np
-
-COLS, ROWS = 6, 5
-TILE = (320, 180)
+from harness.sheets import tile
 
 
 def rows_of(root):
@@ -53,27 +49,14 @@ def pick(rows, per_label, seed=1):
 def main():
     root, out = sys.argv[1], sys.argv[2]
     per_label = int(sys.argv[3]) if len(sys.argv) > 3 else 30
-    os.makedirs(out, exist_ok=True)
     chosen = pick(list(rows_of(root)), per_label)
-    index = []
-    for s in range(0, len(chosen), COLS * ROWS):
-        sheet = np.zeros((ROWS * TILE[1], COLS * TILE[0], 3), np.uint8)
-        for k, r in enumerate(chosen[s:s + COLS * ROWS]):
-            img = cv2.imread(r['path'])
-            if img is None:
-                continue
-            img = cv2.resize(img, TILE)
-            n = s + k
-            text = '%d %s:%s' % (n, r['source'][0], r['label'])
-            cv2.rectangle(img, (0, 0), (TILE[0], 22), (0, 0, 0), -1)
-            cv2.putText(img, text, (4, 16), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 1)
-            y, x = divmod(k, COLS)
-            sheet[y * TILE[1]:(y + 1) * TILE[1], x * TILE[0]:(x + 1) * TILE[0]] = img
-            index.append({'n': n, 'path': os.path.relpath(r['path'], root), 'source': r['source'], 'label': r['label']})
-        cv2.imwrite(os.path.join(out, 'sheet_%03d.jpg' % (s // (COLS * ROWS))), sheet, [cv2.IMWRITE_JPEG_QUALITY, 85])
+    count = tile([(r['path'], '%d %s:%s' % (n, r['source'][0], r['label'])) for n, r in enumerate(chosen)],
+                 out, 'sheet')
+    index = [{'n': n, 'path': os.path.relpath(r['path'], root), 'source': r['source'], 'label': r['label']}
+             for n, r in enumerate(chosen)]
     with open(os.path.join(out, 'sheets.json'), 'w', encoding='utf-8') as f:
         json.dump(index, f, ensure_ascii=False, indent=0)
-    print('%d frames on %d sheets' % (len(index), (len(index) + COLS * ROWS - 1) // (COLS * ROWS)))
+    print('%d frames on %d sheets' % (len(index), count))
 
 
 if __name__ == '__main__':
