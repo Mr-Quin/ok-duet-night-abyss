@@ -49,6 +49,8 @@ LEVEL_COLUMN = (0.03, 0.15, 0.11, 0.95)
 BOOK_ROW_PITCH = 0.103
 # 选中等级外面圆圈的右半边，比白字暗，所以亮度阈值用 120
 LEVEL_RING_X = (0.086, 0.095)
+# 等级列表的面板到这里为止，下面是亮的背景，最底下那个等级的圈不能把背景算进去
+LEVEL_PANEL_BOTTOM = 0.87
 
 # 开始界面的自动轮次面板：开关和标签在同一行，计数在下一行，按钮再下一行
 AUTO_SWITCH_X = 0.9375
@@ -99,7 +101,7 @@ def level_positions(scr):
 
 def selected_level(scr, levels):
     # 看选中等级外面那个圈的右半边；圈里的数字在列表滚动过后会变灰
-    lit = {lv: scr.lit(LEVEL_RING_X[0], y - 0.03, LEVEL_RING_X[1], y + 0.03, level=120)
+    lit = {lv: scr.lit(LEVEL_RING_X[0], y - 0.03, LEVEL_RING_X[1], min(y + 0.03, LEVEL_PANEL_BOTTOM), level=120)
            for lv, y in (levels or {}).items() if 0.2 <= y <= 0.86}
     ranked = sorted(lit.items(), key=lambda kv: -kv[1])
     if not ranked or ranked[0][1] < SELECTED_LIT:
