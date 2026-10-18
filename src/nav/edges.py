@@ -201,18 +201,25 @@ def select_level(nav, scr, info, book, st):
     if not info.get('levels'):
         column = Screen(scr.img, nav.b.ocr_region(scr, *S.LEVEL_COLUMN))
         info['levels'] = S.level_positions(column)
-    y = (info.get('levels') or {}).get(book)
+    # 等级栏又高又窄，OCR 时好时坏；它在这个页面上不会动，读到过一次就记着
+    if info['levels']:
+        st['levels'] = info['levels']
+    else:
+        info['levels'] = st.get('levels', {})
+    y = info['levels'].get(book)
     if y is None:
         if nav.wait(3) is None:
             return None
         # 什么都不做下一步还是一样的画面；挪一下等级栏换个画面再读
         nav.log('  读不出等级栏，滚动一下再读')
         nav.b.scroll(S.LEVEL_X, 0.5, 3)
+        st.pop('levels', None)
         return False
     if not 0.2 <= y <= 0.86:
         nav.log('  Lv.%d 不在可见范围（y=%.2f），滚动' % (book, y))
         nav.b.scroll(S.LEVEL_X, 0.5, -3 if y > 0.86 else 3)
         st.pop('level', None)
+        st.pop('levels', None)
         return False
     if st.get('level') != book:
         st.update(level=book, names=None, seen=[], at_top=False, top_read=None)
