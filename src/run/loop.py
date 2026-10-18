@@ -157,14 +157,10 @@ class RunLoop:
             self.task.info_set("当前轮次", self.rounds_seen)
         if not self.due(now):
             return
-        if self.hands_off:
-            if now - self.observer.since < HANDS_OFF_DIALOG_WAIT:
-                return
-            self.task.log_info("轮次弹窗一直没自动继续，撤离")
-            self.task.quit_mission()
-        else:
-            self.task.log_info(f"打完 {self.rounds_seen} 轮，撤离")
-            self.task.quit_mission()
+        if self.hands_off and now - self.observer.since < HANDS_OFF_DIALOG_WAIT:
+            return
+        self.task.log_info("轮次弹窗一直没自动继续，撤离" if self.hands_off else f"打完 {self.rounds_seen} 轮，撤离")
+        self.task.quit_mission()
         self.acted(now)
 
     def on_manual(self, now):

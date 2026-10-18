@@ -56,3 +56,8 @@ BOOT_VERSION = 'Product'
 LOGIN = '登录'
 # 启动时的弹窗（下载更新、网络错误等）上会有的按钮
 BOOT_DIALOG_BUTTONS = ('确定', '取消', '下载', '重试', '退出')
+
+
+def han(name):
+    """只留汉字。罗马数字和引号读得不稳：同一个「Ⅱ」会读成 II 或 ⅡI。"""
+    return ''.join(c for c in name if '一' <= c <= '鿿')

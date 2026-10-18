@@ -3,6 +3,7 @@
 坐标一律用占游戏画面宽高的比例（0~1），和截图分辨率无关。接入新框架只需要实现
 `Backend` 的抽象方法，ok-script 的实现见 okscript.py。
 """
+import re
 import time
 
 import cv2
@@ -39,6 +40,16 @@ class Screen:
     def first(self, text, region=(0, 0, 1, 1), exact=False):
         hits = self.find(text, region, exact)
         return hits[0] if hits else None
+
+    def match(self, pattern, region=(0, 0, 1, 1), text=''):
+        """region 内第一个含 text、又匹配 pattern 的 (文字, re.Match)，按 OCR 的顺序；没有时为 None。"""
+        x0, y0, x1, y1 = region
+        for i in self.items:
+            if x0 <= i['x'] <= x1 and y0 <= i['y'] <= y1 and text in i['t']:
+                m = re.search(pattern, i['t'])
+                if m:
+                    return i, m
+        return None
 
     def has_any(self, texts, region=(0, 0, 1, 1)):
         return any(self.find(t, region) for t in texts)
