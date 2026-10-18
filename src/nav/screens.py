@@ -1,4 +1,5 @@
 """认出当前是哪个界面，并读出导航要用的参数（选中的页签、等级、行、自动轮次等）。"""
+import functools
 import json
 import os
 import re
@@ -25,14 +26,15 @@ IN_RUN = ('dungeon', 'dungeon_menu', 'round_dialog', 'exit_confirm', 'result')
 # 录到的帧里局内都在 0.77 以上，大世界都在 0.53 以下
 RUN_EXIT_BOX = (0.008, 0.015, 0.045, 0.075)
 RUN_EXIT_MIN = 0.7
-_RUN_EXIT = []
+
+
+@functools.lru_cache(maxsize=None)
+def _run_exit_template():
+    return cv2.imread(os.path.join(os.path.dirname(__file__), 'run_exit.png'), cv2.IMREAD_GRAYSCALE).astype(np.float32)
 
 
 def run_exit_score(img):
-    if not _RUN_EXIT:
-        tpl = cv2.imread(os.path.join(os.path.dirname(__file__), 'run_exit.png'), cv2.IMREAD_GRAYSCALE)
-        _RUN_EXIT.append(tpl.astype(np.float32))
-    tpl = _RUN_EXIT[0]
+    tpl = _run_exit_template()
     H, W = img.shape[:2]
     x0, y0, x1, y1 = RUN_EXIT_BOX
     crop = cv2.cvtColor(img[int(y0 * H):int(y1 * H), int(x0 * W):int(x1 * W)], cv2.COLOR_BGR2GRAY)
@@ -126,7 +128,7 @@ def nightbook_rows(scr):
         names = [i for i in scr.items if 0.1 < i['x'] < 0.3 and abs(i['y'] - b['y']) < 0.03
                  and not any(w in i['t'] for w in T.DROP_WORDS)]
         name = names[0]['t'].replace(' ', '') if names else ''
-        readable = sum('一' <= c <= '鿿' for c in name) >= 2
+        readable = len(T.han(name)) >= 2
         slots[round((b['y'] - buttons[0]['y']) / BOOK_ROW_PITCH)] = {'name': name if readable else None, 'button': b}
     return [slots.get(k, {'name': None, 'button': None}) for k in range(max(slots) + 1)]
 
@@ -144,15 +146,9 @@ def start_info(scr):
     tiers.sort(key=lambda t: t['y'])
     for t in tiers:
         t['lum'] = scr.brightness(0.03, t['y'] - 0.012, 0.06, t['y'] + 0.012)
-    selected = None
-    if len(tiers) == 1:
-        selected = tiers[0]['lv']
-    elif tiers:
-        top = max(tiers, key=lambda t: t['lum'])
-        rest = sorted(t['lum'] for t in tiers if t is not top)
-        # 选中行的底色实测在 150 以上，其余在 80 以下
-        if top['lum'] > rest[-1] + 40:
-            selected = top['lv']
+    ranked = sorted(tiers, key=lambda t: -t['lum'])
+    # 选中行的底色实测在 150 以上，其余在 80 以下
+    selected = ranked[0]['lv'] if len(ranked) == 1 or (ranked and ranked[0]['lum'] > ranked[1]['lum'] + 40) else None
     # 夜航手册进来的开始界面只有一个条目，条目上的字就是委托类型
     if len(tiers) == 1:
         chip = [i for i in items if i['x'] < 0.1 and abs(i['y'] - tiers[0]['y']) < 0.02 and 'v' not in i['t'].lower()]
@@ -171,7 +167,7 @@ def auto_round_info(scr):
     面板打开时会整体上移，所以开关和按钮的位置按文字现找，不用固定坐标。
     """
     label = scr.first(T.AUTO_LABEL, (0.55, 0.4, 0.75, 0.8))
-    count = next(((i, re.search(T.AUTO_ROUNDS, i['t'])) for i in scr.items if re.search(T.AUTO_ROUNDS, i['t'])), None)
+    count = scr.match(T.AUTO_ROUNDS)
     # 标签有时读不出来；读到了轮次数就说明开着，标签就在轮次那一行上面
     label_y = label['y'] if label else (count[0]['y'] - AUTO_ROW_DY if count else None)
     return {'auto_on': bool(count) if label_y is not None else None,
@@ -241,10 +237,9 @@ def detect_result(scr, atlas):
 def detect_round_dialog(scr, atlas):
     if scr.find(T.RETREAT) and scr.find(T.CONTINUE):
         # 开着自动轮次时弹窗顶部倒计时自动继续：自动轮次中（x/N）
-        auto = next((re.search(r'(\d+)\s*/\s*(\d+)', i['t']) for i in scr.items
-                     if T.AUTO_RUNNING in i['t'] and re.search(r'\d+\s*/\s*\d+', i['t'])), None)
-        return 'round_dialog', {'retreat': scr.find(T.RETREAT, exact=True) or scr.find(T.RETREAT),
-                                'auto': (int(auto.group(1)), int(auto.group(2))) if auto else None}
+        auto = scr.match(r'(\d+)\s*/\s*(\d+)', text=T.AUTO_RUNNING)
+        return 'round_dialog', {'retreat': scr.first(T.RETREAT, exact=True) or scr.first(T.RETREAT),
+                                'auto': (int(auto[1].group(1)), int(auto[1].group(2))) if auto else None}
 
 
 @graph.detector(40)
@@ -273,8 +268,8 @@ def detect_start(scr, atlas):
 def detect_dungeon(scr, atlas):
     hud = (0, 0.15, 0.3, 0.45)
     if any(scr.find(t, hud) for t in T.ROUND_HUD):
-        m = next((re.search(T.ROUND_NOW, i['t']) for i in scr.find(T.ROUND_HUD[0], hud) if re.search(T.ROUND_NOW, i['t'])), None)
-        return 'dungeon', {'round': int(m.group(1)) if m else None, 'to_objective': bool(scr.find(T.TO_OBJECTIVE, hud))}
+        m = scr.match(T.ROUND_NOW, hud)
+        return 'dungeon', {'round': int(m[1].group(1)) if m else None, 'to_objective': bool(scr.find(T.TO_OBJECTIVE, hud))}
     # 不按轮次打的关卡没有轮次栏，任务栏顶上只写着关卡类型
     title = next((i['t'] for i in scr.items_in((0, 0.25, 0.08, 0.3), lambda i: i['t'] in T.RUN_MODES)), None)
     if title or run_exit_score(scr.img) >= RUN_EXIT_MIN:

@@ -55,7 +55,6 @@ class FakeNav:
 
 def behaviour(kind_name, rounds, begins=None):
     class Fake:
-        name = kind_name
         names = (kind_name,)
         uses_rounds = rounds
         log = []
@@ -73,14 +72,14 @@ def behaviour(kind_name, rounds, begins=None):
     return Fake
 
 
-def run(script, job, mode='扼守/无尽', begins=None, hold=1):
-    """script 里每个阶段连着看到 hold 拍；用完后停在最后一个阶段。"""
-    task, nav = FakeTask(), FakeNav(mode)
-    frames = [s for s in script for _ in range(hold * O.Observer.SETTLE)]
+def run(script, job, mode='扼守/无尽', begins=None, hold=1, nav=None, behaviours=None, frames=None):
+    """script 里每个阶段连着看到 hold 拍，frames 给出时按原样一拍一拍看；用完后停在最后一个。"""
+    task, nav = FakeTask(), nav or FakeNav(mode)
+    frames = list(frames or [s for s in script for _ in range(hold * O.Observer.SETTLE)])
     look = lambda t: frames.pop(0) if len(frames) > 1 else frames[0]
     defence, expulsion = behaviour('扼守', True, begins), behaviour('驱离', False, begins)
     loop = L.RunLoop(task, nav, job, observer=O.Observer(task, look), clock=lambda: task.now,
-                     behaviours=(defence, expulsion))
+                     behaviours=behaviours or (defence, expulsion))
     loop.run()
     return task, nav, loop, defence, expulsion
 
@@ -117,12 +116,8 @@ class TestRunLoop(unittest.TestCase):
         self.assertFalse(any(c[0] == 'auto' for c in nav.calls))
 
     def test_turns_off_the_games_auto_rounds_for_missions_without_rounds(self):
-        task, nav = FakeTask(), FakeNav('避险', auto_on=True)
-        frames = [O.IN_RUN] * 2 + [O.RESULT] * 2
-        look = lambda t: frames.pop(0) if len(frames) > 1 else frames[0]
-        hazard = behaviour('避险', False)
-        L.RunLoop(task, nav, L.Job('target', rounds=3, runs=1), observer=O.Observer(task, look),
-                  clock=lambda: task.now, behaviours=(hazard,)).run()
+        _, nav, _, _, _ = run([O.IN_RUN, O.RESULT], L.Job('target', rounds=3, runs=1),
+                              nav=FakeNav('避险', auto_on=True), behaviours=(behaviour('避险', False),))
         self.assertIn(('auto', 0), nav.calls)
 
     def test_an_unsupported_mission_type_stops_before_doing_anything(self):
@@ -152,12 +147,8 @@ class TestRunLoop(unittest.TestCase):
         self.assertEqual(sum(1 for c in nav.calls if c[0] == 'go'), 1 + 2 + 1)
 
     def test_a_single_frame_of_the_result_screen_mid_run_is_ignored(self):
-        task, nav = FakeTask(), FakeNav('扼守')
         frames = [O.IN_RUN] * 4 + [O.RESULT] + [O.IN_RUN] * 4 + [O.ROUND_DIALOG] * 2 + [O.RESULT] * 2
-        look = lambda t: frames.pop(0) if len(frames) > 1 else frames[0]
-        loop = L.RunLoop(task, nav, L.Job('target', rounds=1, runs=1), observer=O.Observer(task, look),
-                         clock=lambda: task.now, behaviours=(behaviour('扼守', True),))
-        loop.run()
+        task, _, loop, _, _ = run(None, L.Job('target', rounds=1, runs=1), mode='扼守', frames=frames)
         self.assertEqual(loop.runs_done, 1)
         self.assertEqual(task.calls.count('quit_mission'), 1)
 
@@ -169,7 +160,7 @@ class TestRunLoop(unittest.TestCase):
         self.assertEqual(manual[-1][1], L.Mission.CONTINUE)
 
     def test_a_navigation_error_on_the_way_in_is_retried_from_the_open_world(self):
-        task, nav = FakeTask(), FakeNav('扼守')
+        nav = FakeNav('扼守')
         failures = [L.NavError('一直在重复')]
         real_go = nav.go
 
@@ -178,16 +169,12 @@ class TestRunLoop(unittest.TestCase):
             if target == 'target' and failures:
                 raise failures.pop()
         nav.go = go
-        frames = [O.IN_RUN] * 2 + [O.ROUND_DIALOG] * 2 + [O.RESULT] * 2
-        look = lambda t: frames.pop(0) if len(frames) > 1 else frames[0]
-        loop = L.RunLoop(task, nav, L.Job('target', rounds=1, runs=1), observer=O.Observer(task, look),
-                         clock=lambda: task.now, behaviours=(behaviour('扼守', True),))
-        loop.run()
+        _, _, loop, _, _ = run([O.IN_RUN, O.ROUND_DIALOG, O.RESULT], L.Job('target', rounds=1, runs=1), nav=nav)
         self.assertEqual(loop.runs_done, 1)
         self.assertEqual([c[1] for c in nav.calls if c[0] == 'go'][:3], ['target', L.World(), 'target'])
 
     def test_the_open_world_hud_is_not_taken_for_a_new_run(self):
-        task, nav = FakeTask(), FakeNav('驱离', in_run=False)
+        nav = FakeNav('驱离', in_run=False)
         real_go = nav.go
 
         def go(target):
@@ -195,12 +182,9 @@ class TestRunLoop(unittest.TestCase):
             # 第一次进关卡后看到的是大世界，第二次才真的进了局内
             nav.in_run = len([c for c in nav.calls if c == ('go', 'target')]) >= 2
         nav.go = go
-        frames = [O.IN_RUN] * 2 + [O.START] * 2 + [O.IN_RUN] * 2 + [O.RESULT] * 2
-        look = lambda t: frames.pop(0) if len(frames) > 1 else frames[0]
         expulsion = behaviour('驱离', False)
-        loop = L.RunLoop(task, nav, L.Job('target', runs=1), observer=O.Observer(task, look),
-                         clock=lambda: task.now, behaviours=(expulsion,))
-        loop.run()
+        _, _, loop, _, _ = run([O.IN_RUN, O.START, O.IN_RUN, O.RESULT], L.Job('target', runs=1), nav=nav,
+                               behaviours=(expulsion,))
         self.assertEqual(expulsion.log, ['begin'])
         self.assertEqual(loop.runs_done, 1)
 

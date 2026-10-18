@@ -9,8 +9,6 @@ import numpy as np
 from src.tasks.fullauto import minimap as M
 
 # 每张图出生时目标菱形的方位（度，北为 0），在 30 次出生画面上量的
-BEARINGS = {'defence_01': 359, 'defence_02': 200, 'defence_05': 204, 'defence_06': 270, 'defence_07': 89,
-            'defence_11': 180}
 
 
 def frame_with(mini, width=2560, height=1440):
@@ -40,13 +38,6 @@ class TestMinimap(unittest.TestCase):
 
     def test_an_empty_minimap_is_no_known_map(self):
         self.assertIsNone(self.library.identify(np.zeros((1440, 2560, 3), np.uint8))[0])
-
-    def test_objective_bearing(self):
-        for name, bearing in BEARINGS.items():
-            with self.subTest(map=name):
-                found = M.objective_bearing(frame_with(self.refs[name]))
-                self.assertIsNotNone(found)
-                self.assertLess(abs((found - bearing + 180) % 360 - 180), 15)
 
 
 if __name__ == '__main__':

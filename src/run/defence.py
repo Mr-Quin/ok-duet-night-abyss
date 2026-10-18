@@ -13,15 +13,14 @@ RESET_WAVE_WAIT = 25
 
 
 class Defence:
-    name = '扼守'
     names = ('扼守',)
     uses_rounds = True
 
     def __init__(self, task, clock=time.time):
         self.task = task
         self.clock = clock
-        self.maps = None
-        self.routes = None
+        self.maps = MapLibrary()
+        self.routes = routes.RouteLibrary()
         self.wave, self.wave_since = -1, 0
 
     def begin(self):
@@ -79,8 +78,6 @@ class Defence:
         return self.wave_started()
 
     def identify_map(self):
-        if self.maps is None:
-            self.maps = MapLibrary()
         name, score = self.maps.identify(self.task.next_frame())
         self.task.log_info(f"地图 {name or '未知'}（{score:.2f}）")
         return name
@@ -94,8 +91,6 @@ class Defence:
             task.screenshot("walk_no_marker")
             return False
         map_name = self.identify_map()
-        if self.routes is None:
-            self.routes = routes.RouteLibrary()
         spawn, marker = task.next_frame(), (seen[0], walker.last_y)
         route = self.routes.find(spawn, marker, map_name)
         if route is not None and route.walk_only:

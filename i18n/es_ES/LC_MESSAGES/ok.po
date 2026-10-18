@@ -611,39 +611,3 @@ msgstr "Repeticiones"
 
 msgid "打几次，0 = 无限循环"
 msgstr "Cuántas veces repetir, 0 = infinito"
-
-msgid "自动30/65级魔之楔本（导航版）"
-msgstr "Cuña demoníaca Lv.30/65 automática (navegación)"
-
-msgid "从任意界面导航到夜航手册的关卡；仅支持简体中文客户端"
-msgstr "Navega desde cualquier pantalla a una fase del Nightbook; solo cliente en chino simplificado"
-
-msgid "关卡"
-msgstr "Fase"
-
-msgid "夜航手册里的扼守关卡，从当前界面自动导航过去"
-msgstr "Fase de defensa del Nightbook; se navega automáticamente desde la pantalla actual"
-
-msgid "每局轮次"
-msgstr "Rondas por partida"
-
-msgid "每局打几轮后结算。大于 1 时交给游戏自带的自动轮次；为 1 时关掉自动轮次，打完第一轮就撤离"
-msgstr "Rondas antes de liquidar. Si es mayor que 1, las juegan las rondas automáticas del juego; con 1 se desactivan y se retira tras la primera ronda"
-
-msgid "刷几次"
-msgstr "Partidas"
-
-msgid "一共进本几次，打完回到大世界；1 为不按再次进行，0 为不限"
-msgstr "Cuántas partidas en total; al terminar vuelve al mundo abierto. 1 = no pulsar Repetir, 0 = sin límite"
-
-msgid "走位方式"
-msgstr "Movimiento"
-
-msgid "按标记直线走：朝目标标记直走到附近；原录制路线：按录制的按键走完再复位"
-msgstr "Seguir marcador: camina recto hacia el marcador del objetivo; Ruta grabada: reproduce las teclas grabadas y luego reinicia"
-
-msgid "按标记直线走"
-msgstr "Seguir marcador"
-
-msgid "原录制路线"
-msgstr "Ruta grabada"

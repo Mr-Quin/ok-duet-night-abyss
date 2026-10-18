@@ -23,11 +23,6 @@ def same_name(a, b):
     return len(diff) == 1 and not diff[0][0].isascii() and not diff[0][1].isascii()
 
 
-def han(name):
-    """只留汉字。罗马数字和引号读得不稳：同一个「Ⅱ」会读成 II 或 ⅡI。"""
-    return ''.join(c for c in name if '一' <= c <= '鿿')
-
-
 def align(known, visible):
     """visible 的第一行是 known 里的第几行。
 
@@ -43,7 +38,7 @@ def align(known, visible):
         for k, (a, b) in enumerate(pairs):
             if not (a and b):
                 continue
-            if same_name(han(a), han(b)):
+            if same_name(T.han(a), T.han(b)):
                 matched += 1
             elif k not in (0, last):
                 break
@@ -274,7 +269,7 @@ def learn_rows(nav, scr, info, book, st):
         if isinstance(row, str) and any(n and row in n for n in names):
             st['names'], st['offset'] = [], None
             return READY
-        at_cached_top = names and known and names[0] and known[0] and same_name(han(names[0]), han(known[0]))
+        at_cached_top = names and known and names[0] and known[0] and same_name(T.han(names[0]), T.han(known[0]))
         if not at_cached_top and not st.get('at_top'):
             # 行号从顶部数起，而列表会记住上次的滚动位置
             nav.log('  把列表滚到顶部')
