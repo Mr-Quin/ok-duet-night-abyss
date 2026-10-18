@@ -139,14 +139,17 @@ class World:
                 json.dump(items, f, ensure_ascii=False, indent=0)
             self.states[sid] = {'screen': stored_screen, 'signature': sig}
             return sid, sid
-        if items == self.items(sid) and _hamming(dhash(stored.img), dhash(self.image(sid))) <= 4:
+        same_look = _hamming(dhash(stored.img), dhash(self.image(sid))) <= 4
+        if items == self.items(sid) and same_look:
             return sid, sid
         state = self.states[sid]
         state['observations'] = state.get('observations', 0) + 1
         oid = '%s-%d' % (sid, state['observations'])
         folder = os.path.join(self.root, 'states')
-        with open(os.path.join(folder, oid + '.jpg'), 'wb') as f:
-            f.write(data.tobytes())
+        # OCR text differs a little on almost every visit; keep the image only when it looks different
+        if not same_look:
+            with open(os.path.join(folder, oid + '.jpg'), 'wb') as f:
+                f.write(data.tobytes())
         with open(os.path.join(folder, oid + '.json'), 'w', encoding='utf-8') as f:
             json.dump(items, f, ensure_ascii=False, indent=0)
         return sid, oid
@@ -177,7 +180,11 @@ class World:
 
     def image(self, sid):
         if ('img', sid) not in self._cache:
-            data = np.fromfile(os.path.join(self.root, 'states', sid + '.jpg'), dtype=np.uint8)
+            path = os.path.join(self.root, 'states', sid + '.jpg')
+            if not os.path.exists(path):
+                # an observation without its own image looks like its state
+                path = os.path.join(self.root, 'states', sid.split('-')[0] + '.jpg')
+            data = np.fromfile(path, dtype=np.uint8)
             self._cache[('img', sid)] = cv2.imdecode(data, cv2.IMREAD_COLOR)
         return self._cache[('img', sid)]
 
