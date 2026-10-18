@@ -41,7 +41,7 @@ def wait_in_run(nav):
 @graph.handler('round_dialog')
 def on_round_dialog(nav, scr, info):
     nav.log('  撤离，轮次 %s' % (info['auto'],))
-    nav.click(info['retreat'][0])
+    nav.click(info['retreat'])
     return False
 
 

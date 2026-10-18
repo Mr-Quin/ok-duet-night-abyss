@@ -403,7 +403,7 @@ class TestLeavingARun(unittest.TestCase):
 
     def test_round_dialog_retreats(self):
         nav, backend = navigator(World())
-        H.on_round_dialog(nav, screen(), {'auto': (1, 3), 'retreat': [{'x': 0.33, 'y': 0.69}]})
+        H.on_round_dialog(nav, screen(), {'auto': (1, 3), 'retreat': {'x': 0.33, 'y': 0.69}})
         self.assertEqual(backend.actions, [('click', 0.33, 0.69)])
 
     def test_manual_popup_before_a_run_is_closed(self):
