@@ -29,12 +29,27 @@ def han(name):
 
 
 def align(known, visible):
-    """visible 的第一行是 known 里的第几行：按汉字逐行对，重叠的部分要全部对上，取重叠最多的。"""
+    """visible 的第一行是 known 里的第几行。
+
+    按汉字逐行对，读不出名字的格子（None）和什么都算对上。看得见的第一行和最后一行常常只露出
+    一半，名字会读成别的字（比如「相以」），这两行对不上也不算；其余重叠的行要全部对上，而且
+    至少有两行（只重叠一行时一行）真的对上了名字，取重叠最多的。
+    """
     best, overlap = None, 0
     for offset in range(len(known)):
         pairs = list(zip(known[offset:], visible))
-        if len(pairs) > overlap and all(same_name(han(a), han(b)) for a, b in pairs):
-            best, overlap = offset, len(pairs)
+        last = len(visible) - 1
+        matched = 0
+        for k, (a, b) in enumerate(pairs):
+            if not (a and b):
+                continue
+            if same_name(han(a), han(b)):
+                matched += 1
+            elif k not in (0, last):
+                break
+        else:
+            if len(pairs) > overlap and matched >= min(2, len(pairs)):
+                best, overlap = offset, len(pairs)
     return best
 
 
@@ -203,7 +218,7 @@ def select_level(nav, scr, info, book, st):
             nav.log('  选择 Lv.%d' % book)
             nav.b.click(S.LEVEL_X, y)
             return False
-    names = [r['name'] for r in S.nightbook_rows(scr)]
+    names = [r['name'] for r in S.nightbook_rows(scr) if r['name']]
     known, others = cached_rows(nav, book), other_levels_rows(nav, book)
     # 等级切换后列表要过一会儿才刷新，太早读到的还是上一个等级的行
     stale = names and known[:1] != names[:1] and any(v[:1] == names[:1] for v in others.values())
@@ -227,21 +242,25 @@ def learn_rows(nav, scr, info, book, st):
     names = [r['name'] for r in S.nightbook_rows(scr)]
     row, known = nav.goal['row'], cached_rows(nav, book)
     if st['names'] is None:
-        if isinstance(row, str) and any(row in n for n in names):
+        if isinstance(row, str) and any(n and row in n for n in names):
             st['names'], st['offset'] = [], None
             return READY
-        if not (names and known and same_name(han(names[0]), han(known[0]))) and not st.get('at_top'):
+        at_cached_top = names and known and names[0] and known[0] and same_name(han(names[0]), han(known[0]))
+        if not at_cached_top and not st.get('at_top'):
             # 行号从顶部数起，而列表会记住上次的滚动位置
             nav.log('  把列表滚到顶部')
             nav.b.scroll(0.4, 0.45, 30)
             st['at_top'] = True
             return False
-        # 刚切换等级时列表是一行行出来的；滚到顶部也要一会儿，两次读到同样的几行才算停稳
+        # 刚切换等级时列表是一行行出来的
         if len(names) < 3 and nav.wait(3) is None:
             return None
-        if st.get('at_top') and st.get('top_read') != names:
+        if st.get('at_top') and (st.get('top_read') is None or align(st['top_read'], names) != 0):
+            # 一次滚动只挪几行，长列表要一直往上滚，滚了也不变才是到顶了
             st['top_read'] = names
-            return None
+            nav.log('  继续往上滚，现在第一行是 %s' % names[0])
+            nav.b.scroll(0.4, 0.45, 30)
+            return False
         st['names'], st['offset'] = list(names), 0
     elif st['offset'] is not None:
         offset = align(st['names'], names)
@@ -250,6 +269,9 @@ def learn_rows(nav, scr, info, book, st):
             st.update(names=None, at_top=False, seen=[], top_read=None)
             return False
         st['offset'] = offset
+        for k, n in enumerate(names[:len(st['names']) - offset]):
+            if n and st['names'][offset + k] is None:
+                st['names'][offset + k] = n
         st['names'] += names[len(st['names']) - offset:]
     if len(st['names']) > len(known):
         nav.cache['names/%d' % book] = list(st['names'])
@@ -262,7 +284,7 @@ def open_row(nav, scr, info, book, st):
     names = [r['name'] for r in listed]
     row = nav.goal['row']
     if isinstance(row, str):
-        idx = next((k for k, n in enumerate(names) if row in n or same_name(row, n)), None)
+        idx = next((k for k, n in enumerate(names) if n and (row in n or same_name(row, n))), None)
     else:
         idx = row - st['offset']
         if idx < 0:
@@ -270,6 +292,12 @@ def open_row(nav, scr, info, book, st):
             return False
         if idx >= len(listed):
             idx = None
+        elif listed[idx]['button'] is None:
+            # 这一格的按钮没认出来：先等几帧，还不行就挪一下列表
+            if nav.wait(3) is None:
+                return None
+            nav.b.scroll(0.4, 0.45, -1)
+            return False
     if idx is None:
         # 滚到两组之间时一次滚动有时不动，连着三次都是这几行才算到底
         repeats = st['seen'].count(tuple(names))

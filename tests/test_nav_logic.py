@@ -323,9 +323,19 @@ class TestNightbookRows(unittest.TestCase):
         self.assertEqual(nav.cache['names/20'][-1], '霜狱蒙恩的执事')
         self.assertEqual(len(nav.cache['names/20']), 6)
 
-    def test_the_decoration_above_the_list_is_not_a_row(self):
+    def test_a_half_hidden_row_keeps_its_place_without_a_name(self):
+        # 只露出一半的行，名字的位置上读到的是列表顶上的花纹
         scr = self.page(['HTHHHIHRYH', '残火暴徒秽兽', '霹雳疾冲秽兽'])
-        self.assertEqual([r['name'] for r in S.nightbook_rows(scr)], ['残火暴徒秽兽', '霹雳疾冲秽兽'])
+        self.assertEqual([r['name'] for r in S.nightbook_rows(scr)], [None, '残火暴徒秽兽', '霹雳疾冲秽兽'])
+
+    def test_a_row_whose_name_is_unreadable_still_aligns(self):
+        from src.nav.edges import align
+        known = ['爆破疾冲秽兽', '猩红游击秽兽', '守护飘浮秽兽Ⅱ', '凛霜灼心秽兽', '复仇蒙恩的先锋']
+        self.assertEqual(align(known, [None, '守护飘浮秽兽ⅡI', '凛霜灼心秽兽', '复仇蒙恩的先锋', None]), 1)
+        self.assertIsNone(align(known, [None, None, '霜狱蒙恩的执事']))
+        # 只露出一半的边上那行读成了别的字
+        self.assertEqual(align(known, ['相以', '凛霜灼心秽兽', '复仇蒙恩的先锋', '霜狱蒙恩的执事']), 2)
+        self.assertIsNone(align(known, ['猩红游击秽兽', '相以', '凛霜灼心秽兽']))
 
 
 class TestLeavingARun(unittest.TestCase):
