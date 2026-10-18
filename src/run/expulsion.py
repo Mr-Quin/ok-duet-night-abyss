@@ -19,6 +19,8 @@ class Expulsion:
         task = self.task
         task.skill_tick.reset()
         task._mission_started = False
+        # 刚进局内的一两秒里按 ESC 不出菜单，「开局重置角色位置」会因为找不到菜单报错
+        task.sleep(2)
         if not task.move_on_begin():
             return False
         self.since = time.time()

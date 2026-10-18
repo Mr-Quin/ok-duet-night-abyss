@@ -241,6 +241,10 @@ def detect_dungeon(scr, atlas):
     if any(scr.find(t, hud) for t in T.ROUND_HUD):
         m = next((re.search(T.ROUND_NOW, i['t']) for i in scr.find(T.ROUND_HUD[0], hud) if re.search(T.ROUND_NOW, i['t'])), None)
         return 'dungeon', {'round': int(m.group(1)) if m else None, 'to_objective': bool(scr.find(T.TO_OBJECTIVE, hud))}
+    # 不按轮次打的关卡没有轮次栏，任务栏顶上只写着关卡类型
+    title = next((i['t'] for i in scr.items if i['x'] < 0.08 and 0.25 < i['y'] < 0.3 and i['t'] in T.RUN_MODES), None)
+    if title:
+        return 'dungeon', {'round': None, 'to_objective': False, 'mode': title}
 
 
 @graph.detector(80)

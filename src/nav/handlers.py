@@ -90,6 +90,12 @@ def on_dungeon(nav, scr, info):
         nav.state['giving_up'] = True
         nav.b.key('esc')
         return False
+    if info.get('mode') and not nav.state.get('menu_checked'):
+        # 驱离这类关卡看不出打到哪了，打开局内菜单看一眼：「无奖励」就离开，否则等它打完
+        nav.log('  在%s里，看看局内菜单有没有奖励' % info['mode'])
+        nav.state.update(giving_up=True, menu_checked=True)
+        nav.b.key('esc')
+        return False
     return wait_in_run(nav)
 
 

@@ -41,6 +41,7 @@ MANUAL_SKIP = '不使用'
 ROUND_HUD = ('当前轮次', '波次')
 ROUND_NOW = r'当前轮次\s*[:：]?\s*(\d+)'
 TO_OBJECTIVE = '前往目标点'
+RUN_MODES = ('驱离', '驱逐', '避险')
 NO_REWARD = '无奖励'
 CONFIRM = '确定'
 
