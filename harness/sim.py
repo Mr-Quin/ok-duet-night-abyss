@@ -13,7 +13,7 @@ import cv2
 
 from src.nav.backend import Backend, Screen
 
-from harness.world import World, same_action
+from harness.world import World, region_key, same_action
 
 
 class Unexplored(AssertionError):
@@ -40,7 +40,11 @@ class TraceBackend(Backend):
         return self.world.items(self.trace[max(self.step, 0)]['state'])
 
     def ocr_region(self, scr, x0, y0, x1, y1, scale=2.0):
-        return self.world.region(self.trace[self.step]['state'], (x0, y0, x1, y1))
+        step = self.trace[self.step]
+        key = region_key((x0, y0, x1, y1))
+        if key in step.get('regions', {}):
+            return step['regions'][key]
+        return self.world.region(step['state'], (x0, y0, x1, y1))
 
     def read(self):
         if self.step >= 0:
