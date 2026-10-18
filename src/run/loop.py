@@ -22,6 +22,13 @@ ESC_MENU_WAIT = 3
 MAX_FAILURES = 3
 RETRY_SECONDS = 10
 RUN_HUD_WAIT = 8
+# 驱逐的怪偶尔卡在地图里，同一个关卡连着放弃这么多次就停下，不再重开
+MAX_GIVE_UPS = 3
+LEAVE_WAIT = 60
+
+
+class GaveUpTooOften(Exception):
+    pass
 
 
 class UnsupportedMission(Exception):
@@ -47,6 +54,7 @@ class RunLoop:
         self.mode = ''
         self.hands_off = False
         self.runs_done = 0
+        self.give_ups = 0
         self.live = False
         self.rounds_seen = 0
         self.counted_dialog = None
@@ -86,7 +94,7 @@ class RunLoop:
                     if getattr(self, 'on_' + state)(now):
                         break
                     self.failures = 0
-                except TaskDisabledException:
+                except (TaskDisabledException, GaveUpTooOften):
                     raise
                 except Exception as e:
                     self.failures += 1
@@ -123,9 +131,21 @@ class RunLoop:
             self.rounds_seen = 0
             self.task.log_info(f"第 {self.runs_done + 1} 局开始（{self.mode}）")
             if not self.behaviour.begin():
-                self.live = False
+                self.gave_up()
         elif not self.behaviour.tick():
-            self.live = False
+            self.gave_up()
+
+    def gave_up(self):
+        self.live = False
+        self.give_ups += 1
+        if self.give_ups >= MAX_GIVE_UPS:
+            raise GaveUpTooOften(f"连续放弃了 {self.give_ups} 局")
+        # 放弃后回到手册或大世界，不会回开始界面，等加载完就重新进关卡
+        def left():
+            state = self.nav.where()
+            return state.screen != 'unknown' and not state.in_run
+        self.task.wait_until(left, time_out=LEAVE_WAIT, raise_if_not_found=False)
+        self.enter()
 
     def on_round_dialog(self, now):
         if self.counted_dialog != self.observer.since:
@@ -165,6 +185,7 @@ class RunLoop:
         if self.live:
             self.live = False
             self.runs_done += 1
+            self.give_ups = 0
             self.task.log_info(f"已完成 {self.runs_done}/{self.job.runs or '不限'} 次")
         if self.done():
             return True
