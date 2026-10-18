@@ -14,14 +14,18 @@ import cv2
 SIZE = (320, 180)
 # at most this often per label source; the loop looks several times a second
 EVERY = 0.5
+# full-size frames for replaying the rule-based detectors offline: on every label change, and
+# now and then while the label stays the same
+FULL_EVERY = 10
 
 
 class Dataset:
     def __init__(self, root):
         self.dir = os.path.join(root, time.strftime('%Y%m%d_%H%M%S'))
-        os.makedirs(self.dir, exist_ok=True)
+        os.makedirs(os.path.join(self.dir, 'full'), exist_ok=True)
         self.index = open(os.path.join(self.dir, 'labels.jsonl'), 'a', encoding='utf-8')
         self.last = {}
+        self.last_full = {}
         self.count = 0
 
     def save(self, frame, source, label, **extra):
@@ -34,6 +38,11 @@ class Dataset:
         small = cv2.resize(frame, SIZE, interpolation=cv2.INTER_AREA)
         cv2.imwrite(os.path.join(self.dir, name), small, [cv2.IMWRITE_JPEG_QUALITY, 85])
         row = dict(file=name, t=round(now, 2), source=source, label=label, **extra)
+        seen_label, seen_at = self.last_full.get(source, (None, 0))
+        if label != seen_label or now - seen_at >= FULL_EVERY:
+            self.last_full[source] = (label, now)
+            cv2.imwrite(os.path.join(self.dir, 'full', name), frame, [cv2.IMWRITE_JPEG_QUALITY, 90])
+            row['full'] = True
         self.index.write(json.dumps(row, ensure_ascii=False) + '\n')
         self.index.flush()
 
