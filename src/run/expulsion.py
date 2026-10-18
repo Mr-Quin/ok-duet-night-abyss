@@ -19,7 +19,7 @@ class Expulsion:
     def __init__(self, task):
         self.task = task
         self.since = 0
-        self.progress, self.read_at = None, 0
+        self.progress, self.pending, self.read_at = None, None, 0
 
     def begin(self):
         task = self.task
@@ -30,7 +30,7 @@ class Expulsion:
         if not task.move_on_begin():
             return False
         self.since = time.time()
-        self.progress, self.read_at = None, 0
+        self.progress, self.pending, self.read_at = None, None, 0
         return True
 
     def tick(self):
@@ -38,10 +38,15 @@ class Expulsion:
         task = self.task
         if time.time() - self.read_at >= PROGRESS_EVERY:
             self.read_at = time.time()
-            progress = self.read_progress()
-            # 进度只会往上走；只认变大，偶尔读错的数字不会把计时清零
-            if progress is not None and (self.progress is None or progress > self.progress):
-                self.progress, self.since = progress, time.time()
+            reading = self.read_progress()
+            # 数字本身读不准（「4/40」会读成 4140），只看它变没变；新的读数连着两次一样才算进度，偶尔读错一次不算
+            if reading is not None and reading != self.progress:
+                if reading == self.pending:
+                    self.progress, self.since, self.pending = reading, time.time(), None
+                else:
+                    self.pending = reading
+            elif reading == self.progress:
+                self.pending = None
         if time.time() - self.since >= task.config.get("超时时间", 120):
             task.log_info(f"进度停在 {self.progress} 不动，放弃这一局")
             task.give_up_mission()
@@ -53,9 +58,7 @@ class Expulsion:
         task = self.task
         box = task.box_of_screen(*PROGRESS_BOX, name='expulsion_progress')
         texts = task.ocr(box=box, match=re.compile(r'\d'))
-        m = re.search(r'\d+', ' '.join(t.name for t in texts))
-        # 「24/40」漏读斜杠会变成 2440
-        return int(m.group()) if m and int(m.group()) <= 500 else None
+        return ''.join(re.findall(r'\d', ''.join(t.name for t in texts))) or None
 
     def next_round(self):
         self.since = time.time()
