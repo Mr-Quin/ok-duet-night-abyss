@@ -175,6 +175,8 @@ def open_letter(nav, scr, here, nxt, info):
 # 夜航手册分三步：选中等级，认出这个等级的全部行名，再打开目标行。
 # 每一步做不完就返回这一步的结果（None 等待、False 做了一步操作），做完返回 READY。
 READY = object()
+# 一屏能看到五行，一次最多往下挪三行，保证和上一屏至少重叠两行
+BOOK_SCROLL_ROWS = 3
 
 
 @graph.edge('commission', ('start', T.TABS[1]))
@@ -313,8 +315,10 @@ def open_row(nav, scr, info, book, st):
         if repeats >= 2:
             raise NoSuchEntry(book, row, st['names'])
         st['seen'].append(tuple(names))
-        nav.log('  第 %r 行不在 %s 中，向下滚动' % (row, names))
-        nav.b.scroll(0.4, 0.45, -3 - 2 * repeats)
+        # 滚轮 3 格挪一行
+        rows = 1 if isinstance(row, str) else min(BOOK_SCROLL_ROWS, max(1, row - st['offset'] - len(listed) + 1))
+        nav.log('  第 %r 行不在 %s 中，向下滚动 %d 行' % (row, names, rows))
+        nav.b.scroll(0.4, 0.45, -3 * rows - 2 * repeats)
         return False
     nav.log('  第 %r 行 -> %s' % (row, names[idx]))
     nav.click(listed[idx]['button'])
