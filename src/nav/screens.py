@@ -24,6 +24,8 @@ LEVELS = [20, 30, 40, 50, 55, 60, 65, 70, 75, 80]
 LEVEL_X = 0.075
 LEVEL_STEP = 0.0731
 LEVEL_COLUMN = (0.03, 0.15, 0.11, 0.95)
+# 夜航手册相邻两行「前往」按钮的距离，占画面高度的比例
+BOOK_ROW_PITCH = 0.103
 # 选中等级外面圆圈的右半边，比白字暗，所以亮度阈值用 120
 LEVEL_RING_X = (0.086, 0.095)
 
@@ -86,16 +88,22 @@ def selected_level(scr, levels):
 
 
 def nightbook_rows(scr):
-    """夜航手册页面上的行，[{'name', 'button'}]，从上到下。"""
-    out = []
-    for b in scr.find(T.GO, (0.55, 0.2, 0.7, 0.9)):
+    """夜航手册页面上的行，[{'name', 'button'}]，从上到下，一格一行。
+
+    行距是固定的，所以按「前往」按钮的高度排格子。只露出一半的行名字读不出来（会读成列表顶上
+    的花纹 HTHHHIHRYH），name 为 None；没认出按钮的格子 button 为 None。
+    """
+    buttons = sorted(scr.find(T.GO, (0.55, 0.2, 0.7, 0.9)), key=lambda b: b['y'])
+    if not buttons:
+        return []
+    slots = {}
+    for b in buttons:
         names = [i for i in scr.items if 0.1 < i['x'] < 0.3 and abs(i['y'] - b['y']) < 0.03
                  and not any(w in i['t'] for w in T.DROP_WORDS)]
         name = names[0]['t'].replace(' ', '') if names else ''
-        # 只露出一半的行读不出名字，列表顶上的装饰花纹会读成 HTHHHIHRYH，都不算行
-        if sum('一' <= c <= '鿿' for c in name) >= 2:
-            out.append({'name': name, 'button': b})
-    return out
+        readable = sum('一' <= c <= '鿿' for c in name) >= 2
+        slots[round((b['y'] - buttons[0]['y']) / BOOK_ROW_PITCH)] = {'name': name if readable else None, 'button': b}
+    return [slots.get(k, {'name': None, 'button': None}) for k in range(max(slots) + 1)]
 
 
 def start_info(scr):
