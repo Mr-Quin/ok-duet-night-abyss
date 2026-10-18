@@ -89,10 +89,7 @@ class TestRecordedWorld(unittest.TestCase):
         with open(os.path.join(WORLD, 'plan.json'), encoding='utf-8') as f:
             self.plan = json.load(f)
         self.tmp = tempfile.mkdtemp()
-        self.cache = os.path.join(self.tmp, 'nav_cache.json')
-        start_cache = os.path.join(WORLD, 'nav_cache_start.json')
-        if os.path.exists(start_cache):
-            shutil.copy(start_cache, self.cache)
+        self.cache = self.world.start_cache(self.tmp)
 
     def tearDown(self):
         shutil.rmtree(self.tmp, ignore_errors=True)

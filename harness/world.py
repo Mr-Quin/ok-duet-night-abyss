@@ -9,6 +9,7 @@ by itself (an animation finishing, a loading screen ending).
 import hashlib
 import json
 import os
+import shutil
 import re
 
 import cv2
@@ -131,12 +132,7 @@ class World:
         sig = signature(stored, stored_screen, stored_info)
         sid = hashlib.sha1(sig.encode('utf-8')).hexdigest()[:10]
         if sid not in self.states:
-            folder = os.path.join(self.root, 'states')
-            os.makedirs(folder, exist_ok=True)
-            with open(os.path.join(folder, sid + '.jpg'), 'wb') as f:
-                f.write(data.tobytes())
-            with open(os.path.join(folder, sid + '.json'), 'w', encoding='utf-8') as f:
-                json.dump(items, f, ensure_ascii=False, indent=0)
+            self._store(sid, data, items)
             self.states[sid] = {'screen': stored_screen, 'signature': sig}
             return sid, sid
         same_look = _hamming(dhash(stored.img), dhash(self.image(sid))) <= 4
@@ -145,14 +141,26 @@ class World:
         state = self.states[sid]
         state['observations'] = state.get('observations', 0) + 1
         oid = '%s-%d' % (sid, state['observations'])
-        folder = os.path.join(self.root, 'states')
         # OCR text differs a little on almost every visit; keep the image only when it looks different
-        if not same_look:
-            with open(os.path.join(folder, oid + '.jpg'), 'wb') as f:
-                f.write(data.tobytes())
-        with open(os.path.join(folder, oid + '.json'), 'w', encoding='utf-8') as f:
-            json.dump(items, f, ensure_ascii=False, indent=0)
+        self._store(oid, None if same_look else data, items)
         return sid, oid
+
+    def _store(self, name, jpg, items):
+        folder = os.path.join(self.root, 'states')
+        os.makedirs(folder, exist_ok=True)
+        if jpg is not None:
+            with open(os.path.join(folder, name + '.jpg'), 'wb') as f:
+                f.write(jpg.tobytes())
+        with open(os.path.join(folder, name + '.json'), 'w', encoding='utf-8') as f:
+            json.dump(items, f, ensure_ascii=False, indent=0)
+
+    def start_cache(self, folder):
+        """Copy the navigator cache the recording started from into folder; return the copy's path."""
+        path = os.path.join(folder, 'nav_cache.json')
+        start = os.path.join(self.root, 'nav_cache_start.json')
+        if os.path.exists(start):
+            shutil.copy(start, path)
+        return path
 
     def add_transition(self, src, actions, dst):
         for t in self.transitions:

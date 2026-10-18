@@ -26,7 +26,29 @@ class Diverged(AssertionError):
     pass
 
 
-class TraceBackend(Backend):
+class Recorded(Backend):
+    """Inputs go into a buffer that the recorded world is checked or advanced against."""
+
+    def click(self, x, y):
+        self.buffer.append(('click', x, y))
+
+    def drag(self, x0, y0, x1, y1):
+        self.buffer.append(('drag', x0, y0, x1, y1))
+
+    def key(self, name):
+        self.buffer.append(('key', name))
+
+    def scroll(self, x, y, notches):
+        self.buffer.append(('scroll', notches))
+
+    def sleep(self, seconds):
+        pass
+
+    def thumb(self):
+        return cv2.resize(cv2.cvtColor(self.frame(), cv2.COLOR_BGR2GRAY), (32, 18)).astype('int16')
+
+
+class TraceBackend(Recorded):
     def __init__(self, world, trace):
         self.world = world if isinstance(world, World) else World.load(world)
         self.trace = trace
@@ -64,29 +86,11 @@ class TraceBackend(Backend):
         seen = self.seen(self.step)
         return Screen(self.world.image(seen), self.world.items(seen))
 
-    def click(self, x, y):
-        self.buffer.append(('click', x, y))
-
-    def drag(self, x0, y0, x1, y1):
-        self.buffer.append(('drag', x0, y0, x1, y1))
-
-    def key(self, name):
-        self.buffer.append(('key', name))
-
-    def scroll(self, x, y, notches):
-        self.buffer.append(('scroll', notches))
-
-    def sleep(self, seconds):
-        pass
-
-    def thumb(self):
-        return cv2.resize(cv2.cvtColor(self.frame(), cv2.COLOR_BGR2GRAY), (32, 18)).astype('int16')
-
     def settle(self, before, *args, **kwargs):
         return True
 
 
-class SimBackend(Backend):
+class SimBackend(Recorded):
     def __init__(self, world, start):
         self.world = world if isinstance(world, World) else World.load(world)
         self.state = start
@@ -124,24 +128,6 @@ class SimBackend(Backend):
     def read(self):
         self._advance()
         return Screen(self.world.image(self.state), self.world.items(self.state))
-
-    def click(self, x, y):
-        self.buffer.append(('click', x, y))
-
-    def drag(self, x0, y0, x1, y1):
-        self.buffer.append(('drag', x0, y0, x1, y1))
-
-    def key(self, name):
-        self.buffer.append(('key', name))
-
-    def scroll(self, x, y, notches):
-        self.buffer.append(('scroll', notches))
-
-    def sleep(self, seconds):
-        pass
-
-    def thumb(self):
-        return cv2.resize(cv2.cvtColor(self.frame(), cv2.COLOR_BGR2GRAY), (32, 18)).astype('int16')
 
     def settle(self, before, *args, **kwargs):
         self._advance()

@@ -2,13 +2,12 @@
 import json
 
 from src.nav import screens as S
-from src.nav.backend import Backend
 
 from harness import privacy
 from harness.world import World, region_key
 
 
-class RecordingBackend(Backend):
+class RecordingBackend:
     def __init__(self, inner, world_root):
         self.inner = inner
         self.world = World.load(world_root)
@@ -19,11 +18,8 @@ class RecordingBackend(Backend):
         # every read in order, with the inputs sent before the next one
         self.trace = []
 
-    def frame(self):
-        return self.inner.frame()
-
-    def ocr(self, img):
-        return self.inner.ocr(img)
+    def __getattr__(self, name):
+        return getattr(self.inner, name)
 
     def read(self):
         scr = self.inner.read()
@@ -63,18 +59,6 @@ class RecordingBackend(Backend):
     def scroll(self, x, y, notches):
         self.pending.append(('scroll', notches))
         self.inner.scroll(x, y, notches)
-
-    def park(self):
-        self.inner.park()
-
-    def sleep(self, seconds):
-        self.inner.sleep(seconds)
-
-    def thumb(self):
-        return self.inner.thumb()
-
-    def settle(self, before, *args, **kwargs):
-        return self.inner.settle(before, *args, **kwargs)
 
     def save(self, trace_path=None):
         self.world.save()
