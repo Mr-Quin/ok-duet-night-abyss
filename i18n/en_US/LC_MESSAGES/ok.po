@@ -611,39 +611,3 @@ msgstr "Runs"
 
 msgid "打几次，0 = 无限循环"
 msgstr "How many runs, 0 = endless"
-
-msgid "自动30/65级魔之楔本（导航版）"
-msgstr "Auto Lv.30/65 Demon Wedge (navigation)"
-
-msgid "从任意界面导航到夜航手册的关卡；仅支持简体中文客户端"
-msgstr "Navigates from any screen to a Nightbook stage; Simplified Chinese game client only"
-
-msgid "关卡"
-msgstr "Stage"
-
-msgid "夜航手册里的扼守关卡，从当前界面自动导航过去"
-msgstr "Defence stage in the Nightbook; navigated to automatically from the current screen"
-
-msgid "每局轮次"
-msgstr "Rounds per run"
-
-msgid "每局打几轮后结算。大于 1 时交给游戏自带的自动轮次；为 1 时关掉自动轮次，打完第一轮就撤离"
-msgstr "Rounds to play before settling. Above 1, the game's own auto rounds play them; at 1, auto rounds are turned off and the run retreats after the first round"
-
-msgid "刷几次"
-msgstr "Runs"
-
-msgid "一共进本几次，打完回到大世界；1 为不按再次进行，0 为不限"
-msgstr "How many runs in total, then return to the open world; 1 = never press Retry, 0 = no limit"
-
-msgid "走位方式"
-msgstr "Movement"
-
-msgid "按标记直线走：朝目标标记直走到附近；原录制路线：按录制的按键走完再复位"
-msgstr "Follow marker: walk straight toward the objective marker; Recorded route: replay the recorded keys, then reset"
-
-msgid "按标记直线走"
-msgstr "Follow marker"
-
-msgid "原录制路线"
-msgstr "Recorded route"
