@@ -7,13 +7,14 @@ import time
 from dataclasses import dataclass
 
 from ok import TaskDisabledException
-from src.nav import NavError, NoSuchEntry, World
+from src.nav import NavError, NoSuchEntry, NotOffered, World
 from src.run import observe as O
 from src.run.defence import Defence
 from src.run.expulsion import Expulsion
+from src.run.exploration import Exploration
 from src.tasks.CommissionsTask import Mission
 
-BEHAVIOURS = (Defence, Expulsion)
+BEHAVIOURS = (Defence, Exploration, Expulsion)
 # 认不出的画面（加载、菜单、别的弹窗）停留这么久就交给导航重新进关卡
 STALL_SECONDS = 20
 # 开着游戏的自动轮次时，轮次弹窗倒计时约 10 秒后会自己继续；超过这么久还在，就按没开处理
@@ -110,7 +111,7 @@ class RunLoop:
         for attempt in range(MAX_FAILURES):
             try:
                 return self.enter()
-            except NoSuchEntry:
+            except (NoSuchEntry, NotOffered):
                 raise
             except NavError as e:
                 if attempt == MAX_FAILURES - 1:
@@ -174,6 +175,9 @@ class RunLoop:
         self.task.choose_drop_rate()
 
     def on_letter(self, now):
+        # 开着自动轮次时，轮次之间的选密函游戏会自己选好继续，一直没动才自己选
+        if self.live and self.hands_off and now - self.observer.since < HANDS_OFF_DIALOG_WAIT:
+            return
         self.task.mission_status = Mission.CONTINUE if self.live else None
         self.task.choose_letter()
 
