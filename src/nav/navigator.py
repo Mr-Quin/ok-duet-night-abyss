@@ -64,7 +64,7 @@ class SentInputs:
 class Navigator:
     """一次导航。"""
 
-    def __init__(self, backend, target, log=None, atlas=None, cache_path=None):
+    def __init__(self, backend, target, atlas, log=None, cache_path=None):
         self.b = SentInputs(backend)
         self.goal, self.route = target.goal(), target.route()
         self.step_log = []
@@ -74,7 +74,7 @@ class Navigator:
             self.step_log.append(msg)
             log(msg)
         self.log = log_step
-        self.atlas = atlas if atlas is not None else S.load_atlas()
+        self.atlas = atlas
         self.cache_path = cache_path
         self.cache = self._load_cache()
         self.state = {}

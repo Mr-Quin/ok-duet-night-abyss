@@ -9,8 +9,9 @@ import os
 
 from qfluentwidgets import FluentIcon
 
-from ok import Logger, TaskDisabledException
+from ok import TaskDisabledException
 from src.nav import Mission, Nav, NavError, Nightbook, NoSuchEntry
+from src.nav import screens as S
 from src.nav.okscript import CACHE_PATH, OkScriptBackend
 from src.run.loop import GaveUpTooOften, Job, RunLoop, UnsupportedMission
 from src.run.observe import Observer
@@ -18,10 +19,8 @@ from src.tasks.BaseCombatTask import BaseCombatTask
 from src.tasks.CommissionsTask import CommissionsTask
 from src.tasks.DNAOneTimeTask import DNAOneTimeTask
 
-logger = Logger.get_logger(__name__)
-
 SOURCES = ["夜航手册", "委托 扼守"]
-BOOK_LEVELS = [20, 30, 40, 50, 55, 60, 65, 70, 75, 80]
+BOOK_LEVELS = S.LEVELS
 COMMISSION_LEVELS = [40, 50, 60, 70, 80]
 MODE = '扼守/无尽'
 

@@ -4,7 +4,6 @@
 参照比一比就知道是哪张图。参照只截了小地图本身，96×96。
 """
 import glob
-import math
 import os
 
 import cv2
@@ -65,21 +64,3 @@ class MapLibrary:
             return None, 0.0
         name = max(scores, key=scores.get)
         return (name if scores[name] >= SAME_MAP else None), scores[name]
-
-
-def objective_bearing(frame):
-    """目标菱形相对小地图圆心的方位（度，北为 0、顺时针）；看不到菱形时为 None。
-
-    目标太远时菱形贴在圆边上，方位依然有效。
-    """
-    mini = crop(frame)
-    hsv = cv2.cvtColor(mini, cv2.COLOR_BGR2HSV)
-    yy, xx = np.mgrid[0:SIZE, 0:SIZE]
-    dx, dy = xx - SIZE / 2, yy - SIZE / 2
-    d = np.hypot(dx, dy) / (SIZE / 2)
-    # 箭头也是金色的，但在圆心，也比菱形暗
-    gold = _gold(hsv) & (hsv[..., 2] > 180) & (d > 0.22) & (d < 1.0)
-    if gold.sum() < 4:
-        return None
-    a = np.arctan2(dx[gold], -dy[gold])
-    return (math.degrees(math.atan2(np.sin(a).mean(), np.cos(a).mean())) + 360) % 360

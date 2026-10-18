@@ -12,7 +12,6 @@ PROGRESS_EVERY = 5
 
 
 class Expulsion:
-    name = '驱离'
     names = ('驱离', '驱逐', '避险')
     uses_rounds = False
 
