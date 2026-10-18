@@ -76,9 +76,12 @@ class AutoNightbookTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         self.log_info(f"导航到{self.describe(job.target)}")
         try:
             observer = Observer(self)
-            dataset.install(observer)
+            recorder = dataset.install(observer)
             shadow.install(observer)
-            RunLoop(self, self.nav, job, observer=observer).run()
+            loop = RunLoop(self, self.nav, job, observer=observer)
+            if recorder:
+                recorder.loop = loop
+            loop.run()
         except TaskDisabledException:
             pass
         except NoSuchEntry as e:

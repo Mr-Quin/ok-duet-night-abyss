@@ -68,7 +68,9 @@ def install(observer):
 
     def recording_look(task):
         phase = look(task)
-        dataset.save(task.frame, 'phase', phase)
+        # live: the loop has confirmed a run is going (navigator checked), so in_run here is not the open world
+        loop = getattr(dataset, 'loop', None)
+        dataset.save(task.frame, 'phase', phase, live=bool(loop and loop.live))
         return phase
 
     observer.look = recording_look
