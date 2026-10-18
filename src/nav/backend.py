@@ -1,7 +1,7 @@
 """导航层对自动化框架的全部依赖：截图、OCR 和几种输入。
 
 坐标一律用占游戏画面宽高的比例（0~1），和截图分辨率无关。接入新框架只需要实现
-`Backend` 的五个方法，ok-script 的实现见 okscript.py。
+`Backend` 的抽象方法，ok-script 的实现见 okscript.py。
 """
 import time
 
@@ -26,15 +26,22 @@ class Screen:
             self._gray = cv2.cvtColor(self.img, cv2.COLOR_BGR2GRAY)
         return self._gray
 
-    def find(self, text, region=(0, 0, 1, 1), exact=False):
-        """region 内包含（exact 时等于）text 的文字，按从上到下、从左到右排序。"""
+    def items_in(self, region=(0, 0, 1, 1), pred=None):
+        """region 内（pred 为真）的文字，按从上到下、从左到右排序。"""
         x0, y0, x1, y1 = region
-        hits = [i for i in self.items if x0 <= i['x'] <= x1 and y0 <= i['y'] <= y1
-                and (i['t'] == text if exact else text in i['t'])]
+        hits = [i for i in self.items if x0 <= i['x'] <= x1 and y0 <= i['y'] <= y1 and (pred is None or pred(i))]
         return sorted(hits, key=lambda i: (i['y'], i['x']))
 
-    def find_any(self, texts, region=(0, 0, 1, 1)):
-        return [hit for t in texts for hit in self.find(t, region)]
+    def find(self, text, region=(0, 0, 1, 1), exact=False):
+        """region 内包含（exact 时等于）text 的文字。"""
+        return self.items_in(region, lambda i: i['t'] == text if exact else text in i['t'])
+
+    def first(self, text, region=(0, 0, 1, 1), exact=False):
+        hits = self.find(text, region, exact)
+        return hits[0] if hits else None
+
+    def has_any(self, texts, region=(0, 0, 1, 1)):
+        return any(self.find(t, region) for t in texts)
 
     def _crop(self, x0, y0, x1, y1):
         H, W = self.gray.shape

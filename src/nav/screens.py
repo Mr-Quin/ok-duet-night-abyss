@@ -49,13 +49,14 @@ LEVEL_COLUMN = (0.03, 0.15, 0.11, 0.95)
 BOOK_ROW_PITCH = 0.103
 # 选中等级外面圆圈的右半边，比白字暗，所以亮度阈值用 120
 LEVEL_RING_X = (0.086, 0.095)
+# 等级标签在这个范围里才点得到、看得出选没选中
+LEVEL_VISIBLE = (0.2, 0.86)
 # 等级列表的面板到这里为止，下面是亮的背景，最底下那个等级的圈不能把背景算进去
 LEVEL_PANEL_BOTTOM = 0.87
 
 # 开始界面的自动轮次面板：开关和标签在同一行，计数在下一行，按钮再下一行
 AUTO_SWITCH_X = 0.9375
-AUTO_LABEL_DY = 0.039
-AUTO_BUTTONS_DY = 0.039
+AUTO_ROW_DY = 0.039
 AUTO_MIN_X, AUTO_MINUS_X, AUTO_PLUS_X, AUTO_MAX_X = 0.612, 0.648, 0.919, 0.955
 # 滑块手柄在轮次 1 时的中心，以及每一轮移动的距离（99 时在 0.894）
 AUTO_SLIDER_X, AUTO_SLIDER_STEP = 0.674, 0.00225
@@ -85,11 +86,10 @@ def selected_section(scr):
 def level_positions(scr):
     """夜航手册左栏 等级 -> 标签 y。按固定间距拟合，OCR 把相邻标签读成一个框时也能定位。"""
     pts = []
-    for i in scr.items:
-        if i['x'] < 0.11 and 0.15 < i['y'] < 0.95:
-            nums = [int(n) for n in re.findall(r'\d\d', i['t']) if int(n) in LEVELS]
-            if len(nums) == 1:
-                pts.append((LEVELS.index(nums[0]), i['y']))
+    for i in scr.items_in((0, 0.15, 0.11, 0.95)):
+        nums = [int(n) for n in re.findall(r'\d\d', i['t']) if int(n) in LEVELS]
+        if len(nums) == 1:
+            pts.append((LEVELS.index(nums[0]), i['y']))
     # OCR 偶尔会读错标签（55 读成 50），只用间距一致（偏差不到 0.015）的那些点来拟合
     offsets = [y - k * LEVEL_STEP for k, y in pts]
     inliers = max(([o for o in offsets if abs(o - ref) < 0.015] for ref in offsets), key=len, default=[])
@@ -102,7 +102,7 @@ def level_positions(scr):
 def selected_level(scr, levels):
     # 看选中等级外面那个圈的右半边；圈里的数字在列表滚动过后会变灰
     lit = {lv: scr.lit(LEVEL_RING_X[0], y - 0.03, LEVEL_RING_X[1], min(y + 0.03, LEVEL_PANEL_BOTTOM), level=120)
-           for lv, y in (levels or {}).items() if 0.2 <= y <= 0.86}
+           for lv, y in (levels or {}).items() if LEVEL_VISIBLE[0] <= y <= LEVEL_VISIBLE[1]}
     ranked = sorted(lit.items(), key=lambda kv: -kv[1])
     if not ranked or ranked[0][1] < SELECTED_LIT:
         return None
@@ -122,6 +122,7 @@ def nightbook_rows(scr):
         return []
     slots = {}
     for b in buttons:
+        # OCR 的顺序是从左到右读的；一行名字常被拆成两段（「侵蚀」「“爆炸狂”」），要的是左边那段
         names = [i for i in scr.items if 0.1 < i['x'] < 0.3 and abs(i['y'] - b['y']) < 0.03
                  and not any(w in i['t'] for w in T.DROP_WORDS)]
         name = names[0]['t'].replace(' ', '') if names else ''
@@ -169,14 +170,14 @@ def auto_round_info(scr):
 
     面板打开时会整体上移，所以开关和按钮的位置按文字现找，不用固定坐标。
     """
-    label = next(iter(scr.find(T.AUTO_LABEL, (0.55, 0.4, 0.75, 0.8))), None)
+    label = scr.first(T.AUTO_LABEL, (0.55, 0.4, 0.75, 0.8))
     count = next(((i, re.search(T.AUTO_ROUNDS, i['t'])) for i in scr.items if re.search(T.AUTO_ROUNDS, i['t'])), None)
     # 标签有时读不出来；读到了轮次数就说明开着，标签就在轮次那一行上面
-    label_y = label['y'] if label else (count[0]['y'] - AUTO_LABEL_DY if count else None)
+    label_y = label['y'] if label else (count[0]['y'] - AUTO_ROW_DY if count else None)
     return {'auto_on': bool(count) if label_y is not None else None,
             'auto_rounds': int(count[1].group(1)) if count else None,
             'auto_switch': (AUTO_SWITCH_X, label_y) if label_y is not None else None,
-            'auto_buttons_y': count[0]['y'] + AUTO_BUTTONS_DY if count else None}
+            'auto_buttons_y': count[0]['y'] + AUTO_ROW_DY if count else None}
 
 
 def match_atlas(scr, atlas, prefix):
@@ -202,7 +203,7 @@ def classify(scr, atlas):
 @graph.detector(1)
 def detect_boot(scr, atlas):
     version = scr.find(T.BOOT_VERSION, (0, 0.9, 0.4, 1))
-    if not (version or scr.find_any(T.BOOT_MARKERS)):
+    if not (version or scr.has_any(T.BOOT_MARKERS)):
         return None
     buttons = [i for b in T.BOOT_DIALOG_BUTTONS for i in scr.find(b, (0.2, 0.3, 0.8, 0.85), exact=True)]
     if buttons:
@@ -227,12 +228,12 @@ def detect_blank_close(scr, atlas):
 @graph.detector(10)
 def detect_exit_confirm(scr, atlas):
     if scr.find(T.EXIT_CONFIRM):
-        return 'exit_confirm', {'cancel': (scr.find(T.CANCEL) or [None])[0], 'confirm': (scr.find(T.CONFIRM) or [None])[-1]}
+        return 'exit_confirm', {'cancel': scr.first(T.CANCEL), 'confirm': (scr.find(T.CONFIRM) or [None])[-1]}
 
 
 @graph.detector(20)
 def detect_result(scr, atlas):
-    if scr.find(T.RESULT) and scr.find_any(T.RESULT_BUTTONS):
+    if scr.find(T.RESULT) and scr.has_any(T.RESULT_BUTTONS):
         return 'result', {}
 
 
@@ -264,7 +265,7 @@ def detect_manual_popup(scr, atlas):
 
 @graph.detector(60)
 def detect_start(scr, atlas):
-    if scr.find_any(T.START):
+    if scr.has_any(T.START):
         return 'start', start_info(scr)
 
 
@@ -275,8 +276,8 @@ def detect_dungeon(scr, atlas):
         m = next((re.search(T.ROUND_NOW, i['t']) for i in scr.find(T.ROUND_HUD[0], hud) if re.search(T.ROUND_NOW, i['t'])), None)
         return 'dungeon', {'round': int(m.group(1)) if m else None, 'to_objective': bool(scr.find(T.TO_OBJECTIVE, hud))}
     # 不按轮次打的关卡没有轮次栏，任务栏顶上只写着关卡类型
-    title = next((i['t'] for i in scr.items if i['x'] < 0.08 and 0.25 < i['y'] < 0.3 and i['t'] in T.RUN_MODES), None)
-    if title or (scr.img is not None and run_exit_score(scr.img) >= RUN_EXIT_MIN):
+    title = next((i['t'] for i in scr.items_in((0, 0.25, 0.08, 0.3), lambda i: i['t'] in T.RUN_MODES)), None)
+    if title or run_exit_score(scr.img) >= RUN_EXIT_MIN:
         return 'dungeon', {'round': None, 'to_objective': False, 'mode': title or '局内'}
 
 
