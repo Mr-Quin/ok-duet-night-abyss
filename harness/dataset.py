@@ -60,6 +60,15 @@ class Dataset:
         self.index.flush()
 
 
+# the functions as they were before any task run wrapped them; a second run in the same
+# process must wrap these again, not the previous run's wrappers
+_ORIGINALS = {}
+
+
+def _original(owner, name):
+    return _ORIGINALS.setdefault((owner, name), getattr(owner, name))
+
+
 def install(observer):
     """Record the observer's phases and the navigator's screens; does nothing unless DNA_DATASET is set."""
     root = os.environ.get('DNA_DATASET')
@@ -78,7 +87,7 @@ def install(observer):
     observer.look = recording_look
 
     from src.nav import graph
-    classify = graph.classify
+    classify = _original(graph, 'classify')
 
     def recording_classify(scr, atlas):
         screen, info = classify(scr, atlas)
@@ -93,7 +102,7 @@ def install(observer):
     walk_dir = os.path.join(dataset.dir, 'walk')
     os.makedirs(walk_dir, exist_ok=True)
     walk_index = open(os.path.join(walk_dir, 'walk.jsonl'), 'a', encoding='utf-8')
-    find = marker_walk.MarkerWalk.find
+    find = _original(marker_walk.MarkerWalk, 'find')
 
     def recording_find(walker, frame):
         seen = find(walker, frame)
