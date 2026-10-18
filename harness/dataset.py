@@ -85,4 +85,33 @@ def install(observer):
         return screen, info
 
     graph.classify = recording_classify
+
+    # what the defence walker sees: a crop around where it found the marker, and what it read there
+    from src.tasks.fullauto import marker_walk
+    walk_dir = os.path.join(dataset.dir, 'walk')
+    os.makedirs(walk_dir, exist_ok=True)
+    walk_index = open(os.path.join(walk_dir, 'walk.jsonl'), 'a', encoding='utf-8')
+    find = marker_walk.MarkerWalk.find
+
+    def recording_find(walker, frame):
+        seen = find(walker, frame)
+        if frame is not None:
+            H, W = frame.shape[:2]
+            name = '%06d.jpg' % dataset.count
+            dataset.count += 1
+            if seen:
+                cx, cy = int((seen[0] + 1) * W / 2), int(walker.last_y * H)
+            else:
+                cx, cy = W // 2, int(0.4 * H)
+            x0, y0 = max(0, cx - int(0.08 * W)), max(0, cy - int(0.08 * H))
+            crop = frame[y0:cy + int(0.08 * H), x0:cx + int(0.08 * W)]
+            cv2.imwrite(os.path.join(walk_dir, name), crop, [cv2.IMWRITE_JPEG_QUALITY, 90])
+            row = {'file': name, 't': round(time.time(), 2), 'seen': seen is not None,
+                   'x': None if not seen else round(seen[0], 4), 'y': walker.last_y, 'metres': None if not seen else seen[1],
+                   'crop_origin': [x0 / W, y0 / H]}
+            walk_index.write(json.dumps(row) + '\n')
+            walk_index.flush()
+        return seen
+
+    marker_walk.MarkerWalk.find = recording_find
     return dataset
