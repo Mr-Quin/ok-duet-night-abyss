@@ -161,12 +161,9 @@ class RunLoop:
                 return
             self.task.log_info("轮次弹窗一直没自动继续，撤离")
             self.task.quit_mission()
-        elif self.rounds_seen >= self.job.rounds:
+        else:
             self.task.log_info(f"打完 {self.rounds_seen} 轮，撤离")
             self.task.quit_mission()
-        else:
-            self.task.continue_mission()
-            self.behaviour.next_round()
         self.acted(now)
 
     def on_manual(self, now):
