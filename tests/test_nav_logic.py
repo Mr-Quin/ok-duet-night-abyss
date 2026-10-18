@@ -313,7 +313,7 @@ class TestNightbookRows(unittest.TestCase):
         nav.cache = {'names/20': rows[:5]}
         levels = {lv: 0.25 + 0.07 * k for k, lv in enumerate(S.LEVELS)}
         info = {'tab': T.TABS[1], 'levels': levels}
-        nav.state['nightbook'] = {'level': 20, 'names': None, 'seen': set()}
+        nav.state['nightbook'] = {'level': 20, 'names': None, 'seen': []}
         # 滚动后「Ⅱ」读成了「ⅡI」，按名字去重会多出一行，按位置对齐不会
         first = self.page(rows[:5])
         second = self.page(['猩红游击秽兽', '守护飘浮秽兽ⅡI', '凛霜灼心秽兽', '复仇蒙恩的先锋', '霜狱蒙恩的执事'])
