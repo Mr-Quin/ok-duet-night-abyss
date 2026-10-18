@@ -41,10 +41,7 @@ class TestSimFuzz(unittest.TestCase):
         for seed in range(ORDERS):
             tmp = tempfile.mkdtemp()
             try:
-                cache = os.path.join(tmp, 'nav_cache.json')
-                start_cache = os.path.join(WORLD, 'nav_cache_start.json')
-                if os.path.exists(start_cache):
-                    shutil.copy(start_cache, cache)
+                cache = world.start_cache(tmp)
                 order = reached[:]
                 random.Random(seed).shuffle(order)
                 nav = Nav(SimBackend(world, home), cache_path=cache, log=lambda m: None)
