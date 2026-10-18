@@ -4,7 +4,7 @@ import unittest
 import numpy as np
 
 from src.nav import (BookSection, CommissionTab, Letter, MainMenu, Mission, Nav, NavError, Nightbook, NoSuchEntry,
-                     Page, World, WrongMission)
+                     NotOffered, Page, World, WrongMission)
 from src.nav import screens as S
 from src.nav import text_zh as T
 from src.nav.backend import Backend, Screen
@@ -273,6 +273,21 @@ class TestStartScreen(unittest.TestCase):
                 'entries': [], 'column': None}
         self.assertFalse(H.on_start(nav, screen(), info))
         self.assertEqual(backend.actions, [('key', 'esc')])
+
+    def test_a_letter_column_without_the_mission_this_hour_is_reported(self):
+        nav, _ = navigator(Letter(T.ENDLESS, column='武器'))
+        info = {'via': T.TABS[2], 'mode': '追缉', 'lv': 40, 'tiers': [], 'column': '武器',
+                'entries': [{'mode': '追缉', 'y': 0.22}, {'mode': '调停', 'y': 0.28}, {'mode': '避险', 'y': 0.33}]}
+        with self.assertRaises(NotOffered) as raised:
+            H.on_start(nav, screen(), info)
+        self.assertEqual(raised.exception.offered, ['追缉', '调停', '避险'])
+
+    def test_the_letter_picker_is_not_the_manual_popup(self):
+        before = screen((T.LETTER_TITLE, 0.47, 0.33), (T.MANUAL_SKIP, 0.47, 0.48), ('Space', 0.77, 0.64),
+                        (T.LETTER_GIVE_UP, 0.61, 0.64))
+        between = screen((T.LETTER_TITLE, 0.47, 0.33), (T.MANUAL_SKIP, 0.47, 0.48), ('Space', 0.55, 0.64))
+        self.assertEqual(S.classify(before, {}), ('letter_popup', {'before_run': True}))
+        self.assertEqual(S.classify(between, {}), ('letter_popup', {'before_run': False}))
 
 
 class TestNightbookRows(unittest.TestCase):

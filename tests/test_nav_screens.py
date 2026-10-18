@@ -7,12 +7,14 @@ from src.config import config
 from src.nav import screens as S
 from src.nav import text_zh as T
 from src.nav.okscript import OkScriptBackend
+from src.run import exploration as X
 from src.run import observe as O
 from src.tasks.AutoDefence import AutoDefence
 from src.tasks.fullauto.marker_walk import MarkerWalk
 
 NAV = 'tests/images/nav/'
 IMAGES = 'tests/images/'
+LETTER = 'tests/images/letter/'
 
 
 class TestNavScreens(TaskTestCase):
@@ -133,6 +135,31 @@ class TestNavScreens(TaskTestCase):
         self.set_image(IMAGES + 'manual_select_next_round.png')
         self.assertEqual(O.observe(self.task), O.MANUAL)
 
+
+    # ---- 委托密函 ----
+
+    def test_letter_tab_lists_the_endless_missions(self):
+        scr, (screen, info) = self.read(LETTER + 'letter_tab.png')
+        self.assertEqual((screen, info['tab']), ('commission', T.TABS[2]))
+        self.assertEqual(sorted(i['t'] for i in scr.items if T.ENDLESS in i['t']), ['扼守/无尽', '探险/无尽'])
+
+    def test_letter_start_screen(self):
+        self.assertScreen(LETTER + 'letter_start.png', 'start', via=T.TABS[2], mode='探险/无尽', column='角色',
+                          auto_on=True)
+
+    def test_letter_picker_before_the_run(self):
+        self.assertScreen(LETTER + 'letter_popup.png', 'letter_popup', before_run=True)
+
+    def test_exploration_device_prompts(self):
+        explore = X.Exploration(self.task)
+        for image, region, text in (('explore_prompt.png', X.PROMPT_BOX, X.PROMPT),
+                                    ('explore_quick_solve.png', X.QUICK_SOLVE_BOX, X.QUICK_SOLVE),
+                                    ('explore_solved.png', X.SOLVED_BOX, X.SOLVED)):
+            with self.subTest(image=image):
+                self.set_image(LETTER + image)
+                self.assertTrue(explore.shows(region, text))
+        self.set_image(LETTER + 'explore_solved.png')
+        self.assertFalse(explore.shows(X.QUICK_SOLVE_BOX, X.QUICK_SOLVE))
 
 if __name__ == '__main__':
     unittest.main()

@@ -135,6 +135,12 @@ class TestRunLoop(unittest.TestCase):
                                      L.Job('target', rounds=1, runs=1))
         self.assertEqual(defence.log.count('begin'), 2)
 
+    def test_the_game_picks_the_letter_between_rounds_when_it_runs_the_rounds(self):
+        task, _, _, _, _ = run([O.IN_RUN, O.LETTER, O.IN_RUN, O.RESULT], L.Job('target', rounds=3, runs=1))
+        self.assertNotIn('choose_letter', task.calls)
+        task, _, _, _, _ = run([O.IN_RUN, O.LETTER, O.RESULT], L.Job('target', rounds=3, runs=1), hold=120)
+        self.assertIn('choose_letter', task.calls)
+
     def test_stops_after_giving_up_too_many_runs_in_a_row(self):
         with self.assertRaises(L.GaveUpTooOften):
             run([O.IN_RUN, O.START] * 3 + [O.IN_RUN, O.RESULT], L.Job('target', rounds=1, runs=1),

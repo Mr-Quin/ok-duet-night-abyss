@@ -10,10 +10,10 @@ ok-script 上的实现。
 """
 from src.nav import edges, handlers  # noqa: F401  导入时登记内置的路线和界面处理方式
 from src.nav.backend import Backend, Screen
-from src.nav.graph import NavError, NoSuchEntry, WrongMission
+from src.nav.graph import NavError, NoSuchEntry, NotOffered, WrongMission
 from src.nav.nav import Nav, State
 from src.nav.targets import (BookSection, CommissionTab, Letter, MainMenu, Menu, Mission, Nightbook, Page,
                              StartScreen, Target, World)
 
-__all__ = ['Backend', 'Screen', 'NavError', 'NoSuchEntry', 'WrongMission', 'Nav', 'State', 'Target', 'StartScreen',
+__all__ = ['Backend', 'Screen', 'NavError', 'NoSuchEntry', 'NotOffered', 'WrongMission', 'Nav', 'State', 'Target', 'StartScreen',
            'World', 'MainMenu', 'Menu', 'BookSection', 'Page', 'CommissionTab', 'Mission', 'Nightbook', 'Letter']
