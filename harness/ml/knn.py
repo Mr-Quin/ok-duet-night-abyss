@@ -70,7 +70,7 @@ def main():
     for c in classes:
         keep = ref_labels != c
         unseen = test_labels == c
-        if not unseen.any() or keep.sum() == 0:
+        if not unseen.any() or unseen.all() or keep.sum() == 0:
             continue
         best = sims[:, keep].max(1)
         threshold = np.quantile(best[~unseen], 0.05)
