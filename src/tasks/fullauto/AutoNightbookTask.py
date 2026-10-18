@@ -5,13 +5,13 @@
 
 界面导航读的是简体中文界面上的文字，所以这个任务只支持简体中文客户端。
 """
+import os
+
 from qfluentwidgets import FluentIcon
 
 from ok import Logger, TaskDisabledException
 from src.nav import Mission, Nav, NavError, Nightbook, NoSuchEntry
 from src.nav.okscript import CACHE_PATH, OkScriptBackend
-from harness import dataset
-from harness.ml import shadow
 from src.run.loop import GaveUpTooOften, Job, RunLoop, UnsupportedMission
 from src.run.observe import Observer
 from src.tasks.BaseCombatTask import BaseCombatTask
@@ -78,8 +78,12 @@ class AutoNightbookTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         self.log_info(f"导航到{self.describe(job.target)}")
         try:
             observer = Observer(self)
-            recorder = dataset.install(observer)
-            shadow.install(observer)
+            recorder = None
+            if os.environ.get('DNA_DATASET') or os.environ.get('DNA_SHADOW'):
+                from harness import dataset
+                from harness.ml import shadow
+                recorder = dataset.install(observer)
+                shadow.install(observer)
             loop = RunLoop(self, self.nav, job, observer=observer)
             if recorder:
                 recorder.loop = loop
