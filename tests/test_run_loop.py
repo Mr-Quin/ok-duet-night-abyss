@@ -24,6 +24,9 @@ class FakeTask:
     def send_key(self, key):
         self.calls.append(('key', key))
 
+    def wait_until(self, condition, time_out=0, raise_if_not_found=False):
+        return condition()
+
     def __getattr__(self, name):
         if name in ('start_mission', 'quit_mission', 'continue_mission', 'choose_letter', 'choose_letter_reward'):
             return lambda: self.calls.append(name)
@@ -33,16 +36,17 @@ class FakeTask:
 
 
 class FakeNav:
-    def __init__(self, mode, auto_on=False):
+    def __init__(self, mode, auto_on=False, in_run=True):
         self.mode = mode
         self.auto_on = auto_on
+        self.in_run = in_run
         self.calls = []
 
     def go(self, target):
         self.calls.append(('go', target))
 
     def where(self):
-        return type('State', (), {'info': {'mode': self.mode, 'auto_on': self.auto_on}})()
+        return type('State', (), {'info': {'mode': self.mode, 'auto_on': self.auto_on}, 'in_run': self.in_run})()
 
     def set_auto_rounds(self, n):
         self.calls.append(('auto', n))
@@ -167,6 +171,24 @@ class TestRunLoop(unittest.TestCase):
         loop.run()
         self.assertEqual(loop.runs_done, 1)
         self.assertEqual([c[1] for c in nav.calls if c[0] == 'go'][:3], ['target', L.World(), 'target'])
+
+    def test_the_open_world_hud_is_not_taken_for_a_new_run(self):
+        task, nav = FakeTask(), FakeNav('驱离', in_run=False)
+        real_go = nav.go
+
+        def go(target):
+            real_go(target)
+            # 第一次进关卡后看到的是大世界，第二次才真的进了局内
+            nav.in_run = len([c for c in nav.calls if c == ('go', 'target')]) >= 2
+        nav.go = go
+        frames = [O.IN_RUN] * 2 + [O.START] * 2 + [O.IN_RUN] * 2 + [O.RESULT] * 2
+        look = lambda t: frames.pop(0) if len(frames) > 1 else frames[0]
+        expulsion = behaviour('驱离', False)
+        loop = L.RunLoop(task, nav, L.Job('target', runs=1), observer=O.Observer(task, look),
+                         clock=lambda: task.now, behaviours=(expulsion,))
+        loop.run()
+        self.assertEqual(expulsion.log, ['begin'])
+        self.assertEqual(loop.runs_done, 1)
 
     def test_an_unrecognised_screen_for_too_long_navigates_back(self):
         task, nav, loop, _, _ = run([O.OTHER, O.IN_RUN, O.RESULT], L.Job('target', runs=1), hold=120)
