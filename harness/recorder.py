@@ -5,7 +5,7 @@ from src.nav import screens as S
 from src.nav.backend import Backend
 
 from harness import privacy
-from harness.world import World
+from harness.world import World, region_key
 
 
 class RecordingBackend(Backend):
@@ -41,7 +41,11 @@ class RecordingBackend(Backend):
     def ocr_region(self, scr, x0, y0, x1, y1, scale=2.0):
         items = self.inner.ocr_region(scr, x0, y0, x1, y1, scale)
         state = self.world.states[self.current]
-        self.world.add_region(self.current, (x0, y0, x1, y1), privacy.visible(items, state['screen']))
+        visible = privacy.visible(items, state['screen'])
+        self.world.add_region(self.current, (x0, y0, x1, y1), visible)
+        # the state keeps only the first read, but one state can cover several scroll positions of
+        # the level column, so the exact replay needs what this particular read saw
+        self.trace[-1].setdefault('regions', {})[region_key((x0, y0, x1, y1))] = visible
         return items
 
     def click(self, x, y):

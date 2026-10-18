@@ -136,6 +136,11 @@ def saved_texts():
         for sid, state in World.load(WORLD).states.items():
             for items in state.get('regions', {}).values():
                 yield sid, items
+    if os.path.exists(os.path.join(WORLD, 'trace.json')):
+        with open(os.path.join(WORLD, 'trace.json'), encoding='utf-8') as f:
+            for k, step in enumerate(json.load(f)):
+                for items in step.get('regions', {}).values():
+                    yield 'trace step %d' % k, items
 
 
 class TestPrivacy(unittest.TestCase):
