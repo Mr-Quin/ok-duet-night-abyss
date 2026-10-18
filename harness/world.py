@@ -9,6 +9,7 @@ by itself (an animation finishing, a loading screen ending).
 import hashlib
 import json
 import os
+import re
 
 import cv2
 import numpy as np
@@ -37,6 +38,8 @@ def signature(scr, screen, info):
     if screen == 'commission' and info.get('tab') == '夜航手册':
         parts.append(str(S.selected_level(scr, info.get('levels'))))
         parts.append('|'.join(r['name'] or '?' for r in S.nightbook_rows(scr)))
+        # the level column scrolls on its own; two visits with it in different places read differently
+        parts.append(','.join(sorted(i['t'] for i in scr.items if i['x'] < 0.11 and re.fullmatch(r'\d\d', i['t']))))
     elif screen == 'commission':
         parts.append('|'.join(sorted(i['t'] for i in scr.items if 0.62 < i['y'] < 0.68)))
     elif screen == 'start':
