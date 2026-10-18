@@ -100,6 +100,9 @@ class Defence:
             self.routes = routes.RouteLibrary()
         spawn, marker = task.next_frame(), (seen[0], walker.last_y)
         route = self.routes.find(spawn, marker, map_name)
+        if route is not None and route.walk_only:
+            task.log_info(f"路线 {route.name} 回放走不到，按标记走")
+            return self.reach(walker, seen)
         if route is not None:
             task.log_info(f"按路线 {route.name} 走")
             routes.play(task, route)
@@ -108,9 +111,8 @@ class Defence:
                 self.routes.remember_map(route, map_name)
                 return True
             if route.path.startswith(routes.LEARNED_DIR):
-                # 学来的路线这次没走到，删掉，下次重新学
-                os.remove(route.path)
-                self.routes.routes.remove(route)
+                # 回放是照着录下的按键走的，差一点就会被挡住；学的时候按标记走得到，以后就只按标记走
+                self.routes.mark_walk_only(route)
             return False
         near, score, offset = self.routes.closest(spawn, marker)
         if near is not None:

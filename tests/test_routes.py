@@ -143,6 +143,13 @@ class TestRoutes(unittest.TestCase):
         finally:
             R.LEARNED_DIR = original
 
+    def test_a_walk_only_route_still_matches_after_reloading(self):
+        lib = R.RouteLibrary(folders=())
+        lib.save(self.room, (0.34, 0.25), [], 'defence_15', folder=self.folder, name='room')
+        lib.mark_walk_only(lib.routes[-1])
+        route = R.RouteLibrary(folders=(self.folder,)).find(self.room, (0.34, 0.25))
+        self.assertTrue(route.walk_only)
+
     def test_a_route_still_matches_at_another_resolution(self):
         lib = R.RouteLibrary(folders=())
         lib.save(self.room, (0.34, 0.25), [], folder=self.folder, name='room')

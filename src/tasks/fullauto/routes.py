@@ -51,6 +51,7 @@ class Route:
         self.steps = data['steps']
         self.marker = tuple(data['marker'])
         self.maps = set(data.get('maps', []))
+        self.walk_only = data.get('walk_only', False)
         self.view = np.array(data['view'], dtype=np.float32).reshape(VIEW_SIZE[1], VIEW_SIZE[0])
 
     def matches(self, view, marker, map_name=None):
@@ -93,6 +94,13 @@ class RouteLibrary:
             return
         route.maps.add(map_name)
         route.data['maps'] = sorted(route.maps)
+        _write(route.path, route.data)
+
+
+    def mark_walk_only(self, route):
+        """回放走不到但按标记走得到：留着这条路线认出生点，以后这里只按标记走，不再重新学。"""
+        route.walk_only = True
+        route.data['walk_only'] = True
         _write(route.path, route.data)
 
 
