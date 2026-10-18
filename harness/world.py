@@ -36,7 +36,7 @@ def signature(scr, screen, info):
     parts = [screen] + [str(info.get(k)) for k in KEYS.get(screen, ())]
     if screen == 'commission' and info.get('tab') == '夜航手册':
         parts.append(str(S.selected_level(scr, info.get('levels'))))
-        parts.append('|'.join(r['name'] for r in S.nightbook_rows(scr)))
+        parts.append('|'.join(r['name'] or '?' for r in S.nightbook_rows(scr)))
     elif screen == 'commission':
         parts.append('|'.join(sorted(i['t'] for i in scr.items if 0.62 < i['y'] < 0.68)))
     elif screen == 'start':
