@@ -22,6 +22,27 @@ about 40% of a navigation, about 5 s per job, and only if the following action d
 OCR anyway (most book steps read text to choose where to click). Any case for a model has to
 be robustness or scaling to new screens.
 
+## The rule-based labels are wrong exactly where it matters
+
+A contact-sheet audit of 126 recorded frames (harness/ml/sheet.py) found the labels right for
+menus, start screens, result, round dialogs and loading screens, and wrong on the one
+distinction the bot most needs: open world versus in a run. The phase check labels the open
+world `in_run` (its HUD template matches both), and the navigator labelled about a third of
+non-defence runs `world` because ok-script's full-frame OCR at reduced size cannot read the
+small mission panel. A model distilled from these labels would learn the same confusion, so
+an independent, hand-checked answer key is required before any model number means anything.
+
+## A better rule, found with the data, beat the need for a model
+
+Scoring every recorded full frame against the top-left icon (exit door inside a run, menu
+icon in the open world) separates the two cleanly: runs 0.77 to 0.99, open world 0.22 to 0.53,
+nothing in between. Added to the navigator's run detector as a fallback, it turned 30 replayed
+frames from world/unknown into the correct `dungeon` (spot-checked by eye); the 19 screen tests
+still pass. This is the pattern worth keeping: record labelled frames continuously, audit a
+sample, replay detectors offline, and look for the visual cue that separates the confused
+classes. A learned model would likely latch onto the same cue; here a 48x76 template was enough
+and needs no training or retraining.
+
 ## Open questions being tested
 
 - Can a classifier tell the open world from a run? The rule-based in_team() check cannot (it
