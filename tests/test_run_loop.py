@@ -24,7 +24,7 @@ class FakeTask:
     def send_key(self, key):
         self.calls.append(('key', key))
 
-    def wait_until(self, condition, time_out=0, raise_if_not_found=False):
+    def wait_until(self, condition, time_out=0, raise_if_not_found=False, post_action=None):
         return condition()
 
     def __getattr__(self, name):

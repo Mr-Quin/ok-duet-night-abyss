@@ -210,14 +210,11 @@ def other_levels_rows(nav, book):
 
 
 def select_level(nav, scr, info, book, st):
+    # 等级栏又高又窄，OCR 时好时坏，单独读一次要半秒；它在这个页面上不会动（滚动时清掉），读到过一次就记着
     if not info.get('levels'):
-        column = Screen(scr.img, nav.b.ocr_region(scr, *S.LEVEL_COLUMN))
-        info['levels'] = S.level_positions(column)
-    # 等级栏又高又窄，OCR 时好时坏；它在这个页面上不会动，读到过一次就记着
+        info['levels'] = st.get('levels') or S.level_positions(Screen(scr.img, nav.b.ocr_region(scr, *S.LEVEL_COLUMN)))
     if info['levels']:
         st['levels'] = info['levels']
-    else:
-        info['levels'] = st.get('levels', {})
     y = info['levels'].get(book)
     if y is None:
         if nav.wait(3) is None:
