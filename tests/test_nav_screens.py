@@ -60,6 +60,13 @@ class TestNavScreens(TaskTestCase):
             self.assertEqual((screen, info['tab']), ('commission', T.TABS[1]))
             self.assertEqual(S.selected_level(scr, info['levels']), level)
 
+    def test_a_level_at_the_bottom_edge_is_not_taken_for_the_selected_one(self):
+        # below the panel is the bright sand background
+        scr, _ = self.read(NAV + 'nightbook_lv60_panel_edge.png')
+        levels = {20: 0.25, 30: 0.33, 40: 0.40, 50: 0.47, 55: 0.54, 60: 0.62, 65: 0.69, 70: 0.76, 75: 0.80}
+        self.assertEqual(S.selected_level(scr, levels), 60)
+        self.assertEqual(S.selected_level(scr, {**levels, 80: 0.86}), 60)
+
     def test_nightbook_rows(self):
         scr, _ = self.read(NAV + 'nightbook_lv65_top.png')
         self.assertEqual([r['name'] for r in S.nightbook_rows(scr)][:2], ['霜狱野蜂暗箭', '浴血野蜂利刃'])
