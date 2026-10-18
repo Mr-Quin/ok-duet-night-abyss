@@ -22,6 +22,16 @@ about 40% of a navigation, about 5 s per job, and only if the following action d
 OCR anyway (most book steps read text to choose where to click). Any case for a model has to
 be robustness or scaling to new screens.
 
+Multi-run jobs confirm it (overnight soak, two cases):
+
+| Mission | Run | Between runs (result, 再次进行, loading) |
+|---|---|---|
+| 扼守, 3 rounds per run | 92 to 101 s | 12 to 13 s |
+| 驱离 | 30 to 32 s | 8 to 9 s |
+
+The gap between runs is the game's result screen and loading; the bot reacts within a few
+tenths of a second. A running job is bound by the game.
+
 ## The rule-based labels are wrong exactly where it matters
 
 A contact-sheet audit of 126 recorded frames (harness/ml/sheet.py) found the labels right for
