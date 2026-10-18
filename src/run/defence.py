@@ -28,6 +28,8 @@ class Defence:
         task = self.task
         task.reset_wave_info()
         task.skill_tick.reset()
+        # 刚进局内时小地图和目标标记还没画出来，按 ESC 也不出菜单
+        task.sleep(2)
         if not self.walk():
             # 已经走了一段，离目标点旁的复位点最近
             if not task.reset_and_transport() or not self.wave_started(RESET_WAVE_WAIT):
@@ -87,13 +89,13 @@ class Defence:
 
     def walk(self):
         task = self.task
-        map_name = self.identify_map()
         walker = MarkerWalk(task)
-        seen = walker.wait_for_marker()
+        seen = walker.wait_for_marker(timeout=10)
         if seen is None:
             task.log_info("没找到目标标记")
             task.screenshot("walk_no_marker")
             return False
+        map_name = self.identify_map()
         if self.routes is None:
             self.routes = routes.RouteLibrary()
         spawn, marker = task.next_frame(), (seen[0], walker.last_y)

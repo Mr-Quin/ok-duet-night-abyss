@@ -323,6 +323,16 @@ class TestNightbookRows(unittest.TestCase):
         self.assertEqual(nav.cache['names/20'][-1], '霜狱蒙恩的执事')
         self.assertEqual(len(nav.cache['names/20']), 6)
 
+    def test_the_level_column_read_once_is_remembered_on_the_page(self):
+        nav, backend, info = self.nightbook(5)
+        rows = ['残火暴徒秽兽', '霹雳疾冲秽兽', '枯萎游击秽兽', '凛霜疾冲秽兽', '复仇蒙恩的先锋', '霜狱蒙恩的执事']
+        nav.cache = {'names/30': rows[:4]}
+        open_nightbook_row(nav, self.page(rows[:4]), None, None, dict(info))
+        open_nightbook_row(nav, self.page(rows[:4]), None, None, dict(info))
+        # 滚动后等级栏读不出来（FakeBackend 的 OCR 什么都读不到），还按记下的位置走
+        open_nightbook_row(nav, self.page(rows[1:]), None, None, {'tab': T.TABS[1]})
+        self.assertEqual(nav.state['entered_row'], '霜狱蒙恩的执事')
+
     def test_a_half_hidden_row_keeps_its_place_without_a_name(self):
         # 只露出一半的行，名字的位置上读到的是列表顶上的花纹
         scr = self.page(['HTHHHIHRYH', '残火暴徒秽兽', '霹雳疾冲秽兽'])
