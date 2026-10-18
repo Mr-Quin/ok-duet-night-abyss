@@ -8,6 +8,9 @@ import time
 import cv2
 import numpy as np
 
+# 默认 OCR 检测会把长边超过这个的图缩小
+OCR_MAX_SIDE = 960
+
 
 class Screen:
     """一帧画面和它的 OCR 结果。items 是 [{'t': 文字, 'x': 中心 x, 'y': 中心 y}]，坐标为比例。"""
@@ -84,11 +87,31 @@ class Backend:
         return Screen(img, self.ocr(img))
 
     def ocr_region(self, scr, x0, y0, x1, y1, scale=2.0):
-        """放大后单独识别画面的一部分；整帧 OCR 漏掉的小字这样能读出来。"""
+        """放大后单独识别画面的一部分；整帧 OCR 漏掉的小字这样能读出来。
+
+        OCR 会把长边超过 OCR_MAX_SIDE 的图整张缩小，又高又窄的一条（比如夜航手册的等级栏）
+        放大后反而被缩没了，所以按长边切成互相重叠的几块分别识别。
+        """
         H, W = scr.img.shape[:2]
         crop = scr.img[int(y0 * H):int(y1 * H), int(x0 * W):int(x1 * W)]
         crop = cv2.resize(crop, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
-        return [dict(i, x=x0 + i['x'] * (x1 - x0), y=y0 + i['y'] * (y1 - y0)) for i in self.ocr(crop)]
+        h, w = crop.shape[:2]
+        tall, length = h >= w, max(h, w)
+        starts = list(range(0, max(1, length - OCR_MAX_SIDE + 1), int(OCR_MAX_SIDE * 0.8)))
+        if starts[-1] + OCR_MAX_SIDE < length:
+            starts.append(length - OCR_MAX_SIDE)
+        items = []
+        for s in starts:
+            tile = crop[s:s + OCR_MAX_SIDE] if tall else crop[:, s:s + OCR_MAX_SIDE]
+            th, tw = tile.shape[:2]
+            for i in self.ocr(tile):
+                cx = (i['x'] * tw + (0 if tall else s)) / w
+                cy = (i['y'] * th + (s if tall else 0)) / h
+                # 重叠的地方会读到两次
+                if any(o['t'] == i['t'] and abs(o['x'] - cx) < 0.02 and abs(o['y'] - cy) < 0.02 for o in items):
+                    continue
+                items.append(dict(i, x=cx, y=cy))
+        return [dict(i, x=x0 + i['x'] * (x1 - x0), y=y0 + i['y'] * (y1 - y0)) for i in items]
 
     def thumb(self):
         """用来判断画面是否还在变化的小灰度图。"""
