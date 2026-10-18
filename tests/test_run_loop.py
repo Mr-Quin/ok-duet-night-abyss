@@ -46,7 +46,8 @@ class FakeNav:
         self.calls.append(('go', target))
 
     def where(self):
-        return type('State', (), {'info': {'mode': self.mode, 'auto_on': self.auto_on}, 'in_run': self.in_run})()
+        return type('State', (), {'screen': 'start', 'info': {'mode': self.mode, 'auto_on': self.auto_on},
+                                  'in_run': self.in_run})()
 
     def set_auto_rounds(self, n):
         self.calls.append(('auto', n))
@@ -136,6 +137,17 @@ class TestRunLoop(unittest.TestCase):
                                         L.Job('target', rounds=1, runs=1), begins=[False, True])
         self.assertEqual(defence.log.count('begin'), 2)
         self.assertEqual(loop.runs_done, 1)
+
+    def test_stops_after_giving_up_too_many_runs_in_a_row(self):
+        with self.assertRaises(L.GaveUpTooOften):
+            run([O.IN_RUN, O.START] * 3 + [O.IN_RUN, O.RESULT], L.Job('target', rounds=1, runs=1),
+                begins=[False] * L.MAX_GIVE_UPS)
+
+    def test_a_finished_run_resets_the_give_up_count(self):
+        script = [O.IN_RUN, O.START, O.IN_RUN, O.ROUND_DIALOG, O.RESULT] * 2 + [O.IN_RUN, O.ROUND_DIALOG, O.RESULT]
+        _, nav, loop, _, _ = run(script, L.Job('target', rounds=1, runs=3), begins=[False, True] * 2)
+        self.assertEqual(loop.runs_done, 3)
+        self.assertEqual(sum(1 for c in nav.calls if c[0] == 'go'), 1 + 2 + 1)
 
     def test_a_single_frame_of_the_result_screen_mid_run_is_ignored(self):
         task, nav = FakeTask(), FakeNav('æ‰¼å®ˆ')

@@ -34,7 +34,7 @@ class Defence:
             # 已经走了一段，离目标点旁的复位点最近
             if not task.reset_and_transport() or not self.wave_started(RESET_WAVE_WAIT):
                 task.log_info("复位后也没开始波次，放弃这一局")
-                task.give_up_mission()
+                task.exit_mission()
                 return False
         self.wave, self.wave_since = task.current_wave, time.time()
         return True
@@ -49,7 +49,7 @@ class Defence:
         # 读不出波次时也要计时，不然一直读不出就永远不会超时
         if task.combat_detection_enabled() and time.time() - self.wave_since >= task.config.get("超时时间", 120):
             task.log_info("波次超时，放弃这一局")
-            task.give_up_mission()
+            task.exit_mission()
             return False
         if task.skills_ready(in_combat):
             task.skill_tick()

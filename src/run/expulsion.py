@@ -49,7 +49,7 @@ class Expulsion:
                 self.pending = None
         if time.time() - self.since >= task.config.get("超时时间", 120):
             task.log_info(f"进度停在 {self.progress} 不动，放弃这一局")
-            task.give_up_mission()
+            task.exit_mission()
             return False
         task.skill_tick()
         return True
