@@ -16,8 +16,9 @@ class Expulsion:
     names = ('驱离', '驱逐', '避险')
     uses_rounds = False
 
-    def __init__(self, task):
+    def __init__(self, task, clock=time.time):
         self.task = task
+        self.clock = clock
         self.since = 0
         self.progress, self.pending, self.read_at = None, None, 0
 
@@ -28,25 +29,25 @@ class Expulsion:
         task.sleep(2)
         if not task.apply_afk_mode():
             return False
-        self.since = time.time()
+        self.since = self.clock()
         self.progress, self.pending, self.read_at = None, None, 0
         return True
 
     def tick(self):
         """超时按进度算：进度在变就一直打，「超时时间」秒都没变才放弃。"""
         task = self.task
-        if time.time() - self.read_at >= PROGRESS_EVERY:
-            self.read_at = time.time()
+        if self.clock() - self.read_at >= PROGRESS_EVERY:
+            self.read_at = self.clock()
             reading = self.read_progress()
             # 数字本身读不准（「4/40」会读成 4140），只看它变没变；新的读数连着两次一样才算进度，偶尔读错一次不算
             if reading is not None and reading != self.progress:
                 if reading == self.pending:
-                    self.progress, self.since, self.pending = reading, time.time(), None
+                    self.progress, self.since, self.pending = reading, self.clock(), None
                 else:
                     self.pending = reading
             elif reading == self.progress:
                 self.pending = None
-        if time.time() - self.since >= task.config.get("超时时间", 120):
+        if self.clock() - self.since >= task.config.get("超时时间", 120):
             task.log_info(f"进度停在 {self.progress} 不动，放弃这一局")
             task.exit_mission()
             return False

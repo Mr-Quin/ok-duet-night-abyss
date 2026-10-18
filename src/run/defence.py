@@ -17,8 +17,9 @@ class Defence:
     names = ('扼守',)
     uses_rounds = True
 
-    def __init__(self, task):
+    def __init__(self, task, clock=time.time):
         self.task = task
+        self.clock = clock
         self.maps = None
         self.routes = None
         self.wave, self.wave_since = -1, 0
@@ -36,7 +37,7 @@ class Defence:
                 task.log_info("复位后也没开始波次，放弃这一局")
                 task.exit_mission()
                 return False
-        self.wave, self.wave_since = task.current_wave, time.time()
+        self.wave, self.wave_since = task.current_wave, self.clock()
         return True
 
     def tick(self):
@@ -45,9 +46,9 @@ class Defence:
         task.get_wave_info()
         in_combat = task.current_wave != -1
         if task.current_wave != self.wave:
-            self.wave, self.wave_since = task.current_wave, time.time()
+            self.wave, self.wave_since = task.current_wave, self.clock()
         # 读不出波次时也要计时，不然一直读不出就永远不会超时
-        if task.combat_detection_enabled() and time.time() - self.wave_since >= task.config.get("超时时间", 120):
+        if task.combat_detection_enabled() and self.clock() - self.wave_since >= task.config.get("超时时间", 120):
             task.log_info("波次超时，放弃这一局")
             task.exit_mission()
             return False
@@ -86,7 +87,7 @@ class Defence:
 
     def walk(self):
         task = self.task
-        walker = MarkerWalk(task)
+        walker = MarkerWalk(task, self.clock)
         seen = walker.wait_for_marker(timeout=10)
         if seen is None:
             task.log_info("没找到目标标记")
@@ -111,9 +112,8 @@ class Defence:
             if seen is not None and self.reach(walker, seen):
                 self.routes.remember_map(route, map_name)
                 return True
-            if route.path.startswith(routes.LEARNED_DIR):
-                # 回放是照着录下的按键走的，差一点就会被挡住；学的时候按标记走得到，以后就只按标记走
-                self.routes.mark_walk_only(route)
+            # 回放是照着录下的按键走的，差一点就会被挡住；学的时候按标记走得到，以后就只按标记走
+            self.routes.replay_failed(route)
             return False
         near, score, offset = self.routes.closest(spawn, marker)
         if near is not None:

@@ -29,15 +29,10 @@ class TestExpulsionTimeout(unittest.TestCase):
 
     def setUp(self):
         self.now = [1000.0]
-        self.original = E.time.time
-        E.time.time = lambda: self.now[0]
-
-    def tearDown(self):
-        E.time.time = self.original
 
     def play(self, readings, seconds):
         task = FakeTask(readings)
-        behaviour = E.Expulsion(task)
+        behaviour = E.Expulsion(task, clock=lambda: self.now[0])
         behaviour.since = self.now[0]
         alive = True
         for _ in range(seconds // E.PROGRESS_EVERY):
