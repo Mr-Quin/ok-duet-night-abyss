@@ -91,7 +91,10 @@ def nightbook_rows(scr):
     for b in scr.find(T.GO, (0.55, 0.2, 0.7, 0.9)):
         names = [i for i in scr.items if 0.1 < i['x'] < 0.3 and abs(i['y'] - b['y']) < 0.03
                  and not any(w in i['t'] for w in T.DROP_WORDS)]
-        out.append({'name': names[0]['t'].replace(' ', '') if names else '', 'button': b})
+        name = names[0]['t'].replace(' ', '') if names else ''
+        # 只露出一半的行读不出名字，列表顶上的装饰花纹会读成 HTHHHIHRYH，都不算行
+        if sum('一' <= c <= '鿿' for c in name) >= 2:
+            out.append({'name': name, 'button': b})
     return out
 
 

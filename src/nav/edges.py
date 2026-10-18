@@ -23,6 +23,21 @@ def same_name(a, b):
     return len(diff) == 1 and not diff[0][0].isascii() and not diff[0][1].isascii()
 
 
+def han(name):
+    """只留汉字。罗马数字和引号读得不稳：同一个「Ⅱ」会读成 II 或 ⅡI。"""
+    return ''.join(c for c in name if '一' <= c <= '鿿')
+
+
+def align(known, visible):
+    """visible 的第一行是 known 里的第几行：按汉字逐行对，重叠的部分要全部对上，取重叠最多的。"""
+    best, overlap = None, 0
+    for offset in range(len(known)):
+        pairs = list(zip(known[offset:], visible))
+        if len(pairs) > overlap and all(same_name(han(a), han(b)) for a, b in pairs):
+            best, overlap = offset, len(pairs)
+    return best
+
+
 def route(goal):
     """从大世界到目标的节点列表。goal 是目标类 goal() 返回的字典。"""
     g = goal['screen']
@@ -183,7 +198,7 @@ def select_level(nav, scr, info, book, st):
         st.pop('level', None)
         return False
     if st.get('level') != book:
-        st.update(level=book, names=None, seen=set())
+        st.update(level=book, names=None, seen=set(), at_top=False)
         if S.selected_level(scr, info['levels']) != book:
             nav.log('  选择 Lv.%d' % book)
             nav.b.click(S.LEVEL_X, y)
@@ -205,24 +220,32 @@ def select_level(nav, scr, info, book, st):
 
 
 def learn_rows(nav, scr, info, book, st):
-    """把看到的行名按顺序记进 st['names']，比缓存的多时写回缓存。"""
+    """按位置记行：st['names'] 是从顶部数起的全部行名，st['offset'] 是现在第一行是第几行。
+
+    同一行两次读出的名字可能不一样，所以不按名字去重，而是把看到的几行和已知的行逐行对齐。
+    """
     names = [r['name'] for r in S.nightbook_rows(scr)]
     row, known = nav.goal['row'], cached_rows(nav, book)
     if st['names'] is None:
-        if names and known and names[0] == known[0]:
-            st['names'] = list(known)
-        elif isinstance(row, str) and any(row in n for n in names):
-            st['names'] = []
-        else:
+        if isinstance(row, str) and any(row in n for n in names):
+            st['names'], st['offset'] = [], None
+            return READY
+        if not (names and known and same_name(han(names[0]), han(known[0]))) and not st.get('at_top'):
             # 行号从顶部数起，而列表会记住上次的滚动位置
             nav.log('  把列表滚到顶部')
             nav.b.scroll(0.4, 0.45, 30)
-            st['names'] = []
+            st['at_top'] = True
             return False
-    for n in names:
-        if n and not any(same_name(n, m) for m in st['names']):
-            st['names'].append(n)
-    if len(st['names']) > len(known) and (not known or st['names'][0] == known[0]):
+        st['names'], st['offset'] = list(names), 0
+    elif st['offset'] is not None:
+        offset = align(st['names'], names)
+        if offset is None:
+            nav.log('  对不上已经看到的行 %s，重新从顶部数' % names)
+            st.update(names=None, at_top=False)
+            return False
+        st['offset'] = offset
+        st['names'] += names[len(st['names']) - offset:]
+    if len(st['names']) > len(known):
         nav.cache['names/%d' % book] = list(st['names'])
         nav.save_cache()
     return READY
@@ -233,15 +256,19 @@ def open_row(nav, scr, info, book, st):
     names = [r['name'] for r in listed]
     row = nav.goal['row']
     if isinstance(row, str):
-        target = row
+        idx = next((k for k, n in enumerate(names) if row in n or same_name(row, n)), None)
     else:
-        target = st['names'][row] if row < len(st['names']) else None
-    idx = next((k for k, n in enumerate(names) if target and (target in n or same_name(target, n))), None)
+        idx = row - st['offset']
+        if idx < 0:
+            nav.b.scroll(0.4, 0.45, 3)
+            return False
+        if idx >= len(listed):
+            idx = None
     if idx is None:
         if tuple(names) in st['seen']:
             raise NoSuchEntry(book, row, st['names'])
         st['seen'].add(tuple(names))
-        nav.log('  %r 不在 %s 中，向下滚动' % (row, names))
+        nav.log('  第 %r 行不在 %s 中，向下滚动' % (row, names))
         nav.b.scroll(0.4, 0.45, -3)
         return False
     nav.log('  第 %r 行 -> %s' % (row, names[idx]))
