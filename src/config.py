@@ -212,7 +212,6 @@ config = {
         ["src.tasks.fullauto.AutoEscortTask", "AutoEscortTask"],
         ["src.tasks.fullauto.AutoEscortTask_Fast", "AutoEscortTask_Fast"],
         ["src.tasks.fullauto.Auto65ArtifactTask_Fast", "Auto65ArtifactTask_Fast"],
-        ["src.tasks.fullauto.Auto65NavTask", "Auto65NavTask"],
         ["src.tasks.fullauto.AutoNightbookTask", "AutoNightbookTask"],
         ["src.tasks.fullauto.Auto70jjbTask", "Auto70jjbTask"],
         ["src.tasks.fullauto.ImportTask", "ImportTask"],
