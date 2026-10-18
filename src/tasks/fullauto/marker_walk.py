@@ -23,6 +23,8 @@ STUCK_SECONDS = 2.5
 MAX_JUMPS = 2
 # 冲刺实测最快约 9 米/秒；距离一下子少得比这还多是 OCR 读错了（比如把 35 读成 3）
 MAX_SPEED = 15
+MAX_METRES = 500
+DODGE_DELAY = 0.1
 
 
 class MarkerWalk:
@@ -56,7 +58,11 @@ class MarkerWalk:
         label = frame[cy + int(16 * s):cy + int(60 * s), max(0, cx - int(80 * s)):cx + int(80 * s)]
         boxes = self.task.ocr(frame=label, threshold=0.5) if label.size else []
         m = re.search(r'(\d+)\s*米', ''.join(b.name for b in boxes))
-        return (cx - W / 2) / (W / 2), int(m.group(1)) if m else None
+        metres = int(m.group(1)) if m else None
+        # 旁边的数字会被一起读进来，比如 16127
+        if metres is not None and metres > MAX_METRES:
+            metres = None
+        return (cx - W / 2) / (W / 2), metres
 
     def wait_for_marker(self, timeout=6):
         deadline = time.time() + timeout
@@ -79,14 +85,17 @@ class MarkerWalk:
         if not self.steps:
             self.t0 = t0
         self.record({'down': 'w'})
-        self.record({'down': dodge})
         task.send_key_down('w')
-        task.send_key_down(dodge)
         try:
+            # 闪避键不带方向按下是向后撤，要等前进键先生效
+            task.sleep(DODGE_DELAY)
+            self.record({'down': dodge})
+            task.send_key_down(dodge)
             lost_since, best, best_at, jumps = None, None, time.time(), 0
             last_metres, last_at = seen[1], time.time()
             while time.time() - t0 < timeout:
-                seen = self.find(task.next_frame())
+                frame = task.next_frame()
+                seen = self.find(frame)
                 if seen is None:
                     lost_since = lost_since or time.time()
                     if time.time() - lost_since > 3:
@@ -95,6 +104,7 @@ class MarkerWalk:
                             task.log_info(f"标记在 {last_metres} 米处消失，当作到了")
                             return True
                         task.log_info("目标标记丢失")
+                        task.screenshot("walk_lost", frame)
                         return False
                     continue
                 lost_since = None
@@ -112,6 +122,7 @@ class MarkerWalk:
                 elif time.time() - best_at > STUCK_SECONDS:
                     if jumps >= MAX_JUMPS:
                         task.log_info(f"被挡住了，停在 {best} 米")
+                        task.screenshot("walk_blocked", frame)
                         return False
                     jumps += 1
                     self.record({'down': 'space'})
