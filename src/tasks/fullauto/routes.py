@@ -44,15 +44,22 @@ def _similarity(a, b):
 
 
 class Route:
-    def __init__(self, path, data):
+    def __init__(self, path, data, learned):
         self.path = path
         self.data = data
+        self.learned = learned
         self.name = os.path.splitext(os.path.basename(path))[0]
         self.steps = data['steps']
         self.marker = tuple(data['marker'])
-        self.maps = set(data.get('maps', []))
-        self.walk_only = data.get('walk_only', False)
         self.view = np.array(data['view'], dtype=np.float32).reshape(VIEW_SIZE[1], VIEW_SIZE[0])
+
+    @property
+    def maps(self):
+        return set(self.data.get('maps', []))
+
+    @property
+    def walk_only(self):
+        return self.data.get('walk_only', False)
 
     def matches(self, view, marker, map_name=None):
         close = abs(marker[0] - self.marker[0]) < SAME_MARKER and abs(marker[1] - self.marker[1]) < SAME_MARKER
@@ -60,12 +67,15 @@ class Route:
 
 
 class RouteLibrary:
-    def __init__(self, folders=(SHIPPED_DIR, LEARNED_DIR)):
+    """随程序发布的路线只读；学来的路线放在 learned_dir，只有这个库写它们。"""
+
+    def __init__(self, shipped_dir=SHIPPED_DIR, learned_dir=LEARNED_DIR):
+        self.learned_dir = learned_dir
         self.routes = []
-        for folder in folders:
-            for path in sorted(glob.glob(os.path.join(folder, '*.json'))):
+        for folder, learned in ((shipped_dir, False), (learned_dir, True)):
+            for path in sorted(glob.glob(os.path.join(folder, '*.json'))) if folder else ():
                 with open(path, encoding='utf-8') as f:
-                    self.routes.append(Route(path, json.load(f)))
+                    self.routes.append(Route(path, json.load(f), learned))
 
     def find(self, frame, marker, map_name=None):
         view = view_feature(frame)
@@ -78,28 +88,27 @@ class RouteLibrary:
                   for r in self.routes]
         return max(scored, key=lambda s: s[1] - s[2], default=(None, 0.0, 1.0))
 
-    def save(self, frame, marker, steps, map_name=None, folder=LEARNED_DIR, name=None):
-        os.makedirs(folder, exist_ok=True)
+    def save(self, frame, marker, steps, map_name=None, name=None):
+        os.makedirs(self.learned_dir, exist_ok=True)
         name = name or time.strftime('learned_%Y%m%d_%H%M%S')
-        path = os.path.join(folder, name + '.json')
+        path = os.path.join(self.learned_dir, name + '.json')
         data = {'marker': [round(marker[0], 3), round(marker[1], 3)], 'maps': [map_name] if map_name else [],
                 'view': [round(float(v), 3) for v in view_feature(frame).ravel()], 'steps': steps}
         _write(path, data)
-        self.routes.append(Route(path, data))
+        self.routes.append(Route(path, data, learned=True))
         return path
 
     def remember_map(self, route, map_name):
-        """路线在一张新的图上走通了，记下来，下次这张图光线不同也能认出来。随程序发布的路线不改。"""
-        if not map_name or map_name in route.maps or not route.path.startswith(LEARNED_DIR):
+        """路线在一张新的图上走通了，记下来，下次这张图光线不同也能认出来。"""
+        if not map_name or map_name in route.maps or not route.learned:
             return
-        route.maps.add(map_name)
-        route.data['maps'] = sorted(route.maps)
+        route.data['maps'] = sorted(route.maps | {map_name})
         _write(route.path, route.data)
 
-
-    def mark_walk_only(self, route):
+    def replay_failed(self, route):
         """回放走不到但按标记走得到：留着这条路线认出生点，以后这里只按标记走，不再重新学。"""
-        route.walk_only = True
+        if not route.learned:
+            return
         route.data['walk_only'] = True
         _write(route.path, route.data)
 

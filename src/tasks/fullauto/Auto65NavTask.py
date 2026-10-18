@@ -165,7 +165,7 @@ class Auto65NavTask(Auto65ArtifactTask_Fast):
             if seen is not None and self.reach(walker, seen):
                 self._routes.remember_map(route, map_name)
                 return
-            if route.path.startswith(routes.LEARNED_DIR):
+            if route.learned:
                 # 学来的路线这次没走到，删掉，下次重新学
                 os.remove(route.path)
                 self._routes.routes.remove(route)

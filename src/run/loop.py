@@ -59,6 +59,7 @@ class RunLoop:
         self.rounds_seen = 0
         self.counted_dialog = None
         self.acted_on, self.acted_at = None, 0
+        self.renavigated_at = 0
         self.failures = 0
 
     def enter(self):
@@ -212,7 +213,7 @@ class RunLoop:
             self.task.send_key('esc')
 
     def on_other(self, now):
-        if now - self.observer.since >= STALL_SECONDS:
+        if now - max(self.observer.since, self.renavigated_at) >= STALL_SECONDS:
             self.task.log_info(f"停在认不出的画面 {STALL_SECONDS} 秒，重新导航到关卡")
             self.enter()
-            self.observer.since = self.clock()
+            self.renavigated_at = self.clock()
