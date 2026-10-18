@@ -34,6 +34,14 @@ class NoSuchEntry(NavError):
         super().__init__('夜航手册 Lv.%d 只有 %d 个关卡 %s，没有%s' % (level, len(names), names, wanted))
 
 
+class NotOffered(NavError):
+    """委托密函这一栏现在没有要找的委托。密函每小时轮换，过一会儿可能就有了。"""
+
+    def __init__(self, column, mode, offered):
+        self.column, self.mode, self.offered = column, mode, offered
+        super().__init__('%s 栏现在没有 %s，有 %s' % (column or '各', mode, offered))
+
+
 class WrongMission(NavError):
     """那一行存在，但进去是另一种委托。"""
 

@@ -5,7 +5,7 @@ from src.nav import graph
 from src.nav import screens as S
 from src.nav import text_zh as T
 from src.nav.backend import Screen
-from src.nav.graph import NavError, NoSuchEntry
+from src.nav.graph import NavError, NoSuchEntry, NotOffered
 
 
 WORLD = ('world', None)
@@ -163,7 +163,7 @@ def open_letter(nav, scr, here, nxt, info):
             nav.click(hit)
             return False
     offered = {c: [e['t'] for e in entries(h)] for c, h in heads.items()}
-    raise NavError('现在的密函里没有 %s，可选 %s' % (nav.goal['mode'], offered))
+    raise NotOffered(nav.goal['column'], nav.goal['mode'], offered)
 
 
 # 夜航手册分三步：选中等级，认出这个等级的全部行名，再打开目标行。

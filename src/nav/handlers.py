@@ -9,7 +9,7 @@ entered_row（从夜航手册哪一行进的开始界面，edges.py 写入）。
 """
 from src.nav import graph
 from src.nav import text_zh as T
-from src.nav.graph import NavError, WrongMission
+from src.nav.graph import NavError, NotOffered, WrongMission
 
 # 局内一直等不到弹窗或结算时，最多等这么多次（每次约 0.4 秒加一次识别）
 MAX_RUN_WAITS = 400
@@ -108,6 +108,7 @@ def on_blank_close(nav, scr, info):
 
 
 @graph.handler('manual_popup')
+@graph.handler('letter_popup')
 def on_manual_popup(nav, scr, info):
     if info.get('before_run'):
         nav.log('  关掉开局前的委托手册弹窗，还没开局')
@@ -211,7 +212,7 @@ def pick_letter_entry(nav, info):
     entry = next((e for e in info['entries'] if g['mode'] in e['mode']), None)
     if entry is None:
         if g['column']:
-            raise NavError('%s 栏现在是 %s，没有 %s' % (info['column'], [e['mode'] for e in info['entries']], g['mode']))
+            raise NotOffered(info['column'], g['mode'], [e['mode'] for e in info['entries']])
         nav.log('  %s 不在 %s 栏' % (g['mode'], info['column']))
         nav.b.key('esc')
         return False

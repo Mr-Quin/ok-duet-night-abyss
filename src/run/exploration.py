@@ -1,0 +1,72 @@
+"""探险：走到「操作装置」，按交互键打开机关，再按 F 快速破解，之后和避险一样打怪攒满血清。
+
+装置只在开局时操作一次；之后每一轮之间只有轮次弹窗和选密函，开着自动轮次时游戏自己处理。
+"""
+import re
+import time
+
+from src.run.expulsion import Expulsion
+from src.tasks.fullauto.marker_walk import MarkerWalk
+
+# 走到装置前时右边出现的「F ▸ 操作」提示
+PROMPT_BOX = (0.55, 0.45, 0.85, 0.55)
+PROMPT = '操作'
+# 机关界面右下角的「快速破解」按钮，按 F；破解后中间显示「破解成功」
+QUICK_SOLVE_BOX = (0.75, 0.82, 0.95, 0.91)
+QUICK_SOLVE = '快速破解'
+SOLVED_BOX = (0.6, 0.45, 0.85, 0.55)
+SOLVED = '破解成功'
+# 标记显示 2 米时提示还没出来，要再往前挪一点
+ARRIVE_METRES = 2
+NUDGES = 6
+
+
+class Exploration(Expulsion):
+    names = ('探险',)
+    uses_rounds = True
+
+    def begin(self):
+        task = self.task
+        task.skill_tick.reset()
+        task.sleep(2)
+        walker = MarkerWalk(task, self.clock)
+        seen = walker.wait_for_marker(timeout=10)
+        if seen is None:
+            task.log_info("没找到装置的标记，放弃这一局")
+            task.exit_mission()
+            return False
+        walker.run(seen, arrive=ARRIVE_METRES)
+        if not self.operate():
+            task.log_info("没能操作装置，放弃这一局")
+            task.screenshot("explore_operate_failed")
+            task.exit_mission()
+            return False
+        self.since = self.clock()
+        self.progress, self.pending, self.read_at = None, None, 0
+        return True
+
+    def operate(self):
+        task = self.task
+        for _ in range(NUDGES):
+            if self.shows(PROMPT_BOX, PROMPT):
+                break
+            task.send_key('w', down_time=0.25)
+            task.sleep(0.3)
+        else:
+            return False
+        task.log_info("操作装置")
+        if not task.wait_until(lambda: self.shows(QUICK_SOLVE_BOX, QUICK_SOLVE), time_out=6,
+                               post_action=lambda: self.press(task.get_interact_key()), raise_if_not_found=False):
+            return False
+        task.log_info("快速破解")
+        return bool(task.wait_until(lambda: self.shows(SOLVED_BOX, SOLVED) or not self.shows(QUICK_SOLVE_BOX, QUICK_SOLVE),
+                                    time_out=6, post_action=lambda: self.press('f'), raise_if_not_found=False))
+
+    def press(self, key):
+        # wait_until 每读一帧就调一次 post_action，按完要等界面反应
+        self.task.send_key(key)
+        self.task.sleep(1)
+
+    def shows(self, region, text):
+        box = self.task.box_of_screen(*region, name='explore_' + text)
+        return any(text in t.name for t in self.task.ocr(box=box, match=re.compile(re.escape(text))))

@@ -21,7 +21,7 @@ class State:
 
     @property
     def in_run(self):
-        return self.screen in S.IN_RUN or (self.screen == 'manual_popup' and not self.info.get('before_run'))
+        return self.screen in S.IN_RUN or (self.screen in S.POPUPS and not self.info.get('before_run'))
 
 
 class Nav:
