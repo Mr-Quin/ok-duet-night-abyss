@@ -103,6 +103,9 @@ class TestNavScreens(TaskTestCase):
         self.assertScreen(IMAGES + 'manual_select_from_start.png', 'manual_popup', before_run=True)
         self.assertScreen(IMAGES + 'manual_select_next_round.png', 'manual_popup', before_run=False)
 
+    def test_reward_popup(self):
+        self.assertScreen(NAV + 'reward_popup.png', 'blank_close')
+
     def test_result(self):
         self.assertScreen(IMAGES + 'result_defence.png', 'result')
 

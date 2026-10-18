@@ -99,6 +99,13 @@ def on_dungeon(nav, scr, info):
     return wait_in_run(nav)
 
 
+@graph.handler('blank_close')
+def on_blank_close(nav, scr, info):
+    nav.log('  点空白处关掉领奖弹窗')
+    nav.b.click(0.92, 0.5)
+    return False
+
+
 @graph.handler('manual_popup')
 def on_manual_popup(nav, scr, info):
     if info.get('before_run'):
