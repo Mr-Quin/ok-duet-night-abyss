@@ -33,6 +33,9 @@ class TestSimFuzz(unittest.TestCase):
         with open(os.path.join(WORLD, 'plan.json'), encoding='utf-8') as f:
             plan = json.load(f)
         reached = [e for e in plan['plan'] if e['outcome'] == 'ok']
+        # a recording can start on a screen it never comes back to; restarting there after every
+        # dead end leaves most orders unexplored, the open world reaches everything
+        home = next((sid for sid, s in world.states.items() if s['screen'] == 'world'), plan['start'])
         counts = {'ok': 0, 'unexplored': 0}
         bugs = []
         for seed in range(ORDERS):
@@ -44,7 +47,7 @@ class TestSimFuzz(unittest.TestCase):
                     shutil.copy(start_cache, cache)
                 order = reached[:]
                 random.Random(seed).shuffle(order)
-                nav = Nav(SimBackend(world, plan['start']), cache_path=cache, log=lambda m: None)
+                nav = Nav(SimBackend(world, home), cache_path=cache, log=lambda m: None)
                 for entry in order:
                     target = getattr(targets, entry['target'])(**entry['fields'])
                     try:
@@ -53,7 +56,7 @@ class TestSimFuzz(unittest.TestCase):
                     except Unexplored:
                         counts['unexplored'] += 1
                         # the simulated game is now somewhere the recording does not continue from
-                        nav = Nav(SimBackend(world, plan['start']), cache_path=cache, log=lambda m: None)
+                        nav = Nav(SimBackend(world, home), cache_path=cache, log=lambda m: None)
                     except NavError as e:
                         bugs.append('seed %d, %s: %s' % (seed, target, e))
             finally:
