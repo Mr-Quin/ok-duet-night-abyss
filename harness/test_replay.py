@@ -70,6 +70,25 @@ class TestReplay(TaskTestCase):
         agreement = sum(v for (s, ok), v in counts.items() if ok) / total
         self.assertGreaterEqual(agreement, MIN_AGREEMENT, '%d of %d frames disagree' % (len(misses), total))
 
+    def test_the_book_level_column_reads_on_recorded_book_pages(self):
+        from src.nav.backend import Screen
+        read = total = 0
+        for path, row in recorded(ROOT):
+            info = row.get('info') or {}
+            if row['source'] != 'screen' or row['label'] != 'commission' or info.get('tab') != '夜航手册':
+                continue
+            if not os.path.exists(path):
+                continue
+            self.set_image(path)
+            backend = OkScriptBackend(self.task)
+            scr = backend.read()
+            levels = S.level_positions(Screen(scr.img, backend.ocr_region(scr, *S.LEVEL_COLUMN)))
+            total += 1
+            read += bool(levels)
+        print('level column read on %d of %d book pages' % (read, total))
+        if total:
+            self.assertGreaterEqual(read / total, 0.95)
+
 
 if __name__ == '__main__':
     unittest.main()
