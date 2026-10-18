@@ -205,7 +205,9 @@ def select_level(nav, scr, info, book, st):
     if y is None:
         if nav.wait(3) is None:
             return None
-        nav.log('  读不出等级栏')
+        # 什么都不做下一步还是一样的画面；挪一下等级栏换个画面再读
+        nav.log('  读不出等级栏，滚动一下再读')
+        nav.b.scroll(S.LEVEL_X, 0.5, 3)
         return False
     if not 0.2 <= y <= 0.86:
         nav.log('  Lv.%d 不在可见范围（y=%.2f），滚动' % (book, y))

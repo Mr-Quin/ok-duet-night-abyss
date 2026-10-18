@@ -7,7 +7,7 @@ import time
 from dataclasses import dataclass
 
 from ok import TaskDisabledException
-from src.nav import World
+from src.nav import NavError, NoSuchEntry, World
 from src.run import observe as O
 from src.run.defence import Defence
 from src.run.expulsion import Expulsion
@@ -72,7 +72,7 @@ class RunLoop:
         self.live = False
 
     def run(self):
-        self.enter()
+        self.enter_with_retries()
         while True:
             now = self.clock()
             state = self.observer.next(now)
@@ -91,6 +91,18 @@ class RunLoop:
                     self.enter()
             self.task.sleep(0.1)
         self.nav.go(World())
+
+    def enter_with_retries(self):
+        for attempt in range(MAX_FAILURES):
+            try:
+                return self.enter()
+            except NoSuchEntry:
+                raise
+            except NavError as e:
+                if attempt == MAX_FAILURES - 1:
+                    raise
+                self.task.log_info(f"导航出错（{e}），回大世界重来")
+                self.nav.go(World())
 
     def done(self):
         return bool(self.job.runs) and self.runs_done >= self.job.runs

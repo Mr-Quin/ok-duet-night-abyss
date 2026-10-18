@@ -67,11 +67,16 @@ class Defence:
         return False
 
     def reach(self, walker, seen):
-        if walker.run(seen) and self.wave_started():
+        # 波次开没开始才算数：进了防守范围标记就会消失，走法自己会以为是跟丢了
+        walker.run(seen)
+        if self.wave_started():
             return True
         # 有的图防守范围比 6 米小，停下来时还在范围外
         seen = walker.wait_for_marker(timeout=1)
-        return seen is not None and walker.run(seen, arrive=2) and self.wave_started()
+        if seen is None:
+            return False
+        walker.run(seen, arrive=2)
+        return self.wave_started()
 
     def identify_map(self):
         if self.maps is None:
