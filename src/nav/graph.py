@@ -81,7 +81,7 @@ def classify(scr, atlas):
 
 
 def find_edge(here, nxt):
-    for key in ((here[0], nxt), (here[0], nxt[0]), (None, nxt), (None, nxt[0])):
+    for key in ((here[0], nxt), (here[0], nxt[0])):
         if key in EDGES:
             return EDGES[key]
     return None

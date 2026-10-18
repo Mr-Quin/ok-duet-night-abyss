@@ -127,7 +127,7 @@ def switch_book_page(nav, here, target):
 @graph.edge('commission', ('start', T.TABS[0]))
 def open_mission_card(nav, scr, here, nxt, info):
     target = nav.goal['mode']
-    cards = [i for i in scr.items if 0.62 < i['y'] < 0.68 and i['x'] < 0.75 and i['t'] in T.MISSIONS]
+    cards = scr.items_in((0, 0.62, 0.75, 0.68), lambda i: i['t'] in T.MISSIONS)
     hit = next((c for c in cards if c['t'] == target), None)
     if hit and 0.05 < hit['x'] < 0.68:
         nav.log('  打开卡片 %s' % target)
@@ -152,13 +152,12 @@ def open_mission_card(nav, scr, here, nxt, info):
 @graph.edge('commission', ('start', T.TABS[2]))
 def open_letter(nav, scr, here, nxt, info):
     """打开有目标委托的那一栏密函，具体条目到开始界面再选。"""
-    heads = {i['t']: i for i in scr.items if 0.37 < i['y'] < 0.42 and i['t'] in T.LETTER_COLUMNS}
+    heads = {i['t']: i for i in scr.items_in((0, 0.37, 1, 0.42), lambda i: i['t'] in T.LETTER_COLUMNS)}
     if not heads:
         return nav.wait(3)
 
     def entries(head):
-        return [i for i in scr.items if 0.55 < i['y'] < 0.75 and head['x'] - 0.1 < i['x'] < head['x'] - 0.02
-                and not re.search(r'\d', i['t'])]
+        return scr.items_in((head['x'] - 0.1, 0.55, head['x'] - 0.02, 0.75), lambda i: not re.search(r'\d', i['t']))
     cols = [nav.goal['column']] if nav.goal['column'] else list(heads)
     for col in cols:
         if col not in heads:
@@ -177,6 +176,22 @@ def open_letter(nav, scr, here, nxt, info):
 READY = object()
 # 一屏能看到五行，一次最多往下挪三行，保证和上一屏至少重叠两行
 BOOK_SCROLL_ROWS = 3
+BOOK_LIST_AT = (0.4, 0.45)
+NOTCHES_PER_ROW = 3
+# 足够从任何位置滚到顶
+TO_TOP_NOTCHES = 30
+
+
+def scroll_list(nav, notches):
+    nav.b.scroll(*BOOK_LIST_AT, notches)
+
+
+def scroll_levels(nav, notches):
+    nav.b.scroll(S.LEVEL_X, 0.5, notches)
+
+
+def restart_rows(st):
+    st.update(names=None, offset=None, seen=[], at_top=False, top_read=None)
 
 
 @graph.edge('commission', ('start', T.TABS[1]))
@@ -214,18 +229,21 @@ def select_level(nav, scr, info, book, st):
             return None
         # 什么都不做下一步还是一样的画面；挪一下等级栏换个画面再读
         nav.log('  读不出等级栏，滚动一下再读')
-        nav.b.scroll(S.LEVEL_X, 0.5, 3)
+        scroll_levels(nav, NOTCHES_PER_ROW)
         st.pop('levels', None)
         return False
-    if not 0.2 <= y <= 0.86:
+    top, bottom = S.LEVEL_VISIBLE
+    if not top <= y <= bottom:
         nav.log('  Lv.%d 不在可见范围（y=%.2f），滚动' % (book, y))
-        nav.b.scroll(S.LEVEL_X, 0.5, -3 if y > 0.86 else 3)
+        scroll_levels(nav, -NOTCHES_PER_ROW if y > bottom else NOTCHES_PER_ROW)
         st.pop('level', None)
         st.pop('levels', None)
         return False
+    selected = S.selected_level(scr, info['levels'])
     if st.get('level') != book:
-        st.update(level=book, names=None, seen=[], at_top=False, top_read=None)
-        if S.selected_level(scr, info['levels']) != book:
+        st['level'] = book
+        restart_rows(st)
+        if selected != book:
             nav.log('  选择 Lv.%d' % book)
             nav.b.click(S.LEVEL_X, y)
             return False
@@ -235,7 +253,7 @@ def select_level(nav, scr, info, book, st):
     stale = names and known[:1] != names[:1] and any(v[:1] == names[:1] for v in others.values())
     # 选中标记读不出来时，行名属于这个等级已知的列表也算确认
     elsewhere = {n for v in others.values() for n in v}
-    confirmed = S.selected_level(scr, info['levels']) == book or (names[:1] and names[0] in known
+    confirmed = selected == book or (names[:1] and names[0] in known
                                                                     and names[0] not in elsewhere)
     if not confirmed or stale:
         if nav.wait(4) is None:
@@ -260,7 +278,7 @@ def learn_rows(nav, scr, info, book, st):
         if not at_cached_top and not st.get('at_top'):
             # 行号从顶部数起，而列表会记住上次的滚动位置
             nav.log('  把列表滚到顶部')
-            nav.b.scroll(0.4, 0.45, 30)
+            scroll_list(nav, TO_TOP_NOTCHES)
             st['at_top'] = True
             return False
         # 刚切换等级时列表是一行行出来的
@@ -270,14 +288,14 @@ def learn_rows(nav, scr, info, book, st):
             # 一次滚动只挪几行，长列表要一直往上滚，滚了也不变才是到顶了
             st['top_read'] = names
             nav.log('  继续往上滚，现在第一行是 %s' % names[0])
-            nav.b.scroll(0.4, 0.45, 30)
+            scroll_list(nav, TO_TOP_NOTCHES)
             return False
         st['names'], st['offset'] = list(names), 0
     elif st['offset'] is not None:
         offset = align(st['names'], names)
         if offset is None:
             nav.log('  对不上已经看到的行 %s，重新从顶部数' % names)
-            st.update(names=None, at_top=False, seen=[], top_read=None)
+            restart_rows(st)
             return False
         st['offset'] = offset
         for k, n in enumerate(names[:len(st['names']) - offset]):
@@ -299,7 +317,7 @@ def open_row(nav, scr, info, book, st):
     else:
         idx = row - st['offset']
         if idx < 0:
-            nav.b.scroll(0.4, 0.45, 3)
+            scroll_list(nav, NOTCHES_PER_ROW)
             return False
         if idx >= len(listed):
             idx = None
@@ -307,7 +325,7 @@ def open_row(nav, scr, info, book, st):
             # 这一格的按钮没认出来：先等几帧，还不行就挪一下列表
             if nav.wait(3) is None:
                 return None
-            nav.b.scroll(0.4, 0.45, -1)
+            scroll_list(nav, -1)
             return False
     if idx is None:
         # 滚到两组之间时一次滚动有时不动，连着三次都是这几行才算到底
@@ -315,10 +333,9 @@ def open_row(nav, scr, info, book, st):
         if repeats >= 2:
             raise NoSuchEntry(book, row, st['names'])
         st['seen'].append(tuple(names))
-        # 滚轮 3 格挪一行
         rows = 1 if isinstance(row, str) else min(BOOK_SCROLL_ROWS, max(1, row - st['offset'] - len(listed) + 1))
         nav.log('  第 %r 行不在 %s 中，向下滚动 %d 行' % (row, names, rows))
-        nav.b.scroll(0.4, 0.45, -3 * rows - 2 * repeats)
+        scroll_list(nav, -NOTCHES_PER_ROW * rows - 2 * repeats)
         return False
     nav.log('  第 %r 行 -> %s' % (row, names[idx]))
     nav.click(listed[idx]['button'])
