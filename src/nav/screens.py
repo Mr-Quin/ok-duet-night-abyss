@@ -213,6 +213,13 @@ def detect_boot(scr, atlas):
     return 'boot', {'login': bool(scr.find(T.LOGIN, (0.3, 0.8, 0.7, 1), exact=True))}
 
 
+# 领奖弹窗盖在别的界面上，Esc 关不掉，要点空白处
+@graph.detector(5)
+def detect_blank_close(scr, atlas):
+    if scr.find(T.CLOSE_ON_BLANK):
+        return 'blank_close', {}
+
+
 # 局内界面排在前面：局内 HUD 也有大世界判据要找的 Lv 条
 
 @graph.detector(10)

@@ -44,6 +44,7 @@ TO_OBJECTIVE = '前往目标点'
 RUN_MODES = ('驱离', '驱逐', '避险')
 NO_REWARD = '无奖励'
 CONFIRM = '确定'
+CLOSE_ON_BLANK = '点击空白区域关闭'
 
 # 从手册分区进入的页面：名称 -> (分区, 入口按钮文字)
 PAGE_ENTRY = {'迷津': ('歧路足音', GO), 'boss_map': ('梦魔残声', GO_CHALLENGE)}
