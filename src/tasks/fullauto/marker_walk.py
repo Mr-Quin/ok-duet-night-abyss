@@ -28,8 +28,9 @@ DODGE_DELAY = 0.1
 
 
 class MarkerWalk:
-    def __init__(self, task):
+    def __init__(self, task, clock=time.time):
         self.task = task
+        self.clock = clock
         self.template = cv2.imread(TEMPLATE)
         self.last_y = None
         self.steps = []
@@ -65,8 +66,8 @@ class MarkerWalk:
         return (cx - W / 2) / (W / 2), metres
 
     def wait_for_marker(self, timeout=6):
-        deadline = time.time() + timeout
-        while time.time() < deadline:
+        deadline = self.clock() + timeout
+        while self.clock() < deadline:
             seen = self.find(self.task.next_frame())
             if seen:
                 return seen
@@ -81,7 +82,7 @@ class MarkerWalk:
         task = self.task
         task.log_info(f"按标记走，距离 {seen[1]} 米")
         dodge = task.get_dodge_key()
-        t0 = time.time()
+        t0 = self.clock()
         if not self.steps:
             self.t0 = t0
         self.record({'down': 'w'})
@@ -91,14 +92,14 @@ class MarkerWalk:
             task.sleep(DODGE_DELAY)
             self.record({'down': dodge})
             task.send_key_down(dodge)
-            lost_since, best, best_at, jumps = None, None, time.time(), 0
-            last_metres, last_at = seen[1], time.time()
-            while time.time() - t0 < timeout:
+            lost_since, best, best_at, jumps = None, None, self.clock(), 0
+            last_metres, last_at = seen[1], self.clock()
+            while self.clock() - t0 < timeout:
                 frame = task.next_frame()
                 seen = self.find(frame)
                 if seen is None:
-                    lost_since = lost_since or time.time()
-                    if time.time() - lost_since > 3:
+                    lost_since = lost_since or self.clock()
+                    if self.clock() - lost_since > 3:
                         # 进了防守范围波次一开始，标记就不显示了
                         if last_metres is not None and last_metres <= ARRIVED_METRES:
                             task.log_info(f"标记在 {last_metres} 米处消失，当作到了")
@@ -110,16 +111,16 @@ class MarkerWalk:
                 lost_since = None
                 x, metres = seen
                 if metres is not None and last_metres is not None and \
-                        last_metres - metres > MAX_SPEED * (time.time() - last_at) + 2:
+                        last_metres - metres > MAX_SPEED * (self.clock() - last_at) + 2:
                     metres = None
                 if metres is not None:
-                    last_metres, last_at = metres, time.time()
+                    last_metres, last_at = metres, self.clock()
                 if metres is not None and metres <= arrive:
-                    task.log_info(f"已到达目标，距离 {metres} 米，用时 {time.time() - t0:.1f} 秒")
+                    task.log_info(f"已到达目标，距离 {metres} 米，用时 {self.clock() - t0:.1f} 秒")
                     return True
                 if metres is not None and (best is None or metres < best):
-                    best, best_at = metres, time.time()
-                elif time.time() - best_at > STUCK_SECONDS:
+                    best, best_at = metres, self.clock()
+                elif self.clock() - best_at > STUCK_SECONDS:
                     if jumps >= MAX_JUMPS:
                         task.log_info(f"被挡住了，停在 {best} 米")
                         task.screenshot("walk_blocked", frame)
@@ -128,7 +129,7 @@ class MarkerWalk:
                     self.record({'down': 'space'})
                     task.send_key('space', down_time=0.1)
                     self.record({'up': 'space'})
-                    best_at = time.time()
+                    best_at = self.clock()
                 if abs(x) > STEER:
                     dx = max(-MAX_TURN, min(MAX_TURN, round(x / TURN_PER_COUNT)))
                     self.record({'turn': [dx, 0]})
@@ -142,4 +143,4 @@ class MarkerWalk:
             self.record({'up': 'w'})
 
     def record(self, step):
-        self.steps.append(dict(step, t=round(time.time() - self.t0, 3)))
+        self.steps.append(dict(step, t=round(self.clock() - self.t0, 3)))
