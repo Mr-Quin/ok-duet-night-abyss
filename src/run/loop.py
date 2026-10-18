@@ -124,7 +124,8 @@ class RunLoop:
     def on_in_run(self, now):
         if not self.live:
             # in_run 只认得出 HUD，大世界里也有；开局前用导航确认真的在局内，HUD 刚进局时还没画出来，等几秒
-            if not self.task.wait_until(lambda: self.nav.where().in_run, time_out=RUN_HUD_WAIT, raise_if_not_found=False):
+            if not self.task.wait_until(lambda: self.nav.where().in_run, time_out=RUN_HUD_WAIT, post_action=self.pause,
+                                        raise_if_not_found=False):
                 self.task.log_info("看着像局内但不是，重新导航到关卡")
                 self.enter()
                 return
@@ -145,8 +146,12 @@ class RunLoop:
         def left():
             state = self.nav.where()
             return state.screen != 'unknown' and not state.in_run
-        self.task.wait_until(left, time_out=LEAVE_WAIT, raise_if_not_found=False)
+        self.task.wait_until(left, time_out=LEAVE_WAIT, post_action=self.pause, raise_if_not_found=False)
         self.enter()
+
+    def pause(self):
+        # nav.where() 是整帧 OCR，连着读会占满一个核，游戏正在加载
+        self.task.sleep(0.5)
 
     def on_round_dialog(self, now):
         if self.counted_dialog != self.observer.since:
