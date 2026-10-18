@@ -80,7 +80,9 @@ class Soak:
         self.stop_okdna()
         with open(TASK_CONFIG, 'w', encoding='utf-8') as f:
             json.dump(config, f, ensure_ascii=False)
-        # the ok-dna process just killed can hold the log open for a moment
+        # the ok-dna process just killed can hold the log open for a moment; if it never lets go,
+        # read only what this case appends
+        self.log_offset = 0
         for _ in range(10):
             try:
                 if os.path.exists(RUN_LOG):
@@ -88,12 +90,15 @@ class Soak:
                 break
             except PermissionError:
                 time.sleep(1)
+        else:
+            self.log_offset = os.path.getsize(RUN_LOG)
         subprocess.run(['schtasks', '/run', '/tn', SCHEDULED_TASK], capture_output=True, check=True)
 
     def log_lines(self):
         try:
-            with open(RUN_LOG, encoding='utf-8', errors='replace') as f:
-                return f.read().splitlines()
+            with open(RUN_LOG, 'rb') as f:
+                f.seek(getattr(self, 'log_offset', 0))
+                return f.read().decode('utf-8', errors='replace').splitlines()
         except OSError:
             return []
 
