@@ -11,6 +11,8 @@ import time
 import cv2
 import numpy as np
 
+from harness.dataset import masked
+
 MEAN = np.array([0.485, 0.456, 0.406], dtype=np.float32)
 STD = np.array([0.229, 0.224, 0.225], dtype=np.float32)
 
@@ -45,7 +47,7 @@ class Shadow:
         if label != rule:
             name = '%06d.jpg' % self.count
             self.count += 1
-            cv2.imwrite(os.path.join(self.folder, name), cv2.resize(frame, (640, 360)), [cv2.IMWRITE_JPEG_QUALITY, 85])
+            cv2.imwrite(os.path.join(self.folder, name), cv2.resize(masked(frame), (640, 360)), [cv2.IMWRITE_JPEG_QUALITY, 85])
             row['file'] = name
         self.log.write(json.dumps(row, ensure_ascii=False) + '\n')
         self.log.flush()
