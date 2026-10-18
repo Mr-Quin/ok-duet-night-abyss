@@ -104,12 +104,28 @@ what that would need first.
 - Replay cannot show how the game reacts to a different action, so live soaks stay the
   end-to-end test; the harness is a fast regression gate before them.
 
-## Next experiment worth running
+## The walker's marker and distance reading is not a bottleneck
 
-Learned marker/distance perception for the walker, scored by the walking decisions it would
-cause (wrong steering, false or missed arrival) against the current template + OCR. The
-recorder now saves a crop and the walker's reading at every marker lookup, so the overnight
-soak collects the footage it needs.
+The recorder saves a crop and the walker's reading at every marker lookup. An eye check of all
+137 looks from three defence sessions (harness/ml/walk_audit.py):
+
+| | |
+|---|---|
+| readable distance, read right | 48 of 49 (the miss: 22 read as 23, likely the next frame) |
+| no marker in the crop, walker saw none | 24 of 24 |
+| marker with no readable distance (inside the defence area, or covered by effects) | 64; walker read a number on 3 (two plausibly right, one possibly 12 read as 2), missed the marker once |
+
+Misreads are about 1 to 2% of looks, and the dangerous kind (a much smaller distance, i.e. a
+false arrival) is caught by checking that the wave started. **A learned marker/distance reader
+is not worth building now**; the stop criterion set before the check (the rules already avoid
+the meaningful errors) is met.
+
+## Where a model could still matter
+
+Places the rules cannot see at all: enemy positions and attack tells for real combat, and
+recovery when the character is off the route (fell, knocked back, stuck). Those need labelled
+footage first, and the recorder and audit tools built tonight are what that work would start
+from.
 
 ## Open questions being tested
 
