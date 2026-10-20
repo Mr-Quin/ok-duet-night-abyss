@@ -17,6 +17,7 @@ MAX_RUN_WAITS = 400
 MAX_LOGIN_WAITS = 150
 # 开始界面左侧条目的点击位置
 TIER_X = 0.08
+SPLASH_CLOSE = (0.844, 0.24)
 LETTER_ENTRY_X = 0.05
 
 
@@ -104,6 +105,18 @@ def on_dungeon(nav, scr, info):
 def on_blank_close(nav, scr, info):
     nav.log('  点空白处关掉领奖弹窗（月卡等）')
     nav.b.click(0.50, 0.89)
+    return False
+
+
+@graph.handler('splash')
+def on_splash(nav, scr, info):
+    # 不点「前往」，那会进活动页；Esc 没关掉就点右上角的叉
+    nav.state['splash_tries'] = nav.state.get('splash_tries', 0) + 1
+    if nav.state['splash_tries'] % 2:
+        nav.log('  关掉登录后的活动轮播')
+        nav.b.key('esc')
+    else:
+        nav.b.click(*SPLASH_CLOSE)
     return False
 
 

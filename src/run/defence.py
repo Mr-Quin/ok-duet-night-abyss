@@ -31,8 +31,8 @@ class Defence:
         # 刚进局内时小地图和目标标记还没画出来，按 ESC 也不出菜单
         task.sleep(2)
         if not self.walk():
-            # 已经走了一段，离目标点旁的复位点最近
-            if not task.reset_and_transport() or not self.wave_started(RESET_WAVE_WAIT):
+            # 已经走了一段，离目标点旁的复位点最近；复位后不在防守范围里就从那儿再按标记走一次
+            if not task.reset_and_transport() or not (self.wave_started(RESET_WAVE_WAIT) or self.walk_from_here()):
                 task.log_info("复位后也没开始波次，放弃这一局")
                 task.exit_mission()
                 return False
@@ -81,6 +81,11 @@ class Defence:
         name, score = self.maps.identify(self.task.next_frame())
         self.task.log_info(f"地图 {name or '未知'}（{score:.2f}）")
         return name
+
+    def walk_from_here(self):
+        walker = MarkerWalk(self.task, self.clock)
+        seen = walker.wait_for_marker(timeout=5)
+        return seen is not None and self.reach(walker, seen)
 
     def walk(self):
         task = self.task

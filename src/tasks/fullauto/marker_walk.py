@@ -23,6 +23,8 @@ STUCK_SECONDS = 2.5
 MAX_JUMPS = 2
 # 冲刺实测最快约 9 米/秒；距离一下子少得比这还多是 OCR 读错了（比如把 35 读成 3）
 MAX_SPEED = 15
+# 离目标比走到过的最近处还远这么多，多半是掉下去了，接着朝标记走只会撞墙
+FALL_METRES = 12
 MAX_METRES = 500
 DODGE_DELAY = 0.1
 
@@ -92,7 +94,7 @@ class MarkerWalk:
             task.sleep(DODGE_DELAY)
             self.record({'down': dodge})
             task.send_key_down(dodge)
-            lost_since, best, best_at, jumps = None, None, self.clock(), 0
+            lost_since, best, best_at, jumps, far = None, None, self.clock(), 0, 0
             last_metres, last_at = seen[1], self.clock()
             while self.clock() - t0 < timeout:
                 frame = task.next_frame()
@@ -110,6 +112,14 @@ class MarkerWalk:
                     continue
                 lost_since = None
                 x, metres = seen
+                # 连着两次都远了才算，只远一次多半是把数字读错了，这次读数不用
+                far = far + 1 if metres is not None and best is not None and metres > best + FALL_METRES else 0
+                if far >= 2:
+                    task.log_info(f"离目标从 {best} 米变成 {metres} 米，像是掉下去了")
+                    task.screenshot("walk_fell", frame)
+                    return False
+                if far:
+                    metres = None
                 if metres is not None and last_metres is not None and \
                         last_metres - metres > MAX_SPEED * (self.clock() - last_at) + 2:
                     metres = None
