@@ -84,6 +84,16 @@ class TestMarkerWalk(unittest.TestCase):
         # 35 米后 0.5 秒读到 3 米是读错了，要一直走到真正读到 5 米
         self.assertEqual(walker.seen, [(0.0, 5)])
 
+    def test_stops_when_the_target_gets_much_farther_than_it_was(self):
+        task = FakeTask()
+        walker = ScriptedWalk(task, [(0.0, 30), (0.0, 22), (0.0, 40), (0.0, 41), (0.0, 5)])
+        self.assertFalse(walker.run((0.0, 35)))
+        self.assertEqual(walker.seen, [(0.0, 5)])
+
+    def test_one_far_reading_is_not_a_fall(self):
+        walker = ScriptedWalk(FakeTask(), [(0.0, 30), (0.0, 22), (0.0, 72), (0.0, 20), (0.0, 5)])
+        self.assertTrue(walker.run((0.0, 35)))
+
     def test_a_marker_that_vanishes_up_close_means_the_wave_started(self):
         self.assertTrue(ScriptedWalk(FakeTask(), [(0.0, 5), None]).run((0.0, 9), arrive=2))
         self.assertFalse(ScriptedWalk(FakeTask(), [(0.0, 20), None]).run((0.0, 25)))

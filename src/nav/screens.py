@@ -218,6 +218,8 @@ def detect_boot(scr, atlas):
 def detect_blank_close(scr, atlas):
     if scr.find(T.CLOSE_ON_BLANK):
         return 'blank_close', {}
+    if scr.find(T.SPLASH):
+        return 'splash', {}
 
 
 # 局内界面排在前面：局内 HUD 也有大世界判据要找的 Lv 条
