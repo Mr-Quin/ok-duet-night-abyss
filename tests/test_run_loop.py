@@ -53,12 +53,13 @@ class FakeNav:
         self.calls.append(('auto', n))
 
 
-def behaviour(kind_name, rounds, begins=None):
+def behaviour(kind_name, rounds, begins=None, ticks=None):
     class Fake:
         names = (kind_name,)
         uses_rounds = rounds
         log = []
         results = list(begins or [])
+        tick_results = list(ticks or [])
 
         def __init__(self, task):
             pass
@@ -68,16 +69,17 @@ def behaviour(kind_name, rounds, begins=None):
             return Fake.results.pop(0) if Fake.results else True
 
         def tick(self):
-            return True
+            Fake.log.append('tick')
+            return Fake.tick_results.pop(0) if Fake.tick_results else True
     return Fake
 
 
-def run(script, job, mode='扼守/无尽', begins=None, hold=1, nav=None, behaviours=None, frames=None):
+def run(script, job, mode='扼守/无尽', begins=None, hold=1, nav=None, behaviours=None, frames=None, ticks=None):
     """script 里每个阶段连着看到 hold 拍，frames 给出时按原样一拍一拍看；用完后停在最后一个。"""
     task, nav = FakeTask(), nav or FakeNav(mode)
     frames = list(frames or [s for s in script for _ in range(hold * O.Observer.SETTLE)])
     look = lambda t: frames.pop(0) if len(frames) > 1 else frames[0]
-    defence, expulsion = behaviour('扼守', True, begins), behaviour('驱离', False, begins)
+    defence, expulsion = behaviour('扼守', True, begins, ticks), behaviour('驱离', False, begins)
     loop = L.RunLoop(task, nav, job, observer=O.Observer(task, look), clock=lambda: task.now,
                      behaviours=behaviours or (defence, expulsion))
     loop.run()
@@ -145,6 +147,11 @@ class TestRunLoop(unittest.TestCase):
         with self.assertRaises(L.GaveUpTooOften):
             run([O.IN_RUN, O.START] * 3 + [O.IN_RUN, O.RESULT], L.Job('target', rounds=1, runs=1),
                 begins=[False] * L.MAX_GIVE_UPS)
+
+    def test_giving_up_after_finished_rounds_does_not_count_toward_stopping(self):
+        script = [O.IN_RUN, O.ROUND_DIALOG, O.IN_RUN, O.START] * L.MAX_GIVE_UPS + [O.IN_RUN, O.ROUND_DIALOG, O.RESULT]
+        _, _, loop, _, _ = run(script, L.Job('target', rounds=2, runs=1), ticks=[False] * L.MAX_GIVE_UPS)
+        self.assertEqual(loop.runs_done, 1)
 
     def test_a_finished_run_resets_the_give_up_count(self):
         script = [O.IN_RUN, O.START, O.IN_RUN, O.ROUND_DIALOG, O.RESULT] * 2 + [O.IN_RUN, O.ROUND_DIALOG, O.RESULT]
