@@ -53,7 +53,7 @@ class Nav:
 
         游戏只在从这个界面开局时保存设置，所以调用方设完要接着开局。
         """
-        drags = 0
+        tapped = False
         for _ in range(15):
             state = self.where()
             info = state.info
@@ -68,15 +68,16 @@ class Nav:
                 return
             if cur is None:
                 raise NavError('自动轮次已打开但读不出轮次数')
-            # 两端的按钮直接跳到 1 或 99；离得远就拖滑块（手柄停在当前轮次的位置），剩下的用加减按钮补
+            # 两端的按钮直接跳到 1 或 99；离得远先点一下滑条上目标的位置，剩下的用加减按钮补。
+            # 拖滑块不行：从 1 拖出去会一直滑到 99
             if n in (1, 99):
                 self.tap(S.AUTO_MIN_X if n == 1 else S.AUTO_MAX_X, y)
-            elif abs(n - cur) > 2 and drags < 2:
-                drags += 1
-                self.log('  拖动滑块 %d -> %d' % (cur, n))
-                before = self.b.thumb()
-                self.b.drag(S.auto_slider_x(cur), y, S.auto_slider_x(n), y)
-                self.b.settle(before)
+            elif abs(n - cur) > 2 and not tapped:
+                tapped = True
+                self.log('  点滑条 %d -> %d' % (cur, n))
+                self.tap(S.auto_slider_x(n), y)
+            elif min(n - 1, 99 - n) + 1 < abs(n - cur):
+                self.tap(S.AUTO_MIN_X if n - 1 <= 99 - n else S.AUTO_MAX_X, y)
             else:
                 for _ in range(min(abs(cur - n), 10)):
                     self.b.click(S.AUTO_PLUS_X if n > cur else S.AUTO_MINUS_X, y)

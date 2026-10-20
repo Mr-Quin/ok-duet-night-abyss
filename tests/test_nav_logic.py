@@ -106,54 +106,47 @@ class TestStuck(unittest.TestCase):
 
 
 class SliderBackend(FakeBackend):
-    """开始界面的自动轮次面板。拖动落点和松手时的位置差 miss 轮，按钮每次一轮。"""
+    """开始界面的自动轮次面板。点滑条落在点的位置再差 miss 轮（track=False 时点了没反应），按钮每次一轮。"""
 
-    def __init__(self, rounds, miss=0):
+    def __init__(self, rounds, miss=0, track=True):
         super().__init__()
-        self.rounds, self.miss = rounds, miss
+        self.rounds, self.miss, self.track = rounds, miss, track
 
     def read(self):
         return screen((T.START[0], 0.85, 0.9), (T.AUTO_LABEL, 0.62, 0.6), ('轮次 %d/99' % self.rounds, 0.78, 0.643))
 
-    def drag(self, x0, y0, x1, y1):
-        super().drag(x0, y0, x1, y1)
-        self.rounds = round((x1 - S.AUTO_SLIDER_X) / S.AUTO_SLIDER_STEP) + 1 + self.miss
-
     def click(self, x, y):
         super().click(x, y)
-        step = {S.AUTO_PLUS_X: 1, S.AUTO_MINUS_X: -1}.get(x, 0)
-        self.rounds = {S.AUTO_MIN_X: 1, S.AUTO_MAX_X: 99}.get(x, self.rounds + step)
+        if x in (S.AUTO_MIN_X, S.AUTO_MAX_X):
+            self.rounds = 1 if x == S.AUTO_MIN_X else 99
+        elif x in (S.AUTO_PLUS_X, S.AUTO_MINUS_X):
+            self.rounds += 1 if x == S.AUTO_PLUS_X else -1
+        elif self.track:
+            self.rounds = round((x - S.AUTO_SLIDER_X) / S.AUTO_SLIDER_STEP) + 1 + self.miss
 
 
 class TestAutoRounds(unittest.TestCase):
 
-    def test_far_target_is_dragged_to_then_corrected_with_buttons(self):
+    def test_far_target_is_tapped_on_the_track_then_corrected_with_buttons(self):
         backend = SliderBackend(1, miss=-2)
         Nav(backend).set_auto_rounds(39)
         self.assertEqual(backend.rounds, 39)
-        drags = [a for a in backend.actions if a[0] == 'drag']
-        self.assertEqual(drags, [('drag', round(S.auto_slider_x(1), 3), round(S.auto_slider_x(39), 3))])
+        self.assertEqual(backend.actions[0], ('click', round(S.auto_slider_x(39), 3), 0.682))
         self.assertEqual(backend.actions.count(('click', S.AUTO_PLUS_X, 0.682)), 2)
+        self.assertFalse(any(a[0] == 'drag' for a in backend.actions))
 
-    def test_drag_starts_where_the_game_left_the_handle(self):
-        backend = SliderBackend(60)
-        Nav(backend).set_auto_rounds(5)
-        self.assertEqual(backend.rounds, 5)
-        self.assertEqual(backend.actions[0], ('drag', round(S.auto_slider_x(60), 3), round(S.auto_slider_x(5), 3)))
+    def test_a_track_that_ignores_the_tap_falls_back_to_the_nearer_end(self):
+        backend = SliderBackend(1, track=False)
+        Nav(backend).set_auto_rounds(85)
+        self.assertEqual(backend.rounds, 85)
+        self.assertIn(('click', S.AUTO_MAX_X, 0.682), backend.actions)
+        self.assertEqual(backend.actions.count(('click', S.AUTO_MINUS_X, 0.682)), 14)
 
     def test_near_target_uses_the_buttons_only(self):
         backend = SliderBackend(39)
         Nav(backend).set_auto_rounds(41)
         self.assertEqual(backend.rounds, 41)
         self.assertFalse(any(a[0] == 'drag' for a in backend.actions))
-
-    def test_a_slider_that_ignores_drags_falls_back_to_buttons(self):
-        backend = SliderBackend(1)
-        backend.drag = lambda *a: backend.actions.append(('drag',))
-        Nav(backend).set_auto_rounds(12)
-        self.assertEqual(backend.rounds, 12)
-        self.assertEqual(backend.actions.count(('drag',)), 2)
-
 
 class TestStartingTheGame(unittest.TestCase):
     VERSION = ('OS_ Windows_ Product_1.6.208.1', 0.11, 0.99)

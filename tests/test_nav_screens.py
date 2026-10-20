@@ -116,6 +116,9 @@ class TestNavScreens(TaskTestCase):
     def test_reward_popup(self):
         self.assertScreen(NAV + 'reward_popup.png', 'blank_close')
 
+    def test_event_splash_after_login(self):
+        self.assertScreen(NAV + 'event_splash.png', 'splash')
+
     def test_result(self):
         self.assertScreen(IMAGES + 'result_defence.png', 'result')
 
