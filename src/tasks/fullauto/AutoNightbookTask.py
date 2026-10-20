@@ -49,6 +49,7 @@ class AutoNightbookTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
             "密函": T.LETTER_COLUMNS[0],
             "每局轮次": 3,
             "刷几次": 0,
+            "挂机小动作": False,
         })
         self.config_description.update({
             "来源": "夜航手册的一行、委托页的「扼守/无尽」，或委托密函一栏里的无尽委托",
@@ -57,6 +58,7 @@ class AutoNightbookTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
             "密函": "委托密函的哪一栏；进这一栏里的无尽委托（扼守/无尽、探险/无尽），密函每小时轮换",
             "每局轮次": "扼守每局打几轮后结算。大于 1 时交给游戏自带的自动轮次；为 1 时关掉自动轮次，打完第一轮就撤离",
             "刷几次": "一共进本几次，打完回到大世界；0 为不限",
+            "挂机小动作": "每隔几秒轻微晃动鼠标并随机按一个空闲按键（含魔灵支援键）",
             "超时时间": "扼守一个波次、驱离一整局超过这么多秒就放弃重开",
             "挂机模式": "驱离开局时怎么处理站位",
         })
@@ -72,6 +74,7 @@ class AutoNightbookTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         return self._nav
 
     def run(self):
+        self.enable_fidget_action = bool(self.config.get("挂机小动作", False))
         DNAOneTimeTask.run(self)
         self.move_mouse_to_safe_position(save_current_pos=False)
         self.set_check_monthly_card()
