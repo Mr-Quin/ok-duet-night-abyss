@@ -47,7 +47,9 @@ TO_OBJECTIVE = '前往目标点'
 RUN_MODES = ('驱离', '驱逐', '避险')
 NO_REWARD = '无奖励'
 CONFIRM = '确定'
-CLOSE_ON_BLANK = '点击空白区域关闭'
+# 「点击空白区域关闭」，OCR 有时漏掉「白」
+CLOSE_ON_BLANK = '区域关闭'
+CLAIM_ALL = '全部领取'
 # 登录后的活动轮播，下面有「7日内不再提醒」
 SPLASH = '不再提醒'
 
