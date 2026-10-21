@@ -191,6 +191,7 @@ class RunLoop:
         self.task.choose_letter_reward()
 
     def on_result(self, now):
+        finished = self.live
         if self.live:
             self.live = False
             self.runs_done += 1
@@ -198,7 +199,7 @@ class RunLoop:
             self.task.log_info(f"已完成 {self.runs_done}/{self.job.runs or '不限'} 次")
         if self.done():
             return True
-        if self.between_runs and self.clock() - self.between_at >= CLAIM_EVERY:
+        if finished and self.between_runs and self.clock() - self.between_at >= CLAIM_EVERY:
             self.between_runs()
             self.between_at = self.clock()
             self.enter()
