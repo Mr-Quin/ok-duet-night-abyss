@@ -10,6 +10,7 @@ from qfluentwidgets import FluentIcon
 from ok import TaskDisabledException
 from src.nav import Letter, Mission, Nav, NavError, Nightbook, NoSuchEntry, NotOffered
 from src.nav import screens as S
+from src.nav.claims import Claimer
 from src.nav import text_zh as T
 from src.nav.okscript import CACHE_PATH, OkScriptBackend
 from src.run.loop import GaveUpTooOften, Job, RunLoop, UnsupportedMission
@@ -21,6 +22,8 @@ SOURCES = ["夜航手册", "委托 扼守", "委托密函"]
 BOOK_LEVELS = S.LEVELS
 COMMISSION_LEVELS = [40, 50, 60, 70, 80]
 MODE = '扼守/无尽'
+# 不含声名：惠赠会交出需求物品，交给日常领奖任务
+CLAIM_PAGES = ('历练', '协会', '吟游诗集')
 LETTER_MODES = {'任意': T.ENDLESS, '扼守': MODE, '探险': '探险/无尽'}
 
 
@@ -48,6 +51,7 @@ class AutoNightbookTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
             "密函委托": "任意",
             "每局轮次": 3,
             "刷几次": 0,
+            "打完领奖": True,
         })
         self.config_description.update({
             "来源": "夜航手册的一行、委托页的「扼守/无尽」，或委托密函一栏里的无尽委托",
@@ -57,6 +61,7 @@ class AutoNightbookTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
             "密函委托": "这一栏有好几个无尽委托时进哪个；任意就是排在最上面的",
             "每局轮次": "扼守每局打几轮后结算。大于 1 时交给游戏自带的自动轮次；为 1 时关掉自动轮次，打完第一轮就撤离",
             "刷几次": "一共进本几次，打完回到大世界；0 为不限",
+            "打完领奖": "一局打完（最多半小时一次）和全部打完后，领历练、协会、吟游诗集带红点的奖励",
             "超时时间": "扼守一个波次、驱离一整局超过这么多秒就放弃重开",
             "挂机模式": "驱离开局时怎么处理站位",
         })
@@ -81,7 +86,10 @@ class AutoNightbookTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         job = self.job()
         self.log_info(f"导航到{self.describe(job.target)}")
         try:
-            RunLoop(self, self.nav, job).run()
+            claim = self.claim if self.config.get("打完领奖", True) else None
+            RunLoop(self, self.nav, job, between_runs=claim).run()
+            if claim:
+                claim()
         except TaskDisabledException:
             pass
         except NoSuchEntry as e:
@@ -94,6 +102,12 @@ class AutoNightbookTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
             raise Exception(f"{self.describe(job.target)}{e}，先停下")
         except NavError as e:
             raise Exception(f"自动导航失败：{e}")
+
+    def claim(self):
+        try:
+            Claimer(self.nav, log=self.log_info).run(CLAIM_PAGES)
+        except NavError as e:
+            self.log_info(f"领奖没成功（{e}），接着刷")
 
     def job(self):
         level = int(str(self.config.get("等级", BOOK_LEVELS[1])).replace("Lv.", ""))
