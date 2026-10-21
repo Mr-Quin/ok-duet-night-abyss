@@ -6,7 +6,7 @@ import re
 import time
 
 from src.run.expulsion import Expulsion
-from src.tasks.fullauto.marker_walk import MarkerWalk
+from src.tasks.fullauto.marker_walk import STEER, MarkerWalk
 
 # 走到装置前时右边出现的「F ▸ 操作」提示
 PROMPT_BOX = (0.55, 0.45, 0.85, 0.55)
@@ -36,7 +36,7 @@ class Exploration(Expulsion):
             task.exit_mission()
             return False
         walker.run(seen, arrive=ARRIVE_METRES)
-        if not self.operate():
+        if not self.operate(walker):
             task.log_info("没能操作装置，放弃这一局")
             task.screenshot("explore_operate_failed")
             task.exit_mission()
@@ -45,11 +45,16 @@ class Exploration(Expulsion):
         self.progress, self.pending, self.read_at = None, None, 0
         return True
 
-    def operate(self):
+    def operate(self, walker):
         task = self.task
         for _ in range(NUDGES):
             if self.shows(PROMPT_BOX, PROMPT):
                 break
+            # 走到时装置常在身侧，直接往前挪会顶着旁边的东西；先把标记转到正前方
+            seen = walker.find(task.next_frame())
+            if seen and abs(seen[0]) > STEER:
+                walker.face(seen[0])
+                task.sleep(0.2)
             task.send_key('w', down_time=0.25)
             task.sleep(0.3)
         else:

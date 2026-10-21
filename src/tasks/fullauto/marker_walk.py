@@ -141,9 +141,7 @@ class MarkerWalk:
                     self.record({'up': 'space'})
                     best_at = self.clock()
                 if abs(x) > STEER:
-                    dx = max(-MAX_TURN, min(MAX_TURN, round(x / TURN_PER_COUNT)))
-                    self.record({'turn': [dx, 0]})
-                    task.move_mouse_relative(dx, 0)
+                    self.face(x)
             task.log_info("走到目标超时")
             return False
         finally:
@@ -151,6 +149,12 @@ class MarkerWalk:
             task.send_key_up('w')
             self.record({'up': dodge})
             self.record({'up': 'w'})
+
+    def face(self, x):
+        """转镜头，让偏在 x（find() 的水平偏移）的标记回到画面中央。"""
+        dx = max(-MAX_TURN, min(MAX_TURN, round(x / TURN_PER_COUNT)))
+        self.record({'turn': [dx, 0]})
+        self.task.move_mouse_relative(dx, 0)
 
     def record(self, step):
         self.steps.append(dict(step, t=round(self.clock() - self.t0, 3)))
