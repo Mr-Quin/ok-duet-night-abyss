@@ -43,7 +43,8 @@ LETTER_GIVE_UP = '放弃'
 ENDLESS = '/无尽'
 ROUND_HUD = ('当前轮次', '波次')
 ROUND_NOW = r'当前轮次\s*[:：]?\s*(\d+)'
-TO_OBJECTIVE = '前往目标点'
+# 第一波还没开始时任务栏的目标：扼守是走向防守点，探险是去操作装置
+TO_OBJECTIVE = ('前往目标点', '调查目标')
 RUN_MODES = ('驱离', '驱逐', '避险')
 NO_REWARD = '无奖励'
 CONFIRM = '确定'
