@@ -8,7 +8,7 @@ from dataclasses import dataclass
 import cv2
 import numpy as np
 
-from src.nav import BookSection, MainMenu, Menu, World
+from src.nav import MainMenu, World
 from src.nav import text_zh as T
 
 MAX_STEPS = 40
@@ -21,24 +21,24 @@ TAP_OFFSET = (-0.008, 0.012)
 HINT_BAR = (0.8, 0.94, 1, 1)
 REGION_NAME = (0.08, 0.05, 0.3, 0.09)
 NEVER_TAP = ('前往', '购买', '解锁')
+MENU_TILES = (0.03, 0.4, 0.35, 0.97)
 
 
 @dataclass(frozen=True)
 class Page:
-    target: object
     dots: tuple
     switch: str = None
 
 
 PAGES = {
     # 顶部的入门指南、备忘手记页签；左边完成度的奖励，点一个就领完已达成的
-    '历练': Page(BookSection('历练'), ((0.1, 0.12, 0.36, 0.2), (0.14, 0.22, 0.24, 0.66))),
+    '历练': Page(((0.1, 0.12, 0.36, 0.2), (0.14, 0.22, 0.24, 0.66))),
     # 本周个人活跃入口；每日、每周考察页签；底部活跃宝箱
-    '协会': Page(Menu('协会'), ((0, 0.65, 0.2, 0.8), (0.02, 0.14, 0.25, 0.32), (0.3, 0.82, 0.95, 0.9))),
+    '协会': Page(((0, 0.65, 0.2, 0.8), (0.02, 0.14, 0.25, 0.32), (0.3, 0.82, 0.95, 0.9))),
     # 顶栏的见闻报酬、装订报酬，跳过中间的转述见闻
-    '吟游诗集': Page(Menu('吟游诗集'), ((0.15, 0, 0.29, 0.07), (0.4, 0, 0.52, 0.07))),
+    '吟游诗集': Page(((0.15, 0, 0.29, 0.07), (0.4, 0, 0.52, 0.07))),
     # 惠赠入口；委托卡片的提交物品。E 换到下一个地区
-    '声名': Page(Menu('声名'), ((0.65, 0.42, 0.85, 0.58), (0.08, 0.66, 0.92, 0.75)), switch='e'),
+    '声名': Page(((0.65, 0.42, 0.85, 0.58), (0.08, 0.66, 0.92, 0.75)), switch='e'),
 }
 
 
@@ -59,7 +59,7 @@ def red_dots(scr, region=(0, 0, 1, 1)):
 
 def tile_has_dot(scr, label):
     """主菜单上 label 这个图标右上角有没有红点。"""
-    item = scr.first(label, (0.03, 0.4, 0.35, 0.97), exact=True)
+    item = scr.first(label, MENU_TILES, exact=True)
     return bool(item) and bool(red_dots(scr, (item['x'], item['y'] - 0.11, item['x'] + 0.06, item['y'] - 0.04)))
 
 
@@ -80,7 +80,13 @@ class Claimer:
         todo = [n for n in names if tile_has_dot(scr, n)]
         self.log('有红点：%s' % ('、'.join(todo) or '没有'))
         for name in todo:
-            self.nav.go(PAGES[name].target)
+            # 历练打开的是手册最左边的分区，导航不认这一页，所以从主菜单直接点图标进去
+            self.nav.go(MainMenu())
+            tile = self.nav.b.read().first(name, MENU_TILES, exact=True)
+            if not tile:
+                self.log('主菜单上找不到 %s' % name)
+                continue
+            self.nav.tap(tile['x'], tile['y'] - 0.04)
             self.claim(PAGES[name])
         self.nav.go(World())
         return todo

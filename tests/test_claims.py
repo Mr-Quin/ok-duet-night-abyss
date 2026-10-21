@@ -87,7 +87,7 @@ class TestClaimingAPage(unittest.TestCase):
 
     def test_a_dot_that_stays_is_tapped_twice_then_left(self):
         card = screen([('提交物品', 0.23, 0.71)], dots=[(0.27, 0.70)])
-        actions = self.claim(C.Page(None, C.PAGES['声名'].dots), [card])
+        actions = self.claim(C.Page(C.PAGES['声名'].dots), [card])
         self.assertEqual(actions, [('tap', 0.26, 0.71)] * C.MAX_TAPS)
 
     def test_dots_outside_the_pages_regions_or_on_go_buttons_are_not_tapped(self):
