@@ -60,6 +60,15 @@ def box(text):
     return 'explore_' + text
 
 
+class TestBegin(unittest.TestCase):
+
+    def test_a_run_whose_device_is_already_open_goes_straight_to_fighting(self):
+        task = FakeTask({box(X.SERUM): ['血清 35%']})
+        task.skill_tick = type('Tick', (), {'reset': lambda self: None})()
+        self.assertTrue(X.Exploration(task).begin())
+        self.assertEqual(task.keys, [])
+
+
 class TestOperate(unittest.TestCase):
 
     def test_interacts_then_quick_solves(self):

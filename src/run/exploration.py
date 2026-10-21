@@ -5,7 +5,7 @@
 import re
 import time
 
-from src.run.expulsion import Expulsion
+from src.run.expulsion import PROGRESS_BOX, Expulsion
 from src.tasks.fullauto.marker_walk import STEER, MarkerWalk
 
 # 走到装置前时右边出现的「F ▸ 操作」提示。标记旁的「操作装置」也会落进这个框，不能算
@@ -17,6 +17,8 @@ QUICK_SOLVE_BOX = (0.75, 0.82, 0.95, 0.91)
 QUICK_SOLVE = '快速破解'
 SOLVED_BOX = (0.6, 0.45, 0.85, 0.55)
 SOLVED = '破解成功'
+# 打开装置后任务栏才有「血清 0%」
+SERUM = '血清'
 # 标记显示 2 米时提示还没出来，要再往前挪一点
 ARRIVE_METRES = 2
 NUDGES = 12
@@ -34,6 +36,12 @@ class Exploration(Expulsion):
         task = self.task
         task.skill_tick.reset()
         task.sleep(2)
+        if self.shows(PROGRESS_BOX, SERUM):
+            # 装置已经操作过（比如接手一局打到一半的），直接打怪攒血清
+            task.log_info("装置已经打开，接着攒血清")
+            self.since = self.clock()
+            self.progress, self.pending, self.read_at = None, None, 0
+            return True
         walker = MarkerWalk(task, self.clock)
         seen = walker.wait_for_marker(timeout=10)
         if seen is None:
