@@ -19,7 +19,11 @@ SOLVED_BOX = (0.6, 0.45, 0.85, 0.55)
 SOLVED = '破解成功'
 # 标记显示 2 米时提示还没出来，要再往前挪一点
 ARRIVE_METRES = 2
-NUDGES = 6
+NUDGES = 12
+# 标记偏得比这还多时只转不走，边走边转会从装置旁边走过去
+TURN_ONLY = 0.3
+# 走路读错距离时会提前停下，标记还显示这么远就迈大步
+FAR_METRES = 4
 
 
 class Exploration(Expulsion):
@@ -56,7 +60,10 @@ class Exploration(Expulsion):
             if seen and abs(seen[0]) > STEER:
                 walker.face(seen[0])
                 task.sleep(0.2)
-            task.send_key('w', down_time=0.25)
+                if abs(seen[0]) > TURN_ONLY:
+                    continue
+            far = seen and seen[1] is not None and seen[1] > FAR_METRES
+            task.send_key('w', down_time=0.8 if far else 0.25)
             task.sleep(0.3)
         else:
             return False
