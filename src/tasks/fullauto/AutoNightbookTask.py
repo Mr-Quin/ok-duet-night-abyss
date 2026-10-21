@@ -21,6 +21,7 @@ SOURCES = ["夜航手册", "委托 扼守", "委托密函"]
 BOOK_LEVELS = S.LEVELS
 COMMISSION_LEVELS = [40, 50, 60, 70, 80]
 MODE = '扼守/无尽'
+LETTER_MODES = {'任意': T.ENDLESS, '扼守': MODE, '探险': '探险/无尽'}
 
 
 class AutoNightbookTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
@@ -44,6 +45,7 @@ class AutoNightbookTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
             "等级": f"Lv.{BOOK_LEVELS[1]}",
             "第几个": 1,
             "密函": T.LETTER_COLUMNS[0],
+            "密函委托": "任意",
             "每局轮次": 3,
             "刷几次": 0,
         })
@@ -52,6 +54,7 @@ class AutoNightbookTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
             "等级": "委托 扼守 只有 Lv.40 到 Lv.80",
             "第几个": "夜航手册这个等级里从上往下第几行",
             "密函": "委托密函的哪一栏；进这一栏里的无尽委托（扼守/无尽、探险/无尽），密函每小时轮换",
+            "密函委托": "这一栏有好几个无尽委托时进哪个；任意就是排在最上面的",
             "每局轮次": "扼守每局打几轮后结算。大于 1 时交给游戏自带的自动轮次；为 1 时关掉自动轮次，打完第一轮就撤离",
             "刷几次": "一共进本几次，打完回到大世界；0 为不限",
             "超时时间": "扼守一个波次、驱离一整局超过这么多秒就放弃重开",
@@ -59,6 +62,7 @@ class AutoNightbookTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         })
         self.config_type["来源"] = {"type": "drop_down", "options": SOURCES}
         self.config_type["密函"] = {"type": "drop_down", "options": list(T.LETTER_COLUMNS)}
+        self.config_type["密函委托"] = {"type": "drop_down", "options": list(LETTER_MODES)}
         self.config_type["等级"] = {"type": "drop_down", "options": [f"Lv.{lv}" for lv in BOOK_LEVELS]}
         self._nav = None
 
@@ -83,7 +87,7 @@ class AutoNightbookTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         except NoSuchEntry as e:
             raise Exception(f"夜航手册 Lv.{e.level} 现在只有 {len(e.names)} 行，选的是第 {job.target.row + 1} 行")
         except NotOffered as e:
-            raise Exception(f"委托密函 {e.column} 栏现在没有无尽委托（有 {e.offered}），密函每小时轮换，过会儿再试")
+            raise Exception(f"委托密函 {e.column} 栏现在没有{self.letter_name(e.mode)}（有 {e.offered}），密函每小时轮换，过会儿再试")
         except UnsupportedMission as e:
             raise Exception(f"{self.describe(job.target)}是「{e.mode}」，现在只支持扼守、驱离、驱逐、避险和探险")
         except GaveUpTooOften as e:
@@ -98,7 +102,8 @@ class AutoNightbookTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         if self.config.get("来源") == SOURCES[1]:
             target = Mission(MODE, lv=level)
         elif self.config.get("来源") == SOURCES[2]:
-            target = Letter(T.ENDLESS, column=self.config.get("密函", T.LETTER_COLUMNS[0]))
+            mode = LETTER_MODES.get(self.config.get("密函委托"), T.ENDLESS)
+            target = Letter(mode, column=self.config.get("密函", T.LETTER_COLUMNS[0]))
         else:
             target = Nightbook(level, max(1, int(self.config.get("第几个", 1) or 1)) - 1)
         return Job(target, rounds=rounds, runs=runs)
@@ -108,5 +113,9 @@ class AutoNightbookTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         if isinstance(target, Nightbook):
             return f"夜航手册 Lv.{target.level} 第 {target.row + 1} 行"
         if isinstance(target, Letter):
-            return f"委托密函 {target.column} 栏的无尽委托"
+            return f"委托密函 {target.column} 栏的{AutoNightbookTask.letter_name(target.mode)}"
         return f"委托 {target.mode} Lv.{target.lv}"
+
+    @staticmethod
+    def letter_name(mode):
+        return "无尽委托" if mode == T.ENDLESS else mode
