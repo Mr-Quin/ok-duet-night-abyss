@@ -9,6 +9,7 @@ from src.nav import screens as S
 from src.nav import text_zh as T
 from src.nav.backend import Backend, Screen
 from src.nav.edges import open_nightbook_row, same_name
+from src.nav import graph
 from src.nav import handlers as H
 from src.nav.navigator import Navigator
 
@@ -175,6 +176,15 @@ class TestStartingTheGame(unittest.TestCase):
         H.on_boot(nav, screen(), {'login': False})
         self.assertIsNone(H.on_unknown(nav, screen(), {}))
         self.assertEqual(backend.actions, [])
+
+    def test_a_page_with_an_esc_hint_after_entering_the_game_is_closed(self):
+        nav, backend = navigator(World())
+        H.on_title(nav, screen(), {'enter': {'x': 0.5, 'y': 0.9}})
+        found, info = S.classify(screen(('水仙平原出勤累积', 0.7, 0.25), ('Esc', 0.95, 0.97), ('返回', 0.98, 0.97)), {})
+        self.assertEqual(found, 'other_menu')
+        results = [graph.HANDLERS[found](nav, screen(), info) for _ in range(3)]
+        self.assertEqual(results, [None, None, False])
+        self.assertEqual(backend.actions[-1], ('key', 'esc'))
 
     def test_waiting_too_long_at_login_asks_for_a_manual_login(self):
         nav, backend = navigator(World())

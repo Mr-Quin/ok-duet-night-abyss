@@ -131,12 +131,16 @@ def on_manual_popup(nav, scr, info):
 
 
 @graph.handler('unknown')
-@graph.handler('other_menu')
 def on_unknown(nav, scr, info):
     if nav.state.get('loading') and nav.state.get('run_waits', 0) < MAX_RUN_WAITS:
         # 退出副本后的加载画面只有插图和提示，认不出是正常的
         nav.state['run_waits'] = nav.state.get('run_waits', 0) + 1
         return None
+    return on_other_menu(nav, scr, info)
+
+
+@graph.handler('other_menu')
+def on_other_menu(nav, scr, info):
     # 多半是还在淡入的界面，先等一下再退
     if nav.wait(2) is None:
         return None
