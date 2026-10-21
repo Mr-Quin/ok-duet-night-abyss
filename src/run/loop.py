@@ -26,6 +26,8 @@ RUN_HUD_WAIT = 8
 # 驱逐的怪偶尔卡在地图里，同一个关卡连着放弃这么多次就停下，不再重开
 MAX_GIVE_UPS = 3
 LEAVE_WAIT = 60
+# 一局打完后去领奖，至少隔这么久一次
+CLAIM_EVERY = 30 * 60
 
 
 class GaveUpTooOften(Exception):
@@ -46,8 +48,11 @@ class Job:
 
 
 class RunLoop:
-    def __init__(self, task, nav, job, observer=None, clock=time.time, behaviours=BEHAVIOURS):
+    def __init__(self, task, nav, job, observer=None, clock=time.time, behaviours=BEHAVIOURS, between_runs=None):
+        """between_runs：一局打完后调用（最多每 CLAIM_EVERY 秒一次），可以随意导航，之后重新进关卡。"""
         self.task, self.nav, self.job = task, nav, job
+        self.between_runs = between_runs
+        self.between_at = float('-inf')
         self.behaviours = behaviours
         self.observer = observer or O.Observer(task)
         self.clock = clock
@@ -193,6 +198,11 @@ class RunLoop:
             self.task.log_info(f"已完成 {self.runs_done}/{self.job.runs or '不限'} 次")
         if self.done():
             return True
+        if self.between_runs and self.clock() - self.between_at >= CLAIM_EVERY:
+            self.between_runs()
+            self.between_at = self.clock()
+            self.enter()
+            return
         self.start(now)
 
     def on_start(self, now):
