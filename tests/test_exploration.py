@@ -82,10 +82,11 @@ class TestOperate(unittest.TestCase):
     def test_turns_to_a_device_beside_the_character_before_stepping(self):
         task = FakeTask({box(X.PROMPT): ['', '', X.PROMPT], box(X.QUICK_SOLVE): ['', X.QUICK_SOLVE, ''],
                          box(X.SOLVED): ['']})
-        walker = FakeWalker([(0.4, 2), (0.01, 1)])
+        walker = FakeWalker([(0.4, 2), (0.1, 2), (0.01, 1)])
         self.assertTrue(X.Exploration(task).operate(walker))
-        self.assertEqual(walker.turns, [0.4])
-        self.assertEqual(task.keys[:2], ['w', 'w'])
+        # 偏得多时只转不走，转得差不多了边转边走
+        self.assertEqual(walker.turns, [0.4, 0.1])
+        self.assertEqual(task.keys[:2], ['w', 'g'])
 
 
 if __name__ == '__main__':
