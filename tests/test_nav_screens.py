@@ -139,6 +139,14 @@ class TestNavScreens(TaskTestCase):
         self.assertEqual(O.observe(self.task), O.MANUAL)
 
 
+    # ---- 技能 ----
+
+    def test_a_toggle_ultimate_that_is_on_reads_no_cost(self):
+        self.set_image(IMAGES + 'ult_toggle_on.png')
+        self.assertFalse(self.task.ultimate_cost())
+        self.set_image(IMAGES + 'ult_toggle_off.png')
+        self.assertEqual(self.task.ultimate_cost(), 8)
+
     # ---- 委托密函 ----
 
     def test_letter_tab_lists_the_endless_missions(self):

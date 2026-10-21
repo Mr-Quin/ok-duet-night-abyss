@@ -598,6 +598,15 @@ class CommissionsTask(BaseDNATask):
         self.sleep(0.1)
         self.wait_until(lambda: not self.in_team(), time_out=3, settle_time=0.5)
 
+    def ultimate_cost(self):
+        """终结技图标右上角的消耗数字，读不出来为 None。开关类终结技开着时显示 0（常常读不出来）。
+
+        框不能再往右放：右边魔灵支援的冷却秒数会被读成消耗。
+        """
+        box = self.box_of_screen(0.905, 0.855, 0.945, 0.905, name='ultimate_cost')
+        boxes = self.ocr(box=box, match=re.compile(r'^\d+$'))
+        return int(boxes[0].name) if boxes else None
+
     def create_skill_ticker(self):
         skills = []
         def create_ticker(local_n):
@@ -622,6 +631,10 @@ class CommissionsTask(BaseDNATask):
                         self.get_current_char().send_ultimate_key()
                     else:
                         self.get_current_char().click()
+                elif skill == "保持开关类终结技开启":
+                    # 读不出消耗时不按，按了会把开着的关掉
+                    if self.ultimate_cost():
+                        self.get_current_char().send_ultimate_key()
                 elif skill == "魔灵支援":
                     self.get_current_char().send_geniemon_key()
                 elif skill == "普攻":
