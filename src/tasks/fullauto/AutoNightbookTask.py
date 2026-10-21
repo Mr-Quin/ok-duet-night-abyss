@@ -10,7 +10,7 @@ import os
 from qfluentwidgets import FluentIcon
 
 from ok import TaskDisabledException
-from src.nav import Letter, Mission, Nav, NavError, Nightbook, NoSuchEntry, NotOffered
+from src.nav import Letter, Mission, Nav, NavError, Nightbook, NoLetters, NoSuchEntry, NotOffered
 from src.nav import screens as S
 from src.nav.claims import Claimer
 from src.nav import text_zh as T
@@ -107,6 +107,8 @@ class AutoNightbookTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
             pass
         except NoSuchEntry as e:
             raise Exception(f"夜航手册 Lv.{e.level} 现在只有 {len(e.names)} 行，选的是第 {job.target.row + 1} 行")
+        except NoLetters as e:
+            raise Exception(f"委托密函 {e.column} 栏的密函用完了")
         except NotOffered as e:
             raise Exception(f"委托密函 {e.column} 栏现在没有{self.letter_name(e.mode)}（有 {e.offered}），密函每小时轮换，过会儿再试")
         except UnsupportedMission as e:
