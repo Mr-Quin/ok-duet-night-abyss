@@ -94,6 +94,13 @@ class TestMarkerWalk(unittest.TestCase):
         walker = ScriptedWalk(FakeTask(), [(0.0, 30), (0.0, 22), (0.0, 72), (0.0, 20), (0.0, 5)])
         self.assertTrue(walker.run((0.0, 35)))
 
+    def test_turns_back_toward_a_marker_that_slid_out_of_view(self):
+        task = FakeTask()
+        self.assertTrue(ScriptedWalk(task, [(-0.6, 8), None, (-0.1, 6), (0.0, 2)]).run((-0.6, 9), arrive=2))
+        turns = [a[1] for a in task.actions if a[0] == 'turn']
+        # 看着标记往左转，标记丢了再朝左转一次
+        self.assertEqual(sum(1 for dx in turns if dx < 0), 3)
+
     def test_a_marker_that_vanishes_up_close_means_the_wave_started(self):
         self.assertTrue(ScriptedWalk(FakeTask(), [(0.0, 5), None]).run((0.0, 9), arrive=2))
         self.assertFalse(ScriptedWalk(FakeTask(), [(0.0, 20), None]).run((0.0, 25)))
