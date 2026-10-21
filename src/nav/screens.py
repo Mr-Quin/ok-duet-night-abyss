@@ -224,6 +224,10 @@ def detect_blank_close(scr, atlas):
 
 # 局内界面排在前面：局内 HUD 也有大世界判据要找的 Lv 条
 
+# 领奖弹窗「点击空白区域关闭」点这里
+BLANK_SPOT = (0.5, 0.89)
+
+
 @graph.detector(10)
 def detect_exit_confirm(scr, atlas):
     if scr.find(T.EXIT_CONFIRM):
