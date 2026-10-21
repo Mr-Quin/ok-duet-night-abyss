@@ -9,6 +9,7 @@ import cv2
 import numpy as np
 
 from src.nav import MainMenu, World
+from src.nav import screens as S
 from src.nav import text_zh as T
 
 MAX_STEPS = 40
@@ -24,6 +25,7 @@ HINT_BAR = (0.8, 0.94, 1, 1)
 REGION_NAME = (0.08, 0.05, 0.3, 0.09)
 NEVER_TAP = ('前往', '购买', '解锁')
 MENU_TILES = (0.03, 0.4, 0.35, 0.97)
+MAX_REGIONS = 4
 
 
 @dataclass(frozen=True)
@@ -91,13 +93,17 @@ class Claimer:
                 self.log('主菜单上找不到 %s' % name)
                 continue
             self.nav.tap(tile['x'], tile['y'] - 0.04)
+            # 点没生效还停在主菜单的话，主菜单上别的图标的红点也在各界面的区域里
+            if self.nav.where().screen == 'main_menu':
+                self.log('没打开 %s' % name)
+                continue
             self.claim(PAGES[name])
         self.nav.go(World())
         return todo
 
     def claim(self, page):
         seen = set()
-        while True:
+        for _ in range(MAX_REGIONS):
             self.claim_here(page)
             if not page.switch:
                 return
@@ -111,11 +117,11 @@ class Claimer:
         return item[0]['t'] if item else ''
 
     def claim_here(self, page):
-        taps = {}
+        taps = []
         for _ in range(MAX_STEPS):
             scr = self.nav.b.read()
             if scr.find(T.CLOSE_ON_BLANK):
-                self.nav.tap(0.5, 0.89)
+                self.nav.tap(*S.BLANK_SPOT)
                 continue
             ok = scr.first(T.ACKNOWLEDGE, (0.3, 0.75, 0.55, 0.88), exact=True)
             if ok and scr.find(T.GOT_ITEMS):
@@ -129,8 +135,7 @@ class Claimer:
             if found is None:
                 return
             (x, y), (dx, dy) = found
-            key = (round(x, 2), round(y, 2))
-            taps[key] = taps.get(key, 0) + 1
+            taps.append((x, y))
             self.log('  点红点 %s' % (nearest_text(scr, x + dx, y + dy) or '(%.2f, %.2f)' % (x, y)))
             self.nav.tap(x + dx, y + dy)
 
@@ -140,9 +145,10 @@ class Claimer:
         regions = [(r, TAP_OFFSET) for r in page.dots] + [(r, BUTTON_OFFSET) for r in page.buttons]
         for region, offset in regions:
             for x, y in red_dots(scr, region):
-                if taps.get((round(x, 2), round(y, 2)), 0) >= MAX_TAPS:
+                if sum(abs(x - tx) < 0.01 and abs(y - ty) < 0.01 for tx, ty in taps) >= MAX_TAPS:
                     continue
-                if any(word in nearest_text(scr, x, y) for word in NEVER_TAP):
+                near = nearest_text(scr, x, y) + nearest_text(scr, x + offset[0], y + offset[1])
+                if any(word in near for word in NEVER_TAP):
                     continue
                 return (x, y), offset
         return None
