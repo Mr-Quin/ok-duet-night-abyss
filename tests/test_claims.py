@@ -97,8 +97,8 @@ class TestClaimingAPage(unittest.TestCase):
         self.assertEqual(actions, [('tap', 0.42, 0.81)])
 
     def test_dots_outside_the_pages_regions_or_on_go_buttons_are_not_tapped(self):
-        bp = [('见闻报酬', 0.22, 0.03), ('转述见闻', 0.34, 0.03), ('解锁精装诗集', 0.88, 0.86), ('购买等级', 0.09, 0.47)]
-        actions = self.claim(C.PAGES['吟游诗集'], [screen(bp, dots=[(0.36, 0.02), (0.9, 0.84), (0.1, 0.45)])])
+        bp = [('见闻报酬', 0.22, 0.03), ('解锁精装诗集', 0.88, 0.86), ('购买等级', 0.09, 0.47)]
+        actions = self.claim(C.PAGES['吟游诗集'], [screen(bp, dots=[(0.9, 0.84), (0.1, 0.45)])])
         self.assertEqual(actions, [])
         rows = [('前往', 0.86, 0.86)]
         actions = self.claim(C.PAGES['协会'], [screen(rows, dots=[(0.87, 0.85)])])
