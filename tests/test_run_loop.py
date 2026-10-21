@@ -74,14 +74,15 @@ def behaviour(kind_name, rounds, begins=None, ticks=None):
     return Fake
 
 
-def run(script, job, mode='扼守/无尽', begins=None, hold=1, nav=None, behaviours=None, frames=None, ticks=None):
+def run(script, job, mode='扼守/无尽', begins=None, hold=1, nav=None, behaviours=None, frames=None, ticks=None,
+        between_runs=None):
     """script 里每个阶段连着看到 hold 拍，frames 给出时按原样一拍一拍看；用完后停在最后一个。"""
     task, nav = FakeTask(), nav or FakeNav(mode)
     frames = list(frames or [s for s in script for _ in range(hold * O.Observer.SETTLE)])
     look = lambda t: frames.pop(0) if len(frames) > 1 else frames[0]
     defence, expulsion = behaviour('扼守', True, begins, ticks), behaviour('驱离', False, begins)
     loop = L.RunLoop(task, nav, job, observer=O.Observer(task, look), clock=lambda: task.now,
-                     behaviours=behaviours or (defence, expulsion))
+                     behaviours=behaviours or (defence, expulsion), between_runs=between_runs)
     loop.run()
     return task, nav, loop, defence, expulsion
 
@@ -152,6 +153,13 @@ class TestRunLoop(unittest.TestCase):
         script = [O.IN_RUN, O.ROUND_DIALOG, O.IN_RUN, O.START] * L.MAX_GIVE_UPS + [O.IN_RUN, O.ROUND_DIALOG, O.RESULT]
         _, _, loop, _, _ = run(script, L.Job('target', rounds=2, runs=1), ticks=[False] * L.MAX_GIVE_UPS)
         self.assertEqual(loop.runs_done, 1)
+
+    def test_between_runs_runs_after_a_finished_run_then_the_mission_is_entered_again(self):
+        calls = []
+        script = [O.IN_RUN, O.ROUND_DIALOG, O.RESULT, O.START, O.IN_RUN, O.ROUND_DIALOG, O.RESULT]
+        _, nav, loop, _, _ = run(script, L.Job('target', rounds=1, runs=2), between_runs=lambda: calls.append(1))
+        self.assertEqual((loop.runs_done, calls), (2, [1]))
+        self.assertEqual(sum(1 for c in nav.calls if c[0] == 'go'), 1 + 1 + 1)
 
     def test_a_finished_run_resets_the_give_up_count(self):
         script = [O.IN_RUN, O.START, O.IN_RUN, O.ROUND_DIALOG, O.RESULT] * 2 + [O.IN_RUN, O.ROUND_DIALOG, O.RESULT]
