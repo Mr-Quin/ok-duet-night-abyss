@@ -104,7 +104,7 @@ def on_dungeon(nav, scr, info):
 @graph.handler('blank_close')
 def on_blank_close(nav, scr, info):
     nav.log('  点空白处关掉领奖弹窗（月卡等）')
-    nav.b.click(0.50, 0.89)
+    nav.b.click(*S.BLANK_SPOT)
     return False
 
 
