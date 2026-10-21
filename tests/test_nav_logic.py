@@ -177,6 +177,10 @@ class TestStartingTheGame(unittest.TestCase):
         self.assertIsNone(H.on_unknown(nav, screen(), {}))
         self.assertEqual(backend.actions, [])
 
+    def test_an_exploration_run_before_the_device_is_operated_has_not_started(self):
+        found, info = S.classify(screen(('探险', 0.02, 0.27), ('当前轮次：1', 0.06, 0.27), ('调查目标', 0.04, 0.31)), {})
+        self.assertEqual((found, info['to_objective']), ('dungeon', True))
+
     def test_a_page_with_an_esc_hint_after_entering_the_game_is_closed(self):
         nav, backend = navigator(World())
         H.on_title(nav, screen(), {'enter': {'x': 0.5, 'y': 0.9}})
