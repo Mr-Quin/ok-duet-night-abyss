@@ -3,11 +3,12 @@ import unittest
 
 import numpy as np
 
-from src.nav import (BookSection, CommissionTab, Letter, MainMenu, Mission, Nav, NavError, Nightbook, NoSuchEntry,
+from src.nav import (BookSection, CommissionTab, Letter, MainMenu, Mission, Nav, NavError, Nightbook, NoLetters, NoSuchEntry,
                      NotOffered, Page, World, WrongMission)
 from src.nav import screens as S
 from src.nav import text_zh as T
 from src.nav.backend import Backend, Screen
+from src.nav import edges as E
 from src.nav.edges import open_nightbook_row, same_name
 from src.nav import graph
 from src.nav import handlers as H
@@ -288,6 +289,17 @@ class TestStartScreen(unittest.TestCase):
         with self.assertRaises(NotOffered) as raised:
             H.on_start(nav, screen(), info)
         self.assertEqual(raised.exception.offered, ['追缉', '调停', '避险'])
+
+    def test_a_letter_column_with_no_letters_left_is_not_entered(self):
+        tab = [('角色', 0.15, 0.4), ('持有数 0', 0.15, 0.43), ('探险/无尽', 0.1, 0.72),
+               ('武器', 0.37, 0.4), ('持有数 188', 0.37, 0.43), ('扼守/无尽', 0.32, 0.72)]
+        nav, backend = navigator(Letter(T.ENDLESS))
+        self.assertFalse(E.open_letter(nav, screen(*tab), 'commission', ('start', T.TABS[2]), {}))
+        self.assertEqual(backend.actions, [('click', 0.32, 0.72)])
+        nav, backend = navigator(Letter(T.ENDLESS, column='角色'))
+        with self.assertRaises(NoLetters):
+            E.open_letter(nav, screen(*tab), 'commission', ('start', T.TABS[2]), {})
+        self.assertEqual(backend.actions, [])
 
     def test_the_letter_picker_is_not_the_manual_popup(self):
         before = screen((T.LETTER_TITLE, 0.47, 0.33), (T.MANUAL_SKIP, 0.47, 0.48), ('Space', 0.77, 0.64),
