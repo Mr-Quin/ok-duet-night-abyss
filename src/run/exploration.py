@@ -8,9 +8,10 @@ import time
 from src.run.expulsion import Expulsion
 from src.tasks.fullauto.marker_walk import STEER, MarkerWalk
 
-# 走到装置前时右边出现的「F ▸ 操作」提示
+# 走到装置前时右边出现的「F ▸ 操作」提示。标记旁的「操作装置」也会落进这个框，不能算
 PROMPT_BOX = (0.55, 0.45, 0.85, 0.55)
 PROMPT = '操作'
+NOT_PROMPT = '装置'
 # 机关界面右下角的「快速破解」按钮，按 F；破解后中间显示「破解成功」
 QUICK_SOLVE_BOX = (0.75, 0.82, 0.95, 0.91)
 QUICK_SOLVE = '快速破解'
@@ -48,7 +49,7 @@ class Exploration(Expulsion):
     def operate(self, walker):
         task = self.task
         for _ in range(NUDGES):
-            if self.shows(PROMPT_BOX, PROMPT):
+            if self.shows(PROMPT_BOX, PROMPT, unless=NOT_PROMPT):
                 break
             # 走到时装置常在身侧，直接往前挪会顶着旁边的东西；先把标记转到正前方
             seen = walker.find(task.next_frame())
@@ -72,6 +73,7 @@ class Exploration(Expulsion):
         self.task.send_key(key)
         self.task.sleep(1)
 
-    def shows(self, region, text):
+    def shows(self, region, text, unless=None):
         box = self.task.box_of_screen(*region, name='explore_' + text)
-        return any(text in t.name for t in self.task.ocr(box=box, match=re.compile(re.escape(text))))
+        return any(text in t.name and not (unless and unless in t.name)
+                   for t in self.task.ocr(box=box, match=re.compile(re.escape(text))))

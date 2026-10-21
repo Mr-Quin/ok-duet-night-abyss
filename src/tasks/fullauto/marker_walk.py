@@ -95,11 +95,15 @@ class MarkerWalk:
             self.record({'down': dodge})
             task.send_key_down(dodge)
             lost_since, best, best_at, jumps, far = None, None, self.clock(), 0, 0
+            last_x = seen[0]
             last_metres, last_at = seen[1], self.clock()
             while self.clock() - t0 < timeout:
                 frame = task.next_frame()
                 seen = self.find(frame)
                 if seen is None:
+                    if lost_since is None and abs(last_x) > STEER:
+                        # 走过头时标记会滑出画面左边的搜索范围，朝它最后出现的那边转一次
+                        self.face(last_x)
                     lost_since = lost_since or self.clock()
                     if self.clock() - lost_since > 3:
                         # 进了防守范围波次一开始，标记就不显示了
@@ -112,6 +116,7 @@ class MarkerWalk:
                     continue
                 lost_since = None
                 x, metres = seen
+                last_x = x
                 # 连着两次都远了才算，只远一次多半是把数字读错了，这次读数不用
                 far = far + 1 if metres is not None and best is not None and metres > best + FALL_METRES else 0
                 if far >= 2:

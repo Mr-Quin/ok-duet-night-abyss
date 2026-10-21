@@ -74,6 +74,11 @@ class TestOperate(unittest.TestCase):
         self.assertFalse(X.Exploration(task).operate(FakeWalker()))
         self.assertEqual(task.keys, ['w'] * X.NUDGES)
 
+    def test_the_markers_own_label_is_not_the_prompt(self):
+        task = FakeTask({box(X.PROMPT): ['操作装置']})
+        self.assertFalse(X.Exploration(task).operate(FakeWalker()))
+        self.assertEqual(task.keys, ['w'] * X.NUDGES)
+
     def test_turns_to_a_device_beside_the_character_before_stepping(self):
         task = FakeTask({box(X.PROMPT): ['', '', X.PROMPT], box(X.QUICK_SOLVE): ['', X.QUICK_SOLVE, ''],
                          box(X.SOLVED): ['']})
