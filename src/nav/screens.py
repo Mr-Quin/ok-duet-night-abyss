@@ -275,7 +275,7 @@ def detect_dungeon(scr, atlas):
     hud = (0, 0.15, 0.3, 0.45)
     if any(scr.find(t, hud) for t in T.ROUND_HUD):
         m = scr.match(T.ROUND_NOW, hud)
-        return 'dungeon', {'round': int(m[1].group(1)) if m else None, 'to_objective': bool(scr.find(T.TO_OBJECTIVE, hud))}
+        return 'dungeon', {'round': int(m[1].group(1)) if m else None, 'to_objective': scr.has_any(T.TO_OBJECTIVE, hud)}
     # 不按轮次打的关卡没有轮次栏，任务栏顶上只写着关卡类型
     title = next((i['t'] for i in scr.items_in((0, 0.25, 0.08, 0.3), lambda i: i['t'] in T.RUN_MODES)), None)
     if title or run_exit_score(scr.img) >= RUN_EXIT_MIN:
