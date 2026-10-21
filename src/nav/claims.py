@@ -18,6 +18,8 @@ DOT_SIZE = (0.006, 0.013)
 MAX_TAPS = 2
 # 红点在图标或按钮的右上角，往左下挪一点才点在图标上
 TAP_OFFSET = (-0.008, 0.012)
+# 长按钮右上角的红点离按钮中间远，挪到按钮里面
+BUTTON_OFFSET = (-0.06, 0.025)
 HINT_BAR = (0.8, 0.94, 1, 1)
 REGION_NAME = (0.08, 0.05, 0.3, 0.09)
 NEVER_TAP = ('前往', '购买', '解锁')
@@ -28,6 +30,8 @@ MENU_TILES = (0.03, 0.4, 0.35, 0.97)
 class Page:
     dots: tuple
     switch: str = None
+    # 这些区域里的红点长在长按钮的右上角
+    buttons: tuple = ()
 
 
 PAGES = {
@@ -38,7 +42,7 @@ PAGES = {
     # 顶栏的见闻报酬、装订报酬，跳过中间的转述见闻
     '吟游诗集': Page(((0.15, 0, 0.29, 0.07), (0.4, 0, 0.52, 0.07))),
     # 惠赠入口（红点有时在图标上，有时在文字右边）；委托卡片的提交物品。E 换到下一个地区
-    '声名': Page(((0.62, 0.4, 0.96, 0.6), (0.08, 0.66, 0.92, 0.75)), switch='e'),
+    '声名': Page(((0.62, 0.4, 0.96, 0.6),), switch='e', buttons=((0.08, 0.66, 0.92, 0.75),)),
 }
 
 
@@ -113,27 +117,34 @@ class Claimer:
             if scr.find(T.CLOSE_ON_BLANK):
                 self.nav.tap(0.5, 0.89)
                 continue
+            ok = scr.first(T.ACKNOWLEDGE, (0.3, 0.75, 0.55, 0.88), exact=True)
+            if ok and scr.find(T.GOT_ITEMS):
+                self.nav.tap(ok['x'], ok['y'])
+                continue
             if scr.find(T.CLAIM_ALL, HINT_BAR):
                 self.log('  全部领取')
                 self.press('space')
                 continue
-            spot = self.next_dot(scr, page, taps)
-            if spot is None:
+            found = self.next_dot(scr, page, taps)
+            if found is None:
                 return
-            key = (round(spot[0], 2), round(spot[1], 2))
+            (x, y), (dx, dy) = found
+            key = (round(x, 2), round(y, 2))
             taps[key] = taps.get(key, 0) + 1
-            self.log('  点红点 %s' % (nearest_text(scr, *spot) or '(%.2f, %.2f)' % spot))
-            self.nav.tap(spot[0] + TAP_OFFSET[0], spot[1] + TAP_OFFSET[1])
+            self.log('  点红点 %s' % (nearest_text(scr, x + dx, y + dy) or '(%.2f, %.2f)' % (x, y)))
+            self.nav.tap(x + dx, y + dy)
 
     @staticmethod
     def next_dot(scr, page, taps):
-        for region in page.dots:
+        """下一个要点的红点和点它时的偏移。"""
+        regions = [(r, TAP_OFFSET) for r in page.dots] + [(r, BUTTON_OFFSET) for r in page.buttons]
+        for region, offset in regions:
             for x, y in red_dots(scr, region):
                 if taps.get((round(x, 2), round(y, 2)), 0) >= MAX_TAPS:
                     continue
                 if any(word in nearest_text(scr, x, y) for word in NEVER_TAP):
                     continue
-                return x, y
+                return (x, y), offset
         return None
 
     def press(self, key):
