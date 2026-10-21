@@ -38,6 +38,23 @@ class FakeTask:
     def log_info(self, msg):
         pass
 
+    def next_frame(self):
+        return None
+
+
+class FakeWalker:
+    """seen 是每次 find() 看到的标记，用完后重复最后一个。"""
+
+    def __init__(self, seen=(None,)):
+        self.seen = list(seen)
+        self.turns = []
+
+    def find(self, frame):
+        return self.seen.pop(0) if len(self.seen) > 1 else self.seen[0]
+
+    def face(self, x):
+        self.turns.append(x)
+
 
 def box(text):
     return 'explore_' + text
@@ -48,14 +65,22 @@ class TestOperate(unittest.TestCase):
     def test_interacts_then_quick_solves(self):
         task = FakeTask({box(X.PROMPT): ['', X.PROMPT], box(X.QUICK_SOLVE): ['', X.QUICK_SOLVE, X.QUICK_SOLVE, ''],
                          box(X.SOLVED): ['']})
-        self.assertTrue(X.Exploration(task).operate())
+        self.assertTrue(X.Exploration(task).operate(FakeWalker()))
         # 提示没出来时往前挪一步，交互键打开机关，F 快速破解
         self.assertEqual(task.keys, ['w', 'g', 'f'])
 
     def test_gives_up_when_the_prompt_never_shows(self):
         task = FakeTask({box(X.PROMPT): ['']})
-        self.assertFalse(X.Exploration(task).operate())
+        self.assertFalse(X.Exploration(task).operate(FakeWalker()))
         self.assertEqual(task.keys, ['w'] * X.NUDGES)
+
+    def test_turns_to_a_device_beside_the_character_before_stepping(self):
+        task = FakeTask({box(X.PROMPT): ['', '', X.PROMPT], box(X.QUICK_SOLVE): ['', X.QUICK_SOLVE, ''],
+                         box(X.SOLVED): ['']})
+        walker = FakeWalker([(0.4, 2), (0.01, 1)])
+        self.assertTrue(X.Exploration(task).operate(walker))
+        self.assertEqual(walker.turns, [0.4])
+        self.assertEqual(task.keys[:2], ['w', 'w'])
 
 
 if __name__ == '__main__':
