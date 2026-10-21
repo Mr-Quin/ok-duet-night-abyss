@@ -41,6 +41,8 @@ MANUAL_SKIP = '不使用'
 LETTER_TITLE = '选择密函'
 LETTER_GIVE_UP = '放弃'
 ENDLESS = '/无尽'
+# 委托密函每栏名字下面的「持有数 111」
+LETTERS_HELD = r'持有数\s*(\d+)'
 ROUND_HUD = ('当前轮次', '波次')
 ROUND_NOW = r'当前轮次\s*[:：]?\s*(\d+)'
 # 第一波还没开始时任务栏的目标：扼守是走向防守点，探险是去操作装置

@@ -5,7 +5,7 @@ from src.nav import graph
 from src.nav import screens as S
 from src.nav import text_zh as T
 from src.nav.backend import Screen
-from src.nav.graph import NavError, NoSuchEntry, NotOffered
+from src.nav.graph import NavError, NoLetters, NoSuchEntry, NotOffered
 
 
 WORLD = ('world', None)
@@ -154,16 +154,25 @@ def open_letter(nav, scr, here, nxt, info):
     def entries(head):
         return scr.items_in((head['x'] - 0.1, 0.55, head['x'] - 0.02, 0.75), lambda i: not re.search(r'\d', i['t']))
     cols = [nav.goal['column']] if nav.goal['column'] else list(heads)
+    empty = [c for c in heads if letters_left(scr, heads[c]) == 0]
+    if nav.goal['column'] in empty:
+        raise NoLetters(nav.goal['column'])
     for col in cols:
-        if col not in heads:
+        if col not in heads or col in empty:
             continue
         hit = next((e for e in entries(heads[col]) if nav.goal['mode'] in e['t']), None)
         if hit:
             nav.log('  打开 %s / %s' % (col, hit['t']))
             nav.click(hit)
             return False
-    offered = {c: [e['t'] for e in entries(h)] for c, h in heads.items()}
+    offered = {c: [e['t'] for e in entries(h)] for c, h in heads.items() if c not in empty}
     raise NotOffered(nav.goal['column'], nav.goal['mode'], offered)
+
+
+def letters_left(scr, head):
+    """这一栏还有几封密函；读不出来时为 None，当作还有。"""
+    m = scr.match(T.LETTERS_HELD, (head['x'] - 0.08, head['y'] + 0.01, head['x'] + 0.08, head['y'] + 0.07))
+    return int(m[1].group(1)) if m else None
 
 
 # 夜航手册分三步：选中等级，认出这个等级的全部行名，再打开目标行。
