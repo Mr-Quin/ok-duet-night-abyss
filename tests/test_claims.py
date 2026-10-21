@@ -86,9 +86,15 @@ class TestClaimingAPage(unittest.TestCase):
                                    ('tap', 0.18, 0.6), ('tap', 0.5, 0.89)])
 
     def test_a_dot_that_stays_is_tapped_twice_then_left(self):
-        card = screen([('提交物品', 0.23, 0.71)], dots=[(0.27, 0.70)])
-        actions = self.claim(C.Page(C.PAGES['声名'].dots), [card])
-        self.assertEqual(actions, [('tap', 0.26, 0.71)] * C.MAX_TAPS)
+        card = screen([('提交物品', 0.23, 0.71)], dots=[(0.33, 0.69)])
+        actions = self.claim(C.Page((), buttons=C.PAGES['声名'].buttons), [card])
+        # 红点在按钮右上角，点在按钮里面
+        self.assertEqual(actions, [('tap', 0.27, 0.72)] * C.MAX_TAPS)
+
+    def test_the_submit_reward_popup_is_confirmed_not_used(self):
+        popup = screen([('获得物品', 0.5, 0.19), ('提交成功', 0.5, 0.33), ('确认', 0.42, 0.81), ('使用消耗品', 0.58, 0.81)])
+        actions = self.claim(C.Page((), buttons=C.PAGES['声名'].buttons), [popup, screen()])
+        self.assertEqual(actions, [('tap', 0.42, 0.81)])
 
     def test_dots_outside_the_pages_regions_or_on_go_buttons_are_not_tapped(self):
         bp = [('见闻报酬', 0.22, 0.03), ('转述见闻', 0.34, 0.03), ('解锁精装诗集', 0.88, 0.86), ('购买等级', 0.09, 0.47)]
