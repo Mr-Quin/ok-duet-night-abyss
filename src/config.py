@@ -1,4 +1,3 @@
-import json
 import os
 
 import numpy as np
@@ -68,26 +67,6 @@ monthly_card_config_option = ConfigOption(
 )
 
 
-OCR_CONFIG = "OCR设置"
-ocr_config_option = ConfigOption(
-    OCR_CONFIG,
-    {"使用NPU": False},
-    description="文字识别用的设备",
-    config_description={
-        "使用NPU": "有 NPU 时用 NPU 跑文字识别。目前 NPU 会漏读小字（终结技消耗、行名），也不比 CPU 快；重启后生效",
-    },
-)
-
-
-def ocr_uses_npu(folder="configs"):
-    """OCR 在程序启动时按 config 初始化，所以开关要在这里直接从存好的设置文件里读。"""
-    try:
-        with open(os.path.join(folder, OCR_CONFIG + ".json"), encoding="utf-8") as f:
-            return bool(json.load(f).get("使用NPU", False))
-    except (OSError, ValueError, AttributeError):
-        return False
-
-
 def make_bottom_right_black(frame):  # 可选. 某些游戏截图时遮挡UID使用
     """
     Changes a portion of the frame's pixels at the bottom middle to black.
@@ -135,7 +114,6 @@ config = {
         sensitivity_config_option,
         afk_config_option,
         monthly_card_config_option,
-        ocr_config_option,
     ],
     "screenshot_processor": make_bottom_right_black,  # 在截图的时候对frame进行修改, 可选
     "gui_icon": "icons/icon.png",  # 窗口图标, 最好不需要修改文件名
@@ -146,7 +124,8 @@ config = {
         "lib": "onnxocr",
         "params": {
             "use_openvino": True,
-            "use_npu": ocr_uses_npu(),
+            # NPU 上跑的 OCR 会漏读小字（终结技消耗、夜航手册行名），只用 CPU
+            "use_npu": False,
         },
     },
     "windows": {  # required  when supporting windows game

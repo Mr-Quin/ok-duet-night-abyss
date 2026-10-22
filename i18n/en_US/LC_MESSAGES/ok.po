@@ -617,15 +617,3 @@ msgstr "Random key presses"
 
 msgid "挂机时每隔几秒随机按下魔灵支援键或数字键"
 msgstr "Press the Geniemon key or a number key at random every few seconds while AFK"
-
-msgid "OCR设置"
-msgstr "OCR Settings"
-
-msgid "文字识别用的设备"
-msgstr "Device used for text recognition"
-
-msgid "使用NPU"
-msgstr "Use NPU"
-
-msgid "有 NPU 时用 NPU 跑文字识别。目前 NPU 会漏读小字（终结技消耗、行名），也不比 CPU 快；重启后生效"
-msgstr "Run text recognition on the NPU when one is present. The NPU currently misses small text (skill costs, row names) and is not faster than the CPU; takes effect after a restart"
