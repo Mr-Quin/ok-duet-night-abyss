@@ -611,15 +611,3 @@ msgstr "횟수"
 
 msgid "打几次，0 = 无限循环"
 msgstr "몇 회 진행할지, 0 = 무한 반복"
-
-msgid "OCR设置"
-msgstr "OCR 설정"
-
-msgid "文字识别用的设备"
-msgstr "문자 인식에 쓰는 장치"
-
-msgid "使用NPU"
-msgstr "NPU 사용"
-
-msgid "有 NPU 时用 NPU 跑文字识别。目前 NPU 会漏读小字（终结技消耗、行名），也不比 CPU 快；重启后生效"
-msgstr "NPU가 있으면 문자 인식을 NPU로 실행. 현재 NPU는 작은 글자(스킬 비용, 행 이름)를 놓치고 CPU보다 빠르지도 않음. 재시작 후 적용"

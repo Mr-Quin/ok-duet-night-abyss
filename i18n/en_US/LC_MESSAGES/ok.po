@@ -611,15 +611,3 @@ msgstr "Runs"
 
 msgid "打几次，0 = 无限循环"
 msgstr "How many runs, 0 = endless"
-
-msgid "OCR设置"
-msgstr "OCR Settings"
-
-msgid "文字识别用的设备"
-msgstr "Device used for text recognition"
-
-msgid "使用NPU"
-msgstr "Use NPU"
-
-msgid "有 NPU 时用 NPU 跑文字识别。目前 NPU 会漏读小字（终结技消耗、行名），也不比 CPU 快；重启后生效"
-msgstr "Run text recognition on the NPU when one is present. The NPU currently misses small text (skill costs, row names) and is not faster than the CPU; takes effect after a restart"
