@@ -124,6 +124,8 @@ config = {
         "lib": "onnxocr",
         "params": {
             "use_openvino": True,
+            # NPU 上跑的 OCR 会漏读小字（终结技消耗、夜航手册行名），只用 CPU
+            "use_npu": False,
         },
     },
     "windows": {  # required  when supporting windows game
