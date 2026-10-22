@@ -182,6 +182,11 @@ class TestStartingTheGame(unittest.TestCase):
         found, info = S.classify(screen(('探险', 0.02, 0.27), ('当前轮次：1', 0.06, 0.27), ('调查目标', 0.04, 0.31)), {})
         self.assertEqual((found, info['to_objective']), ('dungeon', True))
 
+    def test_a_reward_popup_is_closed_by_clicking_empty_space(self):
+        nav, backend = navigator(World())
+        self.assertFalse(H.on_blank_close(nav, screen(), {}))
+        self.assertEqual(backend.actions, [('click', 0.5, 0.89)])
+
     def test_a_page_with_an_esc_hint_after_entering_the_game_is_closed(self):
         nav, backend = navigator(World())
         H.on_title(nav, screen(), {'enter': {'x': 0.5, 'y': 0.9}})
