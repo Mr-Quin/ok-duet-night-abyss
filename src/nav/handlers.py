@@ -8,6 +8,7 @@ run_waits（局内等了几次）、login_waits（启动时在登录这一步等
 entered_row（从夜航手册哪一行进的开始界面，edges.py 写入）。
 """
 from src.nav import graph
+from src.nav import screens as S
 from src.nav import text_zh as T
 from src.nav.graph import NavError, NotOffered, WrongMission
 
