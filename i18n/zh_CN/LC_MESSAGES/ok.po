@@ -608,3 +608,15 @@ msgstr ""
 
 msgid "打几次，0 = 无限循环"
 msgstr ""
+
+msgid "OCR设置"
+msgstr ""
+
+msgid "文字识别用的设备"
+msgstr ""
+
+msgid "使用NPU"
+msgstr ""
+
+msgid "有 NPU 时用 NPU 跑文字识别。目前 NPU 会漏读小字（终结技消耗、行名），也不比 CPU 快；重启后生效"
+msgstr ""
