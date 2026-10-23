@@ -82,7 +82,11 @@ def ocr_use_npu(folder="configs"):
             option = json.load(f).get("使用NPU")
     except (OSError, ValueError, AttributeError):
         return None
-    return {"Yes": True, "No": False}.get(option)
+    if option == "Yes":
+        return True
+    if option == "No":
+        return False
+    return None
 
 
 def ocr_params(folder="configs"):

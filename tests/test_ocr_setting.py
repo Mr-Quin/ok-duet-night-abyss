@@ -21,6 +21,8 @@ class TestOcrSetting(unittest.TestCase):
             with open(os.path.join(folder, C.OCR_CONFIG + '.json'), 'w', encoding='utf-8') as f:
                 f.write('not json')
             self.assertEqual({'use_openvino': True}, C.ocr_params(folder))
+            save(folder, [])
+            self.assertEqual({'use_openvino': True}, C.ocr_params(folder))
 
     def test_yes_and_no_set_use_npu(self):
         with tempfile.TemporaryDirectory() as folder:
