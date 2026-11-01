@@ -10,6 +10,8 @@ from src.config import config
 from src.routine.runner import StepFailed, run_steps
 from src.routine.steps import Step
 from src.tasks.fullauto import RoutineTask as R
+from src.tasks.fullauto.AutoDailyClaimTask import AutoDailyClaimTask
+from src.tasks.fullauto.AutoNightbookTask import AutoNightbookTask
 
 
 class SavedConfig(dict):
@@ -171,6 +173,14 @@ class TestRoutineTaskRun(unittest.TestCase):
 class TestRoutineTaskSteps(TaskTestCase):
     task_class = R.RoutineTask
     config = config
+
+    def setUp(self):
+        # 测试用的 ok 不加载 onetime_tasks，这里用真实的两个任务和流程自己顶上
+        executor = self.task.executor
+        tasks = [AutoDailyClaimTask(executor, None), AutoNightbookTask(executor, None), self.task]
+        patcher = mock.patch.object(executor, 'onetime_tasks', tasks)
+        patcher.start()
+        self.addCleanup(patcher.stop)
 
     def test_default_steps_parse_against_registered_tasks(self):
         steps, tasks = self.task.steps()
