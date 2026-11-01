@@ -230,6 +230,7 @@ config = {
         ["src.tasks.AutoExcavation", "AutoExcavation"],
         ["src.tasks.AutoHedge", "AutoHedge"],
         ["ok", "DiagnosisTask"],
+        ["src.tasks.fullauto.RoutineTask", "RoutineTask"],
     ],
     "trigger_tasks": [
         ["src.tasks.trigger.AutoRouletteTask", "AutoRouletteTask"],
