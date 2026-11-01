@@ -37,6 +37,7 @@ class AutoNightbookTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         self.description = "从任意界面导航到夜航手册、委托或委托密函的关卡，支持扼守、驱离、驱逐、避险和探险；仅支持简体中文客户端"
         self.group_name = "全自动"
         self.group_icon = FluentIcon.CAFE
+        self.support_schedule_task = True
 
         self.setup_commission_config()
         self.setup_mission_start_config()
