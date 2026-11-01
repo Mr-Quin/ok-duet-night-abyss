@@ -163,7 +163,7 @@ class BaseDNATask(BaseTask):
         盖着 HUD 的界面（ESC 菜单、设置页）也算局内，因为上面的 lv_text 还在。
         """
         _frame = self.frame if frame is None else frame
-        if self.find_one('lv_text', frame=_frame, threshold=0.8):
+        if self.find_one('lv_text', frame=_frame, threshold=0.65):
             return True
         # 补判：右下角「Q」终结技键图标（局内才有，开始界面同位置是委托报酬面板）
         return self.find_one('ultimate_key_icon', frame=_frame, threshold=0.9,
