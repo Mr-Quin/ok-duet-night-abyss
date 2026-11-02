@@ -33,6 +33,11 @@ class Step:
     overrides: dict = field(default_factory=dict)
 
 
+def overrides_from(values, saved):
+    """编辑框里一步的设置和任务存下来的设置不一样的那些项，就是这一步的临时设置。"""
+    return {key: value for key, value in values.items() if saved.get(key) != value}
+
+
 def dump_steps(steps):
     return {'version': VERSION,
             'steps': [{'task': s.task, 'overrides': dict(s.overrides)} for s in steps]}

@@ -30,12 +30,17 @@ class RoutineTask(BaseDNATask):
             "失败后继续": False,
         })
         self.config_description.update({
-            "步骤": 'JSON：{"version": 1, "steps": [{"task": 任务类名, "overrides": {设置: 值}}]}。'
-                    '现在能放的任务：AutoDailyClaimTask（日常领奖）、AutoNightbookTask（自动夜航手册）',
+            "步骤": "增删、排序步骤，改每一步的设置。现在能放的任务：日常领奖、自动夜航手册",
             "失败后继续": "一步失败后接着跑下一步；关掉时一步失败就停",
         })
-        self.config_type["步骤"] = {"type": "text_edit"}
+        self.config_type["步骤"] = {"type": "button", "text": "编辑步骤", "icon": FluentIcon.EDIT,
+                                   "callback": self.edit_steps}
         self.add_exit_after_config()
+
+    def edit_steps(self):
+        from ok import og
+        from src.routine.editor_dialog import RoutineEditor
+        RoutineEditor(self, og.main_window).exec()
 
     def steps(self):
         tasks = {type(t).__name__: t for t in self.executor.onetime_tasks}
