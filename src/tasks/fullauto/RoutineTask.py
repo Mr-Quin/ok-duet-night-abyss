@@ -6,6 +6,7 @@ from qfluentwidgets import FluentIcon
 from ok import TaskDisabledException
 from ok.core.events import communicate
 from src.nav.okscript import OkScriptBackend
+from src.routine.evidence import Evidence, checkpoint
 from src.routine.preflight import ANTI_CHEAT, Blocked, wait_for_game
 from src.routine.runner import StepFailed, run_steps
 from src.routine.steps import Step, StepError, dump_steps, parse_steps, spec_of
@@ -55,26 +56,38 @@ class RoutineTask(BaseDNATask):
 
     def run(self):
         steps, tasks = self.steps()
+        try:
+            self.evidence = Evidence()
+            self.log_info(f"检查点记录在 {self.evidence.folder}")
+        except Exception as e:
+            self.evidence = None
+            self.log_info(f"建不了检查点文件夹：{e}")
         if hasattr(self.executor.interaction, 'activate'):
             self.executor.interaction.activate()
         try:
             wait_for_game(OkScriptBackend(self), self.log_info)
         except Blocked as e:
             self.log_info(f"启动时停下：{e}。画面上的文字：{' '.join(e.texts)}", notify=True)
+            checkpoint(self, 'blocked', f"启动时停下：{e}。画面上的文字：{' '.join(e.texts)}")
             # 反作弊报错留着给人看，关掉游戏等下次定时任务再开就等于重试了
             if e.reason != ANTI_CHEAT:
                 self.close_if_exit()
             raise Exception(f"启动时停下：{e}")
+        checkpoint(self, 'ready', "游戏可以操作了，开始跑步骤")
         try:
             results = run_steps(self, steps, tasks, keep_going=self.config.get("失败后继续", False))
         except StepFailed as e:
-            self.log_info("流程没跑完：" + "；".join(r.line() for r in e.results), notify=True)
+            summary = "流程没跑完：" + "；".join(r.line() for r in e.results)
+            self.log_info(summary, notify=True)
+            checkpoint(self, 'end', summary)
             self.close_if_exit()
             raise Exception(str(e))
         except TaskDisabledException:
             self.log_info("流程已停止")
+            checkpoint(self, 'end', "流程已停止")
             raise
         self.log_info(f"流程跑完了：{len(results)} 步", notify=True)
+        checkpoint(self, 'end', f"流程跑完了：{len(results)} 步")
 
     def close_if_exit(self):
         if self.exit_after_task or self.config.get('Exit After Task'):

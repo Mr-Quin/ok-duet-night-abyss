@@ -8,6 +8,7 @@ from dataclasses import dataclass
 
 from ok import TaskDisabledException
 from src.nav import NavError, NoSuchEntry, NotOffered, World
+from src.routine.evidence import checkpoint
 from src.run import observe as O
 from src.run.defence import Defence
 from src.run.expulsion import Expulsion
@@ -138,12 +139,14 @@ class RunLoop:
             self.live = True
             self.rounds_seen = 0
             self.task.log_info(f"第 {self.runs_done + 1} 局开始（{self.mode}）")
+            checkpoint(self.task, f'run{self.runs_done + 1}-start', f"第 {self.runs_done + 1} 局开始（{self.mode}）")
             if not self.behaviour.begin():
                 self.gave_up()
         elif not self.behaviour.tick():
             self.gave_up()
 
     def gave_up(self):
+        checkpoint(self.task, f'run{self.runs_done + 1}-gave-up', f"第 {self.runs_done + 1} 局放弃，打完 {self.rounds_seen} 轮")
         self.live = False
         # 打完过轮次的局奖励已经到手，只有一轮都没打完就放弃的才算连续失败
         self.give_ups = 0 if self.rounds_seen else self.give_ups + 1
@@ -167,11 +170,15 @@ class RunLoop:
             # 局内轮次之间的手册弹窗按 current_round 选
             self.task.current_round = self.rounds_seen
             self.task.info_set("当前轮次", self.rounds_seen)
+            checkpoint(self.task, f'run{self.runs_done + 1}-round{self.rounds_seen}',
+                       f"第 {self.runs_done + 1} 局第 {self.rounds_seen} 轮打完")
         if not self.due(now):
             return
         if self.hands_off and now - self.observer.since < HANDS_OFF_DIALOG_WAIT:
             return
-        self.task.log_info("轮次弹窗一直没自动继续，撤离" if self.hands_off else f"打完 {self.rounds_seen} 轮，撤离")
+        reason = "轮次弹窗一直没自动继续，撤离" if self.hands_off else f"打完 {self.rounds_seen} 轮，撤离"
+        self.task.log_info(reason)
+        checkpoint(self.task, f'run{self.runs_done + 1}-leave', reason)
         self.task.quit_mission()
         self.acted(now)
 
@@ -197,6 +204,8 @@ class RunLoop:
             self.runs_done += 1
             self.give_ups = 0
             self.task.log_info(f"已完成 {self.runs_done}/{self.job.runs or '不限'} 次")
+            checkpoint(self.task, f'run{self.runs_done}-done',
+                       f"第 {self.runs_done} 局结算，已完成 {self.runs_done}/{self.job.runs or '不限'} 次，打完 {self.rounds_seen} 轮")
         if self.done():
             return True
         if finished and self.between_runs and self.clock() - self.between_at >= CLAIM_EVERY:
