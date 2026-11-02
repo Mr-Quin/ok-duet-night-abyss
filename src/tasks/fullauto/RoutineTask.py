@@ -5,6 +5,8 @@ from qfluentwidgets import FluentIcon
 
 from ok import TaskDisabledException
 from ok.core.events import communicate
+from src.nav.okscript import OkScriptBackend
+from src.routine.preflight import ANTI_CHEAT, Blocked, wait_for_game
 from src.routine.runner import StepFailed, run_steps
 from src.routine.steps import Step, StepError, dump_steps, parse_steps, spec_of
 from src.tasks.BaseDNATask import BaseDNATask
@@ -48,16 +50,29 @@ class RoutineTask(BaseDNATask):
 
     def run(self):
         steps, tasks = self.steps()
+        if hasattr(self.executor.interaction, 'activate'):
+            self.executor.interaction.activate()
+        try:
+            wait_for_game(OkScriptBackend(self), self.log_info)
+        except Blocked as e:
+            self.log_info(f"启动时停下：{e}。画面上的文字：{' '.join(e.texts)}", notify=True)
+            # 反作弊报错留着给人看，关掉游戏等下次定时任务再开就等于重试了
+            if e.reason != ANTI_CHEAT:
+                self.close_if_exit()
+            raise Exception(f"启动时停下：{e}")
         try:
             results = run_steps(self, steps, tasks, keep_going=self.config.get("失败后继续", False))
         except StepFailed as e:
             self.log_info("流程没跑完：" + "；".join(r.line() for r in e.results), notify=True)
-            if self.exit_after_task or self.config.get('Exit After Task'):
-                self.log_info("失败后也按设置关掉游戏和 ok-dna")
-                self.executor.device_manager.stop_hwnd()
-                communicate.quit.emit()
+            self.close_if_exit()
             raise Exception(str(e))
         except TaskDisabledException:
             self.log_info("流程已停止")
             raise
         self.log_info(f"流程跑完了：{len(results)} 步", notify=True)
+
+    def close_if_exit(self):
+        if self.exit_after_task or self.config.get('Exit After Task'):
+            self.log_info("失败后也按设置关掉游戏和 ok-dna")
+            self.executor.device_manager.stop_hwnd()
+            communicate.quit.emit()
