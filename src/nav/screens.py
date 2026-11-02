@@ -220,6 +220,8 @@ def detect_blank_close(scr, atlas):
         return 'blank_close', {}
     if scr.find(T.SPLASH):
         return 'splash', {}
+    if all(scr.find(tab, (0, 0, 0.5, 0.12)) for tab in T.NOTICE_TABS):
+        return 'notice', {}
 
 
 # 局内界面排在前面：局内 HUD 也有大世界判据要找的 Lv 条
