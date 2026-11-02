@@ -15,7 +15,7 @@ from src.nav import screens as S
 from src.nav.claims import Claimer
 from src.nav import text_zh as T
 from src.nav.okscript import CACHE_PATH, OkScriptBackend
-from src.run.loop import GaveUpTooOften, Job, RunLoop, UnsupportedMission
+from src.run.loop import GaveUpTooOften, Job, RunLoop, RunLost, UnsupportedMission
 from src.run.observe import Observer
 from src.tasks.BaseCombatTask import BaseCombatTask
 from src.tasks.CommissionsTask import CommissionsTask
@@ -116,6 +116,8 @@ class AutoNightbookTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
             raise Exception(f"{self.describe(job.target)}是「{e.mode}」，现在只支持扼守、驱离、驱逐、避险和探险")
         except GaveUpTooOften as e:
             raise Exception(f"{self.describe(job.target)}{e}，先停下")
+        except RunLost as e:
+            raise Exception(f"{self.describe(job.target)}{e}")
         except NavError as e:
             raise Exception(f"自动导航失败：{e}")
 
