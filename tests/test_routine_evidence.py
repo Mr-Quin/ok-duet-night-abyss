@@ -69,15 +69,16 @@ class TestCheckpoint(unittest.TestCase):
         checkpoint(FakeTask(evidence), 'claims', '领完了：历练')
         self.assertEqual(sorted(os.listdir(evidence.folder)), ['01-claims.jpg', 'report.txt'])
 
-    def test_nothing_happens_outside_a_routine(self):
+    def test_outside_a_routine_it_only_logs(self):
         task = FakeTask()
         checkpoint(task, 'claims', '领完了：历练')
-        self.assertEqual(task.logs, [])
+        self.assertEqual(task.logs, ['领完了：历练'])
 
     def test_a_recording_error_is_logged_not_raised(self):
         task = FakeTask(Broken())
         checkpoint(task, 'claims', '领完了：历练')
-        self.assertIn('磁盘满了', task.logs[0])
+        self.assertEqual(task.logs[0], '领完了：历练')
+        self.assertIn('磁盘满了', task.logs[1])
 
 
 if __name__ == '__main__':

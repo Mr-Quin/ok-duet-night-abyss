@@ -43,5 +43,4 @@ class AutoDailyClaimTask(BaseDNATask):
             return
         except NavError as e:
             raise Exception(f"自动导航失败：{e}")
-        self.log_info(f"领完了：{'、'.join(claimed) or '没有可领的'}", notify=True)
-        checkpoint(self, 'claims', f"领完了：{'、'.join(claimed) or '没有可领的'}")
+        checkpoint(self, 'claims', f"领完了：{'、'.join(claimed) or '没有可领的'}", notify=True)
