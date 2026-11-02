@@ -154,6 +154,18 @@ class TestRunLoop(unittest.TestCase):
         _, _, loop, _, _ = run(script, L.Job('target', rounds=2, runs=1), ticks=[False] * L.MAX_GIVE_UPS)
         self.assertEqual(loop.runs_done, 1)
 
+    def test_runs_that_always_give_up_after_some_rounds_stop_eventually(self):
+        give_ups = L.MAX_GIVE_UPS_WITHOUT_RESULT
+        script = [O.IN_RUN, O.ROUND_DIALOG, O.IN_RUN, O.START] * give_ups + [O.IN_RUN, O.ROUND_DIALOG, O.RESULT]
+        with self.assertRaisesRegex(L.GaveUpTooOften, '一局都没打到结算'):
+            run(script, L.Job('target', rounds=2, runs=1), ticks=[False] * give_ups)
+
+    def test_a_result_resets_the_count_of_give_ups_without_a_result(self):
+        give_ups = L.MAX_GIVE_UPS_WITHOUT_RESULT - 1
+        one_run = [O.IN_RUN, O.ROUND_DIALOG, O.IN_RUN, O.START] * give_ups + [O.IN_RUN, O.ROUND_DIALOG, O.RESULT]
+        _, _, loop, _, _ = run(one_run * 2, L.Job('target', rounds=2, runs=2), ticks=[False] * give_ups * 2)
+        self.assertEqual(loop.runs_done, 2)
+
     def test_between_runs_runs_after_a_finished_run_then_the_mission_is_entered_again(self):
         calls = []
         script = [O.IN_RUN, O.ROUND_DIALOG, O.RESULT, O.START, O.IN_RUN, O.ROUND_DIALOG, O.RESULT]
