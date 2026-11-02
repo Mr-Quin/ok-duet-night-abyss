@@ -30,7 +30,7 @@ class RoutineTask(BaseDNATask):
             "失败后继续": False,
         })
         self.config_description.update({
-            "步骤": "增删、排序步骤，改每一步的设置。现在能放的任务：日常领奖、自动夜航手册",
+            "步骤": "增删、排序步骤，改每一步的设置",
             "失败后继续": "一步失败后接着跑下一步；关掉时一步失败就停",
         })
         self.config_type["步骤"] = {"type": "button", "text": "编辑步骤", "icon": FluentIcon.EDIT,
