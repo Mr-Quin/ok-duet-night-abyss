@@ -212,7 +212,7 @@ class TestRoutineTaskSteps(TaskTestCase):
         self.addCleanup(patcher.stop)
 
     def test_default_steps_parse_against_registered_tasks(self):
-        steps, tasks = self.task.steps()
+        steps, tasks = self.steps_from(R.DEFAULT_STEPS)
         self.assertEqual(steps, [Step('AutoDailyClaimTask')])
         self.assertIn('AutoNightbookTask', tasks)
 
