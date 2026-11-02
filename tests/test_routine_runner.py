@@ -7,6 +7,7 @@ from ok.task.exceptions import FinishedException, TaskDisabledException
 from ok.test.TaskTestCase import TaskTestCase
 
 from src.config import config
+from src.routine.preflight import ANTI_CHEAT, LOGIN_REQUIRED, Blocked
 from src.routine.runner import StepFailed, run_steps
 from src.routine.steps import Step
 from src.tasks.fullauto import RoutineTask as R
@@ -132,18 +133,46 @@ class FakeRoutineTask(FakeRoutine):
     def steps(self):
         return self._steps
 
+    close_if_exit = R.RoutineTask.close_if_exit
+
 
 class TestRoutineTaskRun(unittest.TestCase):
 
-    def run_routine(self, task):
-        with mock.patch.object(R, 'communicate') as communicate:
+    def run_routine(self, task, preflight=None):
+        with mock.patch.object(R, 'communicate') as communicate, \
+                mock.patch.object(R, 'OkScriptBackend'), \
+                mock.patch.object(R, 'wait_for_game', side_effect=preflight) as wait:
             try:
                 R.RoutineTask.run(task)
             finally:
                 self.quit = communicate.quit.emit
+                self.waited = wait.called
 
     def failing(self, **kwargs):
         return FakeRoutineTask([Step('Book')], {'Book': FakeChild('自动夜航手册', boom)}, **kwargs)
+
+    def test_preflight_runs_before_the_steps(self):
+        book = FakeChild('自动夜航手册')
+        self.run_routine(FakeRoutineTask([Step('Book')], {'Book': book}))
+        self.assertTrue(self.waited)
+        self.assertEqual(len(book.seen), 1)
+
+    def test_blocked_start_skips_steps_and_closes_when_exit_is_set(self):
+        book = FakeChild('自动夜航手册')
+        task = FakeRoutineTask([Step('Book')], {'Book': book}, exit_after=True)
+        with self.assertRaisesRegex(Exception, 'login required'):
+            self.run_routine(task, Blocked(LOGIN_REQUIRED, ['邮箱', '验证码']))
+        self.assertEqual(book.seen, [])
+        task.executor.device_manager.stop_hwnd.assert_called_once()
+        self.quit.assert_called_once()
+        self.assertTrue(any('邮箱 验证码' in line for line in task.logs))
+
+    def test_anti_cheat_leaves_the_game_open_even_with_exit(self):
+        task = FakeRoutineTask([Step('Book')], {'Book': FakeChild('自动夜航手册')}, exit_after=True)
+        with self.assertRaisesRegex(Exception, 'anti-cheat'):
+            self.run_routine(task, Blocked(ANTI_CHEAT, ['1-1812-4331003']))
+        task.executor.device_manager.stop_hwnd.assert_not_called()
+        self.quit.assert_not_called()
 
     def test_failure_closes_game_and_app_when_exit_is_set(self):
         for kwargs in ({'exit_after': True}, {'config_exit': True}):
