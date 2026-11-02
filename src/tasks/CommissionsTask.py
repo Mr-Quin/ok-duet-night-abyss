@@ -280,6 +280,11 @@ class CommissionsTask(BaseDNATask):
         """
         return self.find_reset_confirm(threshold=threshold)
 
+    def result_lost(self):
+        """结算界面左下角写着「再接再厉」，赢了的那一局写的是「委托完成」。"""
+        box = self.box_of_screen(0.03, 0.6, 0.16, 0.67, name='result_title')
+        return bool(self.ocr(box=box, match=re.compile('再接再厉')))
+
     def find_result_again_btn(self, threshold=0):
         """任务结算界面的「再次进行」按钮（金色环形图标），5 张结算界面位置一致。"""
         return self.find_ui(Ui.RESULT_AGAIN_BTN, threshold=threshold)
