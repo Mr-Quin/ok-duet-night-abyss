@@ -20,7 +20,6 @@ class AutoDailyClaimTask(BaseDNATask):
         self.description = "从任意界面打开主菜单，领取带红点的历练、协会、吟游诗集和声名奖励；仅支持简体中文客户端"
         self.group_name = "全自动"
         self.group_icon = FluentIcon.CAFE
-        self.support_schedule_task = True
         self.default_config.update({name: True for name in PAGES})
         self.config_description.update({
             "历练": "备忘手记的每日任务和完成度奖励",

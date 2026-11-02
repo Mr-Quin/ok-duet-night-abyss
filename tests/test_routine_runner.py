@@ -230,6 +230,10 @@ class TestRoutineTaskSteps(TaskTestCase):
             {'version': 1, 'steps': [{'task': 'AutoNightbookTask', 'overrides': {'刷几次': 1}}]}))
         self.assertEqual(steps, [Step('AutoNightbookTask', {'刷几次': 1})])
 
+    def test_only_the_routine_can_be_scheduled(self):
+        scheduled = [type(t).__name__ for t in self.task.executor.onetime_tasks if t.support_schedule_task]
+        self.assertEqual(scheduled, ['RoutineTask'])
+
     def test_bad_json_is_reported(self):
         with self.assertRaisesRegex(Exception, '不是合法的 JSON'):
             self.steps_from('{')
