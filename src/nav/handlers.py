@@ -19,6 +19,7 @@ MAX_LOGIN_WAITS = 150
 # 开始界面左侧条目的点击位置
 TIER_X = 0.08
 SPLASH_CLOSE = (0.844, 0.24)
+NOTICE_CLOSE = (0.973, 0.037)
 LETTER_ENTRY_X = 0.05
 
 
@@ -118,6 +119,17 @@ def on_splash(nav, scr, info):
         nav.b.key('esc')
     else:
         nav.b.click(*SPLASH_CLOSE)
+    return False
+
+
+@graph.handler('notice')
+def on_notice(nav, scr, info):
+    nav.state['notice_tries'] = nav.state.get('notice_tries', 0) + 1
+    if nav.state['notice_tries'] % 2:
+        nav.log('  关掉登录后的公告')
+        nav.b.key('esc')
+    else:
+        nav.b.click(*NOTICE_CLOSE)
     return False
 
 
