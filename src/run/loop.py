@@ -109,7 +109,7 @@ class RunLoop:
                     if getattr(self, 'on_' + state)(now):
                         break
                     self.failures = 0
-                except (TaskDisabledException, GaveUpTooOften):
+                except (TaskDisabledException, GaveUpTooOften, RunLost):
                     raise
                 except Exception as e:
                     self.failures += 1
