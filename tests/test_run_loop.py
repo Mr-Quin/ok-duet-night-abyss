@@ -11,6 +11,7 @@ class FakeTask:
         self.calls = []
         self.mission_status = None
         self.current_round = 0
+        self.lost = False
 
     def sleep(self, seconds):
         self.now += seconds
@@ -20,6 +21,9 @@ class FakeTask:
 
     def info_set(self, key, value):
         pass
+
+    def result_lost(self):
+        return self.lost
 
     def send_key(self, key):
         self.calls.append(('key', key))
@@ -75,9 +79,10 @@ def behaviour(kind_name, rounds, begins=None, ticks=None):
 
 
 def run(script, job, mode='扼守/无尽', begins=None, hold=1, nav=None, behaviours=None, frames=None, ticks=None,
-        between_runs=None):
+        between_runs=None, lost=False):
     """script 里每个阶段连着看到 hold 拍，frames 给出时按原样一拍一拍看；用完后停在最后一个。"""
     task, nav = FakeTask(), nav or FakeNav(mode)
+    task.lost = lost
     frames = list(frames or [s for s in script for _ in range(hold * O.Observer.SETTLE)])
     look = lambda t: frames.pop(0) if len(frames) > 1 else frames[0]
     defence, expulsion = behaviour('扼守', True, begins, ticks), behaviour('驱离', False, begins)
@@ -178,6 +183,10 @@ class TestRunLoop(unittest.TestCase):
         _, nav, loop, _, _ = run(script, L.Job('target', rounds=1, runs=3), begins=[False, True] * 2)
         self.assertEqual(loop.runs_done, 3)
         self.assertEqual(sum(1 for c in nav.calls if c[0] == 'go'), 1 + 2 + 1)
+
+    def test_a_lost_run_stops_the_job_instead_of_counting_as_done(self):
+        with self.assertRaisesRegex(L.RunLost, '输了'):
+            run([O.IN_RUN, O.ROUND_DIALOG, O.RESULT], L.Job('target', rounds=1, runs=2), lost=True)
 
     def test_a_single_frame_of_the_result_screen_mid_run_is_ignored(self):
         frames = [O.IN_RUN] * 4 + [O.RESULT] + [O.IN_RUN] * 4 + [O.ROUND_DIALOG] * 2 + [O.RESULT] * 2

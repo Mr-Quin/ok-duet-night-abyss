@@ -37,6 +37,10 @@ class GaveUpTooOften(Exception):
     pass
 
 
+class RunLost(Exception):
+    pass
+
+
 class UnsupportedMission(Exception):
     def __init__(self, mode):
         super().__init__(mode)
@@ -205,6 +209,10 @@ class RunLoop:
         finished = self.live
         if self.live:
             self.live = False
+            if self.task.result_lost():
+                checkpoint(self.task, f'run{self.runs_done + 1}-lost',
+                           f"第 {self.runs_done + 1} 局输了，打完 {self.rounds_seen} 轮")
+                raise RunLost(f"第 {self.runs_done + 1} 局输了（游戏显示再接再厉），打完 {self.rounds_seen} 轮")
             self.runs_done += 1
             self.give_ups = 0
             self.give_ups_since_result = 0
