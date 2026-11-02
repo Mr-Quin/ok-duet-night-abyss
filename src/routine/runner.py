@@ -37,7 +37,6 @@ def run_steps(routine, steps, tasks, keep_going=False):
     for index, step in enumerate(steps, 1):
         child = tasks[step.task]
         result = StepResult(index, child.name)
-        routine.log_info(f'第 {index} 步：{child.name}')
         checkpoint(routine, f'step{index}-start', f'第 {index} 步开始：{child.name}')
         saved_config, saved_info = child.config, child.info
         # 临时设置只放在这份副本里：ok-script 的 Config 一赋值就写盘
@@ -55,7 +54,6 @@ def run_steps(routine, steps, tasks, keep_going=False):
             child.config, child.info = saved_config, saved_info
             child.evidence = None
         results.append(result)
-        routine.log_info(result.line())
         checkpoint(routine, f'step{index}-' + ('done' if result.ok else 'failed'), result.line())
         # 两个子任务都会自己吞掉 TaskDisabledException 后正常返回，只能回头看流程本身还开着没有
         if not routine.enabled:

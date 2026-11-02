@@ -141,7 +141,6 @@ class RunLoop:
                 return
             self.live = True
             self.rounds_seen = 0
-            self.task.log_info(f"第 {self.runs_done + 1} 局开始（{self.mode}）")
             checkpoint(self.task, f'run{self.runs_done + 1}-start', f"第 {self.runs_done + 1} 局开始（{self.mode}）")
             if not self.behaviour.begin():
                 self.gave_up()
@@ -182,9 +181,8 @@ class RunLoop:
             return
         if self.hands_off and now - self.observer.since < HANDS_OFF_DIALOG_WAIT:
             return
-        reason = "轮次弹窗一直没自动继续，撤离" if self.hands_off else f"打完 {self.rounds_seen} 轮，撤离"
-        self.task.log_info(reason)
-        checkpoint(self.task, f'run{self.runs_done + 1}-leave', reason)
+        checkpoint(self.task, f'run{self.runs_done + 1}-leave',
+                   "轮次弹窗一直没自动继续，撤离" if self.hands_off else f"打完 {self.rounds_seen} 轮，撤离")
         self.task.quit_mission()
         self.acted(now)
 
@@ -210,7 +208,6 @@ class RunLoop:
             self.runs_done += 1
             self.give_ups = 0
             self.give_ups_since_result = 0
-            self.task.log_info(f"已完成 {self.runs_done}/{self.job.runs or '不限'} 次")
             checkpoint(self.task, f'run{self.runs_done}-done',
                        f"第 {self.runs_done} 局结算，已完成 {self.runs_done}/{self.job.runs or '不限'} 次，打完 {self.rounds_seen} 轮")
         if self.done():

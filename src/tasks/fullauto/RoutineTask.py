@@ -67,8 +67,7 @@ class RoutineTask(BaseDNATask):
         try:
             wait_for_game(OkScriptBackend(self), self.log_info)
         except Blocked as e:
-            self.log_info(f"启动时停下：{e}。画面上的文字：{' '.join(e.texts)}", notify=True)
-            checkpoint(self, 'blocked', f"启动时停下：{e}。画面上的文字：{' '.join(e.texts)}")
+            checkpoint(self, 'blocked', f"启动时停下：{e}。画面上的文字：{' '.join(e.texts)}", notify=True)
             # 反作弊报错留着给人看，关掉游戏等下次定时任务再开就等于重试了
             if e.reason != ANTI_CHEAT:
                 self.close_if_exit()
@@ -77,17 +76,13 @@ class RoutineTask(BaseDNATask):
         try:
             results = run_steps(self, steps, tasks, keep_going=self.config.get("失败后继续", False))
         except StepFailed as e:
-            summary = "流程没跑完：" + "；".join(r.line() for r in e.results)
-            self.log_info(summary, notify=True)
-            checkpoint(self, 'end', summary)
+            checkpoint(self, 'end', "流程没跑完：" + "；".join(r.line() for r in e.results), notify=True)
             self.close_if_exit()
             raise Exception(str(e))
         except TaskDisabledException:
-            self.log_info("流程已停止")
             checkpoint(self, 'end', "流程已停止")
             raise
-        self.log_info(f"流程跑完了：{len(results)} 步", notify=True)
-        checkpoint(self, 'end', f"流程跑完了：{len(results)} 步")
+        checkpoint(self, 'end', f"流程跑完了：{len(results)} 步", notify=True)
 
     def close_if_exit(self):
         if self.exit_after_task or self.config.get('Exit After Task'):
