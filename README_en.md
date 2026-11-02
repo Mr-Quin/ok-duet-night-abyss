@@ -45,6 +45,9 @@ This software is an open-source, free external tool intended for learning and di
 *   **Auto-charge for Inflorescence Bow**
 *   **Background Operation**
     *   Supports automation while the PC game is running in the background
+*   **Routines and Scheduled Runs**
+    *   Chain 日常领奖 (daily claims) and 自动夜航手册 (Nightbook) into a routine, with per-step settings
+    *   Waits for the game to be playable before starting, and can open the game on a schedule and close it afterwards
 
 ## 🖥️ System Requirements & Compatibility
 
@@ -113,6 +116,14 @@ Before starting the automation, please check and confirm the following settings:
 
 1.  Navigate to the level or scene you want to automate.
 2.  Click the **"Start"** button in the program's interface.
+
+**Running a routine on a schedule** (Simplified Chinese client only)
+
+1.  In **全自动 → 流程**, click **编辑步骤**. Pick a task and click 添加, and order the steps with 上移 and 下移. Settings changed on the right apply only to that step, not to the task's own settings. Click 保存.
+2.  On the **计划任务** (Schedule) page, click **创建任务**, choose **流程**, set the time, and tick **任务完成后自动退出 (-e)** (exit when done).
+3.  At that time the program starts itself, opens the game, waits until the game is playable, and runs the steps in order. With auto-exit ticked, it closes the game and the program at the end.
+
+The routine stops without clicking anything, and logs why, if the game asks you to sign in, asks for a restart after an update, or shows an anti-cheat error. So keep the account signed in. As above, the computer must not turn off its display or lock.
 
 ### 3. Installing External Logic (Mods)
 
