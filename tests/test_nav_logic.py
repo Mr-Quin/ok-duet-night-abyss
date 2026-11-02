@@ -187,6 +187,18 @@ class TestStartingTheGame(unittest.TestCase):
         self.assertFalse(H.on_blank_close(nav, screen(), {}))
         self.assertEqual(backend.actions, [('click', 0.5, 0.89)])
 
+    def test_the_notice_board_after_login_is_closed(self):
+        found, _ = S.classify(screen(('活动公告', 0.13, 0.05), ('系统公告', 0.24, 0.05), ('资讯', 0.35, 0.05),
+                                     ('【永恒梦魇】活动说明', 0.17, 0.16), ('Esc', 0.03, 0.96), ('退出', 0.06, 0.96)), {})
+        self.assertEqual(found, 'notice')
+        nav, backend = navigator(World())
+        self.assertEqual([H.on_notice(nav, screen(), {}) for _ in range(2)], [False, False])
+        self.assertEqual(backend.actions, [('key', 'esc'), ('click', 0.973, 0.037)])
+
+    def test_a_notice_title_elsewhere_is_not_the_notice_board(self):
+        found, _ = S.classify(screen(('活动公告', 0.5, 0.5), ('系统公告', 0.5, 0.6)), {})
+        self.assertNotEqual(found, 'notice')
+
     def test_a_page_with_an_esc_hint_after_entering_the_game_is_closed(self):
         nav, backend = navigator(World())
         H.on_title(nav, screen(), {'enter': {'x': 0.5, 'y': 0.9}})
