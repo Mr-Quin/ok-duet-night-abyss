@@ -57,8 +57,12 @@ def prune(root, keep):
         shutil.rmtree(os.path.join(root, old), ignore_errors=True)
 
 
-def checkpoint(task, slug, text):
-    """task 在流程里跑时记一笔；单独跑任务时没有 evidence，什么都不做。记录出错不影响任务本身。"""
+def checkpoint(task, slug, text, notify=False):
+    """写日志；task 在流程里跑时再记一笔，单独跑任务时没有 evidence 就只写日志。记录出错不影响任务本身。"""
+    if notify:
+        task.log_info(text, notify=True)
+    else:
+        task.log_info(text)
     evidence = getattr(task, 'evidence', None)
     if evidence is None:
         return
