@@ -8,17 +8,9 @@ from ok.test.TaskTestCase import TaskTestCase
 
 from src.config import config
 from src.routine.editor_dialog import RoutineEditor
-from src.routine.steps import overrides_from
 from src.tasks.fullauto import RoutineTask as R
 from src.tasks.fullauto.AutoDailyClaimTask import AutoDailyClaimTask
 from src.tasks.fullauto.AutoNightbookTask import AutoNightbookTask
-
-
-class TestOverridesFrom(unittest.TestCase):
-
-    def test_only_changed_values(self):
-        self.assertEqual(overrides_from({'刷几次': 1, '来源': '夜航手册'}, {'刷几次': 0, '来源': '夜航手册'}),
-                         {'刷几次': 1})
 
 
 class TestRoutineEditor(TaskTestCase):
@@ -66,6 +58,25 @@ class TestRoutineEditor(TaskTestCase):
         self.assertEqual([reopened.list.item(i).text() for i in range(reopened.list.count())],
                          ['1. 自动夜航手册（刷几次=1）', '2. 日常领奖'])
         self.assertEqual(self.control(reopened, '刷几次').spin_box.value(), 1)
+
+    def test_touched_value_is_kept_even_when_it_matches_the_task(self):
+        editor = self.editor()
+        editor.task_box.setCurrentIndex(editor.task_box.findData('AutoNightbookTask'))
+        editor.add_step()
+        spin = self.control(editor, '刷几次').spin_box
+        spin.setValue(2)
+        spin.setValue(0)
+        self.assertTrue(editor.validate())
+        self.assertEqual(json.loads(self.task.config['步骤'])['steps'][1]['overrides'], {'刷几次': 0})
+
+    def test_reset_clears_the_step_changes(self):
+        editor = self.editor()
+        editor.task_box.setCurrentIndex(editor.task_box.findData('AutoNightbookTask'))
+        editor.add_step()
+        self.control(editor, '刷几次').spin_box.setValue(3)
+        editor.reset_step()
+        self.assertEqual(editor.list.item(1).text(), '2. 自动夜航手册')
+        self.assertEqual(self.control(editor, '刷几次').spin_box.value(), 0)
 
     def test_remove_and_empty_routine_is_refused(self):
         editor = self.editor()

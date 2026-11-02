@@ -5,22 +5,33 @@ from PySide6.QtWidgets import QHBoxLayout, QScrollArea, QVBoxLayout, QWidget
 from qfluentwidgets import BodyLabel, ComboBox, FluentIcon, ListWidget, MessageBoxBase, PushButton, SubtitleLabel
 
 from ok.ui.qt.tasks.ConfigItemFactory import config_widget
-from src.routine.steps import ALLOWED, Step, StepError, dump_steps, overrides_from, parse_steps, spec_of
+from src.routine.steps import ALLOWED, Step, StepError, dump_steps, parse_steps, spec_of
 
 # 这些控件不是存一个值的，放进一步的设置里没有意义
 SKIPPED_TYPES = ('button', 'global')
 
 
 class StepSettings(dict):
-    """一步的设置：任务存下来的设置叠上这一步的临时设置。控件改的是这份，不会写进任务的配置文件。"""
+    """一步的设置：任务存下来的设置叠上这一步的临时设置。控件改的是这份，不会写进任务的配置文件。
+
+    动过的项都算这一步的临时设置，哪怕和任务现在的设置一样：任务的设置以后会变，这一步不该跟着变。
+    """
 
     def __init__(self, task, overrides):
         super().__init__(task.config)
         self.update(overrides)
         self.defaults = task.default_config
+        self.touched = set(overrides)
+
+    def __setitem__(self, key, value):
+        super().__setitem__(key, value)
+        self.touched.add(key)
 
     def get_default(self, key):
         return self.defaults.get(key)
+
+    def overrides(self):
+        return {key: self[key] for key in self if key in self.touched}
 
 
 class RoutineEditor(MessageBoxBase):
@@ -67,10 +78,13 @@ class RoutineEditor(MessageBoxBase):
         self.settings_area = QScrollArea(self)
         self.settings_area.setWidgetResizable(True)
         self.settings_area.setMinimumWidth(560)
+        reset = PushButton(FluentIcon.CANCEL, '清除这一步的改动', self)
+        reset.clicked.connect(self.reset_step)
         right = QVBoxLayout()
         right.addWidget(SubtitleLabel('这一步的设置', self))
-        right.addWidget(BodyLabel('只在这个流程的这一步生效，不改任务自己的设置', self))
+        right.addWidget(BodyLabel('动过的项只在这个流程的这一步生效，不改任务自己的设置', self))
         right.addWidget(self.settings_area, 1)
+        right.addWidget(reset)
 
         body = QHBoxLayout()
         body.addLayout(left, 2)
@@ -85,8 +99,7 @@ class RoutineEditor(MessageBoxBase):
 
     def label(self, row):
         name, settings = self.rows[row]
-        changed = overrides_from(settings, self.tasks[name].config)
-        extra = '，'.join(f'{k}={v}' for k, v in changed.items())
+        extra = '，'.join(f'{k}={v}' for k, v in settings.overrides().items())
         return f'{row + 1}. {self.tasks[name].name}' + (f'（{extra}）' if extra else '')
 
     def refresh(self, current):
@@ -137,6 +150,13 @@ class RoutineEditor(MessageBoxBase):
             self.rows[row], self.rows[target] = self.rows[target], self.rows[row]
             self.refresh(target)
 
+    def reset_step(self):
+        row = self.list.currentRow()
+        if 0 <= row < len(self.rows):
+            name = self.rows[row][0]
+            self.rows[row] = (name, StepSettings(self.tasks[name], {}))
+            self.refresh(row)
+
     def remove_step(self):
         row = self.list.currentRow()
         if 0 <= row < len(self.rows):
@@ -146,7 +166,7 @@ class RoutineEditor(MessageBoxBase):
     def steps_json(self):
         if not self.rows:
             raise StepError('流程里至少要有一步')
-        steps =[Step(name, overrides_from(settings, self.tasks[name].config)) for name, settings in self.rows]
+        steps = [Step(name, settings.overrides()) for name, settings in self.rows]
         raw = dump_steps(steps)
         parse_steps(raw, {name: spec_of(task) for name, task in self.tasks.items()})
         return json.dumps(raw, ensure_ascii=False, indent=1)
