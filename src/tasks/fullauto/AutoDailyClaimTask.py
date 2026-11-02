@@ -8,6 +8,7 @@ from ok import TaskDisabledException
 from src.nav import Nav, NavError
 from src.nav.claims import PAGES, Claimer
 from src.nav.okscript import CACHE_PATH, OkScriptBackend
+from src.routine.evidence import checkpoint
 from src.tasks.BaseDNATask import BaseDNATask
 
 
@@ -43,3 +44,4 @@ class AutoDailyClaimTask(BaseDNATask):
         except NavError as e:
             raise Exception(f"自动导航失败：{e}")
         self.log_info(f"领完了：{'、'.join(claimed) or '没有可领的'}", notify=True)
+        checkpoint(self, 'claims', f"领完了：{'、'.join(claimed) or '没有可领的'}")

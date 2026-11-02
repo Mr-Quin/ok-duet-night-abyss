@@ -121,6 +121,27 @@ class TestRunSteps(unittest.TestCase):
         self.assertEqual(len(daily.seen), 1)
         self.assertEqual([r.ok for r in ctx.exception.results], [False, True])
 
+    def test_each_step_records_into_the_routine_evidence(self):
+        self.routine.evidence = FakeEvidence()
+        during = []
+        book = FakeChild('自动夜航手册')
+        book.action = lambda: during.append(book.evidence)
+        daily = FakeChild('日常领奖', boom)
+        with self.assertRaises(StepFailed):
+            run_steps(self.routine, [Step('Book'), Step('Daily')], {'Book': book, 'Daily': daily}, keep_going=True)
+        self.assertEqual(during, [self.routine.evidence])
+        self.assertIsNone(book.evidence)
+        self.assertEqual(self.routine.evidence.slugs, ['step1-start', 'step1-done', 'step2-start', 'step2-failed'])
+
+
+class FakeEvidence:
+    def __init__(self):
+        self.slugs = []
+        self.folder = 'logs/runs/test'
+
+    def record(self, slug, text, frame=None):
+        self.slugs.append(slug)
+
 
 class FakeRoutineTask(FakeRoutine):
     def __init__(self, steps, tasks, exit_after=False, config_exit=False):
@@ -139,14 +160,26 @@ class FakeRoutineTask(FakeRoutine):
 class TestRoutineTaskRun(unittest.TestCase):
 
     def run_routine(self, task, preflight=None):
+        self.evidence = FakeEvidence()
         with mock.patch.object(R, 'communicate') as communicate, \
                 mock.patch.object(R, 'OkScriptBackend'), \
+                mock.patch.object(R, 'Evidence', return_value=self.evidence), \
                 mock.patch.object(R, 'wait_for_game', side_effect=preflight) as wait:
             try:
                 R.RoutineTask.run(task)
             finally:
                 self.quit = communicate.quit.emit
                 self.waited = wait.called
+
+    def test_a_finished_routine_leaves_its_checkpoints(self):
+        self.run_routine(FakeRoutineTask([Step('Book')], {'Book': FakeChild('自动夜航手册')}))
+        self.assertEqual(self.evidence.slugs, ['ready', 'step1-start', 'step1-done', 'end'])
+
+    def test_a_blocked_start_is_recorded(self):
+        with self.assertRaises(Exception):
+            self.run_routine(FakeRoutineTask([Step('Book')], {'Book': FakeChild('自动夜航手册')}),
+                             Blocked(LOGIN_REQUIRED, ['邮箱']))
+        self.assertEqual(self.evidence.slugs, ['blocked'])
 
     def failing(self, **kwargs):
         return FakeRoutineTask([Step('Book')], {'Book': FakeChild('自动夜航手册', boom)}, **kwargs)
