@@ -33,11 +33,15 @@ LEAVE_WAIT = 60
 CLAIM_EVERY = 30 * 60
 
 
-class GaveUpTooOften(Exception):
+class JobStopped(Exception):
+    """再打下去也没用，整个任务停下，不重试。"""
+
+
+class GaveUpTooOften(JobStopped):
     pass
 
 
-class RunLost(Exception):
+class RunLost(JobStopped):
     pass
 
 
@@ -109,7 +113,7 @@ class RunLoop:
                     if getattr(self, 'on_' + state)(now):
                         break
                     self.failures = 0
-                except (TaskDisabledException, GaveUpTooOften, RunLost):
+                except (TaskDisabledException, JobStopped):
                     raise
                 except Exception as e:
                     self.failures += 1
@@ -157,10 +161,10 @@ class RunLoop:
         # 打完过轮次的局奖励已经到手，只有一轮都没打完就放弃的才算连续失败
         self.give_ups = 0 if self.rounds_seen else self.give_ups + 1
         if self.give_ups >= MAX_GIVE_UPS:
-            raise GaveUpTooOften(f"连续放弃了 {self.give_ups} 局")
+            raise GaveUpTooOften(f"连续放弃了 {self.give_ups} 局，先停下")
         self.give_ups_since_result += 1
         if self.give_ups_since_result >= MAX_GIVE_UPS_WITHOUT_RESULT:
-            raise GaveUpTooOften(f"放弃了 {self.give_ups_since_result} 局，一局都没打到结算")
+            raise GaveUpTooOften(f"放弃了 {self.give_ups_since_result} 局，一局都没打到结算，先停下")
         # 放弃后回到手册或大世界，不会回开始界面，等加载完就重新进关卡
         def left():
             state = self.nav.where()
