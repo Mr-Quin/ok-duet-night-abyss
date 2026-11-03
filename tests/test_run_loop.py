@@ -150,7 +150,7 @@ class TestRunLoop(unittest.TestCase):
         self.assertIn('choose_letter', task.calls)
 
     def test_stops_after_giving_up_too_many_runs_in_a_row(self):
-        with self.assertRaises(L.GaveUpTooOften):
+        with self.assertRaisesRegex(L.GaveUpTooOften, '^连续放弃了 \\d+ 局，先停下$'):
             run([O.IN_RUN, O.START] * 3 + [O.IN_RUN, O.RESULT], L.Job('target', rounds=1, runs=1),
                 begins=[False] * L.MAX_GIVE_UPS)
 
@@ -162,7 +162,7 @@ class TestRunLoop(unittest.TestCase):
     def test_runs_that_always_give_up_after_some_rounds_stop_eventually(self):
         give_ups = L.MAX_GIVE_UPS_WITHOUT_RESULT
         script = [O.IN_RUN, O.ROUND_DIALOG, O.IN_RUN, O.START] * give_ups + [O.IN_RUN, O.ROUND_DIALOG, O.RESULT]
-        with self.assertRaisesRegex(L.GaveUpTooOften, '一局都没打到结算'):
+        with self.assertRaisesRegex(L.GaveUpTooOften, '一局都没打到结算，先停下$'):
             run(script, L.Job('target', rounds=2, runs=1), ticks=[False] * give_ups)
 
     def test_a_result_resets_the_count_of_give_ups_without_a_result(self):
@@ -187,6 +187,19 @@ class TestRunLoop(unittest.TestCase):
     def test_a_lost_run_stops_the_job_instead_of_counting_as_done(self):
         with self.assertRaisesRegex(L.RunLost, '输了'):
             run([O.IN_RUN, O.ROUND_DIALOG, O.RESULT], L.Job('target', rounds=1, runs=2), lost=True)
+
+    def test_any_error_that_stops_the_job_is_raised_without_retrying(self):
+        class Stop(L.JobStopped):
+            pass
+
+        class Stops(behaviour('扼守', True)):
+            def begin(self):
+                Stops.log.append('begin')
+                raise Stop('停')
+
+        with self.assertRaises(Stop):
+            run([O.IN_RUN, O.RESULT], L.Job('target', rounds=1, runs=1), behaviours=(Stops,))
+        self.assertEqual(Stops.log, ['begin'])
 
     def test_a_single_frame_of_the_result_screen_mid_run_is_ignored(self):
         frames = [O.IN_RUN] * 4 + [O.RESULT] + [O.IN_RUN] * 4 + [O.ROUND_DIALOG] * 2 + [O.RESULT] * 2
