@@ -158,7 +158,12 @@ def on_other_menu(nav, scr, info):
     # 多半是还在淡入的界面，先等一下再退
     if nav.wait(2) is None:
         return None
-    nav.b.key('esc')
+    # 协会任务这类页面按 Esc 不会退，换着点左上角的返回箭头
+    nav.state['menu_tries'] = nav.state.get('menu_tries', 0) + 1
+    if nav.state['menu_tries'] % 2:
+        nav.b.key('esc')
+    else:
+        nav.b.click(*MENU_BACK)
     return False
 
 
