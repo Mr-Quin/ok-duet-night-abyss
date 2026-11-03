@@ -20,6 +20,7 @@ MAX_LOGIN_WAITS = 150
 TIER_X = 0.08
 SPLASH_CLOSE = (0.844, 0.24)
 NOTICE_CLOSE = (0.973, 0.037)
+MENU_BACK = (0.02, 0.025)
 LETTER_ENTRY_X = 0.05
 
 
@@ -157,7 +158,12 @@ def on_other_menu(nav, scr, info):
     # 多半是还在淡入的界面，先等一下再退
     if nav.wait(2) is None:
         return None
-    nav.b.key('esc')
+    # 协会任务这类页面按 Esc 不会退，换着点左上角的返回箭头
+    nav.state['menu_tries'] = nav.state.get('menu_tries', 0) + 1
+    if nav.state['menu_tries'] % 2:
+        nav.b.key('esc')
+    else:
+        nav.b.click(*MENU_BACK)
     return False
 
 
