@@ -208,6 +208,15 @@ class TestStartingTheGame(unittest.TestCase):
         self.assertEqual(results, [None, None, False])
         self.assertEqual(backend.actions[-1], ('key', 'esc'))
 
+    def test_a_menu_that_ignores_esc_is_left_by_its_back_arrow(self):
+        nav, backend = navigator(World())
+        menu = screen(('协会任务', 0.08, 0.03), ('每日考察', 0.12, 0.18), ('Esc', 0.95, 0.97), ('返回', 0.98, 0.97))
+        found, info = S.classify(menu, {})
+        self.assertEqual(found, 'other_menu')
+        results = [graph.HANDLERS[found](nav, menu, info) for _ in range(5)]
+        self.assertEqual(results, [None, None, False, False, False])
+        self.assertEqual(backend.actions, [('key', 'esc'), ('click', 0.02, 0.025), ('key', 'esc')])
+
     def test_waiting_too_long_at_login_asks_for_a_manual_login(self):
         nav, backend = navigator(World())
         with self.assertRaisesRegex(NavError, '手动登录'):
