@@ -21,9 +21,12 @@ class FakeTask:
         self.evidence = evidence
         self.frame = frame()
         self.logs = []
+        self.sent = []
 
-    def log_info(self, message):
+    def log_info(self, message, notify=False, screenshot=False):
         self.logs.append(message)
+        if notify:
+            self.sent.append((message, screenshot))
 
 
 class Broken:
@@ -73,6 +76,11 @@ class TestCheckpoint(unittest.TestCase):
         task = FakeTask()
         checkpoint(task, 'claims', '领完了：历练')
         self.assertEqual(task.logs, ['领完了：历练'])
+
+    def test_a_notified_checkpoint_sends_the_frame_along(self):
+        task = FakeTask()
+        checkpoint(task, 'end', '流程跑完了：2 步', notify=True)
+        self.assertEqual(task.sent, [('流程跑完了：2 步', True)])
 
     def test_a_recording_error_is_logged_not_raised(self):
         task = FakeTask(Broken())
