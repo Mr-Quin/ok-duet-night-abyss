@@ -31,7 +31,7 @@ class FakeRoutine:
         self.info = {}
         self.logs = []
 
-    def log_info(self, message, notify=False):
+    def log_info(self, message, notify=False, images=None):
         self.logs.append(message)
 
 
