@@ -58,6 +58,18 @@ class TestExpulsionTimeout(unittest.TestCase):
         task, alive = self.play(readings, 300)
         self.assertTrue(task.gave_up)
 
+    def test_a_new_auto_round_restarts_the_timer(self):
+        task = FakeTask([''])
+        task.current_round = 0
+        behaviour = E.Expulsion(task, clock=lambda: self.now[0])
+        behaviour.since = self.now[0]
+        for step in range(100 // E.PROGRESS_EVERY):
+            self.now[0] += E.PROGRESS_EVERY
+            if self.now[0] - 1000 == 45:
+                task.current_round = 1
+            self.assertTrue(behaviour.tick(), self.now[0] - 1000)
+        self.assertFalse(task.gave_up)
+
 
 if __name__ == '__main__':
     unittest.main()
