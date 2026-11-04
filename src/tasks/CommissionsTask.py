@@ -285,6 +285,11 @@ class CommissionsTask(BaseDNATask):
         box = self.box_of_screen(0.03, 0.6, 0.16, 0.67, name='result_title')
         return bool(self.ocr(box=box, match=re.compile('再接再厉')))
 
+    def result_auto_continues(self):
+        """自动轮次没打完时，结算界面顶上写着「自动轮次中（0/98）倒计时结束后将自动继续」。"""
+        box = self.box_of_screen(0.3, 0.05, 0.7, 0.1, name='result_auto_rounds')
+        return bool(self.ocr(box=box, match=re.compile('自动轮次中')))
+
     def find_result_again_btn(self, threshold=0):
         """任务结算界面的「再次进行」按钮（金色环形图标），5 张结算界面位置一致。"""
         return self.find_ui(Ui.RESULT_AGAIN_BTN, threshold=threshold)
