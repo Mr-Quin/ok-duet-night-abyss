@@ -66,11 +66,6 @@ class TestNames(unittest.TestCase):
         self.assertFalse(same_name('复仇飘浮秽兽II', '复仇飘浮秽兽III'))
         self.assertFalse(same_name('守护野蜂暗箭', '守护野蜂利刃'))
 
-    def test_the_auto_round_line_on_the_result_screen_is_read_with_the_first_character_dropped(self):
-        for read in ('自动轮次中（0/98）倒计时结束后将自动继续', '动轮次中(0/98).倒计时结后将动继续'):
-            self.assertTrue(T.AUTO_ROUNDS_LINE.search(read), read)
-        self.assertFalse(T.AUTO_ROUNDS_LINE.search('委托完成'))
-
 
 class TestLevelPositions(unittest.TestCase):
 

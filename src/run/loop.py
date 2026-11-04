@@ -24,7 +24,6 @@ ESC_MENU_WAIT = 3
 MAX_FAILURES = 3
 RETRY_SECONDS = 10
 RUN_HUD_WAIT = 8
-RESULT_BANNER_WAIT = 4
 # 驱逐的怪偶尔卡在地图里，同一个关卡连着放弃这么多次就停下，不再重开
 MAX_GIVE_UPS = 3
 # 打完过轮次再放弃的局不算连续失败，但一局都结算不了时总得停：上次结算以来放弃这么多次就停
@@ -214,14 +213,11 @@ class RunLoop:
         self.task.choose_letter_reward()
 
     def on_result(self, now):
-        if self.live:
-            if self.counted_dialog == self.observer.since:
-                return
-            # 驱离这类关卡每轮都结算一次，自动轮次没打完时游戏倒计时后自己继续，这时退出就把剩下的轮次丢了。
-            # 那行「自动轮次中」比结算面板晚一点出来，看到结算先等一会儿
-            if self.task.wait_until(self.task.result_auto_continues, time_out=RESULT_BANNER_WAIT,
-                                    post_action=self.pause, raise_if_not_found=False):
+        if self.live and self.hands_off and self.behaviour.result_each_round:
+            # 每轮打完都出一次结算界面，自动轮次没打完时游戏倒计时几秒后自己开下一轮；一直停在这里才是整局结束
+            if self.counted_dialog != self.observer.since:
                 self.count_round()
+            if now - self.observer.since < HANDS_OFF_DIALOG_WAIT:
                 return
         finished = self.live
         if self.live:

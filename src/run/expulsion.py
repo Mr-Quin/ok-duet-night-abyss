@@ -14,6 +14,8 @@ PROGRESS_EVERY = 5
 class Expulsion:
     names = ('驱离', '驱逐', '避险')
     uses_rounds = True
+    # 每轮打完都出一次结算界面，不弹轮次弹窗
+    result_each_round = True
 
     def __init__(self, task, clock=time.time):
         self.task = task

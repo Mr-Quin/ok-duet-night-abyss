@@ -31,6 +31,7 @@ FAR_METRES = 4
 class Exploration(Expulsion):
     names = ('探险',)
     uses_rounds = True
+    result_each_round = False
 
     def begin(self):
         task = self.task
