@@ -19,8 +19,10 @@ class Expulsion:
     def __init__(self, task, clock=time.time):
         self.task = task
         self.clock = clock
-        self.since = 0
-        self.round = 0
+        self.restart_timer()
+
+    def restart_timer(self):
+        self.since = self.clock()
         self.progress, self.pending, self.read_at = None, None, 0
 
     def begin(self):
@@ -30,18 +32,16 @@ class Expulsion:
         task.sleep(2)
         if not task.apply_afk_mode():
             return False
-        self.since = self.clock()
-        self.round = getattr(task, 'current_round', 0)
-        self.progress, self.pending, self.read_at = None, None, 0
+        self.restart_timer()
         return True
+
+    def next_round(self):
+        # 每一轮的进度从头算；有的地图上进度一直读不出来，不从头计时就会在第三轮左右被当成卡住
+        self.restart_timer()
 
     def tick(self):
         """超时按进度算：进度在变就一直打，「超时时间」秒都没变才放弃。"""
         task = self.task
-        # 自动轮次每开一轮进度从头算，超时也从头算
-        round_now = getattr(task, 'current_round', 0)
-        if round_now != self.round:
-            self.round, self.since, self.progress, self.pending = round_now, self.clock(), None, None
         if self.clock() - self.read_at >= PROGRESS_EVERY:
             self.read_at = self.clock()
             reading = self.read_progress()

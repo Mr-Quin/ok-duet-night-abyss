@@ -171,20 +171,25 @@ class RunLoop:
         self.task.sleep(0.5)
 
     def count_round(self):
+        """同一次出现的轮次弹窗或结算界面只算一轮。"""
+        if self.counted_dialog == self.observer.since:
+            return
         self.counted_dialog = self.observer.since
         self.rounds_seen += 1
         # 局内轮次之间的手册弹窗按 current_round 选
         self.task.current_round = self.rounds_seen
         self.task.info_set("当前轮次", self.rounds_seen)
+        self.behaviour.next_round()
         checkpoint(self.task, f'run{self.runs_done + 1}-round{self.rounds_seen}',
                    f"第 {self.runs_done + 1} 局第 {self.rounds_seen} 轮打完")
 
+    def game_goes_on(self, now):
+        """开着自动轮次时，轮次之间的画面先留给游戏自己继续，停太久才自己处理。"""
+        return self.hands_off and now - self.observer.since < HANDS_OFF_DIALOG_WAIT
+
     def on_round_dialog(self, now):
-        if self.counted_dialog != self.observer.since:
-            self.count_round()
-        if not self.due(now):
-            return
-        if self.hands_off and now - self.observer.since < HANDS_OFF_DIALOG_WAIT:
+        self.count_round()
+        if not self.due(now) or self.game_goes_on(now):
             return
         checkpoint(self.task, f'run{self.runs_done + 1}-leave',
                    "轮次弹窗一直没自动继续，撤离" if self.hands_off else f"打完 {self.rounds_seen} 轮，撤离")
@@ -193,16 +198,14 @@ class RunLoop:
 
     def on_manual(self, now):
         # 自动轮次的下一轮开局前会弹加成选择，自己倒计时开局；这时去点会把开局取消，游戏就停在结算界面不再继续
-        if self.live and self.hands_off and self.behaviour.result_each_round \
-                and now - self.observer.since < HANDS_OFF_DIALOG_WAIT:
+        if self.live and self.behaviour.result_each_round and self.game_goes_on(now):
             return
         # 局内轮次之间和开局前的手册弹窗布局不同，choose_drop_rate 按 mission_status 分
         self.task.mission_status = Mission.CONTINUE if self.live else None
         self.task.choose_drop_rate()
 
     def on_letter(self, now):
-        # 开着自动轮次时，轮次之间的选密函游戏会自己选好继续，一直没动才自己选
-        if self.live and self.hands_off and now - self.observer.since < HANDS_OFF_DIALOG_WAIT:
+        if self.live and self.game_goes_on(now):
             return
         self.task.mission_status = Mission.CONTINUE if self.live else None
         self.task.choose_letter()
@@ -213,22 +216,12 @@ class RunLoop:
     def on_result(self, now):
         if self.live and self.hands_off and self.behaviour.result_each_round:
             # 每轮打完都出一次结算界面，自动轮次没打完时游戏倒计时几秒后自己开下一轮；一直停在这里才是整局结束
-            if self.counted_dialog != self.observer.since:
-                self.count_round()
-            if now - self.observer.since < HANDS_OFF_DIALOG_WAIT:
+            self.count_round()
+            if self.game_goes_on(now):
                 return
         finished = self.live
-        if self.live:
-            self.live = False
-            if self.task.result_lost():
-                checkpoint(self.task, f'run{self.runs_done + 1}-lost',
-                           f"第 {self.runs_done + 1} 局输了，打完 {self.rounds_seen} 轮")
-                raise RunLost(f"第 {self.runs_done + 1} 局输了（游戏显示再接再厉），打完 {self.rounds_seen} 轮")
-            self.runs_done += 1
-            self.give_ups = 0
-            self.give_ups_since_result = 0
-            checkpoint(self.task, f'run{self.runs_done}-done',
-                       f"第 {self.runs_done} 局结算，已完成 {self.runs_done}/{self.job.runs or '不限'} 次，打完 {self.rounds_seen} 轮")
+        if finished:
+            self.finish_run()
         if self.done():
             return True
         if finished and self.between_runs and self.clock() - self.between_at >= CLAIM_EVERY:
@@ -237,6 +230,18 @@ class RunLoop:
             self.enter()
             return
         self.start(now)
+
+    def finish_run(self):
+        self.live = False
+        if self.task.result_lost():
+            checkpoint(self.task, f'run{self.runs_done + 1}-lost',
+                       f"第 {self.runs_done + 1} 局输了，打完 {self.rounds_seen} 轮")
+            raise RunLost(f"第 {self.runs_done + 1} 局输了（游戏显示再接再厉），打完 {self.rounds_seen} 轮")
+        self.runs_done += 1
+        self.give_ups = 0
+        self.give_ups_since_result = 0
+        checkpoint(self.task, f'run{self.runs_done}-done',
+                   f"第 {self.runs_done} 局结算，已完成 {self.runs_done}/{self.job.runs or '不限'} 次，打完 {self.rounds_seen} 轮")
 
     def on_start(self, now):
         # 到了开始界面说明上一局已经结束，结算界面没看到也一样，不然下一局会跳过 begin

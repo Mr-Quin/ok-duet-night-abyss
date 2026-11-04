@@ -7,7 +7,6 @@ from src.run.defence import Defence
 class FakeTask:
     def __init__(self):
         self.current_wave = 0
-        self.current_round = 0
         self.config = {'超时时间': 90}
         self.logs = []
         self.exited = False
@@ -32,7 +31,7 @@ def defence(task, clock):
     # 不走 __init__：它会读地图和路线文件，这里只测计时
     d = Defence.__new__(Defence)
     d.task, d.clock = task, clock
-    d.wave, d.wave_since, d.round = task.current_wave, clock(), task.current_round
+    d.wave, d.wave_since = task.current_wave, clock()
     return d
 
 
@@ -45,9 +44,9 @@ class TestDefenceTimer(unittest.TestCase):
 
     def test_rounds_with_the_same_wave_number_do_not_time_out(self):
         # 保护目标的扼守每轮都是 0/1
-        for round_no in range(1, 8):
+        for _ in range(7):
             self.now += 60
-            self.task.current_round = round_no
+            self.d.next_round()
             self.assertTrue(self.d.tick())
         self.assertFalse(self.task.exited)
 
