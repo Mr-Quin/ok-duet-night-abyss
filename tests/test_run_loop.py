@@ -74,6 +74,9 @@ def behaviour(kind_name, begins=None, ticks=None, each=False):
         def tick(self):
             Fake.log.append('tick')
             return Fake.tick_results.pop(0) if Fake.tick_results else True
+
+        def next_round(self):
+            Fake.log.append('round')
     return Fake
 
 
@@ -115,6 +118,15 @@ class TestRunLoop(unittest.TestCase):
                                   hold=20)
         self.assertNotIn('quit_mission', task.calls)
         self.assertEqual(loop.runs_done, 1)
+
+    def test_every_counted_round_is_passed_on_to_the_mission(self):
+        script = [O.IN_RUN, O.ROUND_DIALOG, O.IN_RUN, O.ROUND_DIALOG, O.IN_RUN, O.RESULT]
+        _, _, loop, defence, _ = run(script, L.Job('target', rounds=3, runs=1), hold=20)
+        each = behaviour('驱离', each=True)
+        _, _, settles, _, _ = run([O.IN_RUN, O.RESULT, O.IN_RUN, O.RESULT], L.Job('target', rounds=3, runs=1),
+                                  mode='驱离', behaviours=(each,))
+        self.assertEqual((loop.rounds_seen, defence.log.count('round')), (2, 2))
+        self.assertEqual((settles.rounds_seen, each.log.count('round')), (2, 2))
 
     def test_picks_the_behaviour_from_the_mission_type(self):
         task, nav, loop, defence, expulsion = run([O.IN_RUN, O.RESULT], L.Job('target', rounds=3, runs=1),
