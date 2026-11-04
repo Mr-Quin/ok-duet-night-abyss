@@ -22,7 +22,6 @@ class Defence:
         self.maps = MapLibrary()
         self.routes = routes.RouteLibrary()
         self.wave, self.wave_since = -1, 0
-        self.round = 0
 
     def begin(self):
         """一局开始：走到防守点。返回 False 表示没走到、已经放弃了这一局。"""
@@ -38,18 +37,19 @@ class Defence:
                 task.exit_mission()
                 return False
         self.wave, self.wave_since = task.current_wave, self.clock()
-        self.round = getattr(task, 'current_round', 0)
         return True
+
+    def next_round(self):
+        # 保护目标的扼守每轮只有一波，波次一直读成 0/1，只能靠进了下一轮来重新计时
+        self.wave_since = self.clock()
 
     def tick(self):
         """在防守范围里打。返回 False 表示波次超时、已经放弃了这一局。"""
         task = self.task
         task.get_wave_info()
         in_combat = task.current_wave != -1
-        # 保护目标的扼守每轮只有一波，波次一直读成 0/1，只能靠轮次变了来重新计时
-        round_now = getattr(task, 'current_round', 0)
-        if task.current_wave != self.wave or round_now != self.round:
-            self.wave, self.wave_since, self.round = task.current_wave, self.clock(), round_now
+        if task.current_wave != self.wave:
+            self.wave, self.wave_since = task.current_wave, self.clock()
         # 读不出波次时也要计时，不然一直读不出就永远不会超时
         if task.combat_detection_enabled() and self.clock() - self.wave_since >= task.config.get("超时时间", 120):
             task.log_info("波次超时，放弃这一局")
