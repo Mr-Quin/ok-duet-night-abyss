@@ -31,6 +31,7 @@ class Expulsion:
         # 刚进局内的一两秒里按 ESC 不出菜单，「开局重置角色位置」会因为找不到菜单报错
         task.sleep(2)
         if not task.apply_afk_mode():
+            task.exit_mission()
             return False
         self.restart_timer()
         return True

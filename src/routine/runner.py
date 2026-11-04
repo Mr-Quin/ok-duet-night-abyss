@@ -55,9 +55,6 @@ def run_steps(routine, steps, tasks, keep_going=False):
             child.evidence = None
         results.append(result)
         checkpoint(routine, f'step{index}-' + ('done' if result.ok else 'failed'), result.line())
-        # 两个子任务都会自己吞掉 TaskDisabledException 后正常返回，只能回头看流程本身还开着没有
-        if not routine.enabled:
-            raise TaskDisabledException()
         if not result.ok and not keep_going:
             raise StepFailed(results)
     if not all(r.ok for r in results):

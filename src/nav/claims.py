@@ -85,6 +85,7 @@ class Claimer:
         scr = self.nav.b.read()
         todo = [n for n in names if tile_has_dot(scr, n)]
         self.log('有红点：%s' % ('、'.join(todo) or '没有'))
+        opened = []
         for name in todo:
             # 历练打开的是手册最左边的分区，导航不认这一页，所以从主菜单直接点图标进去
             self.nav.go(MainMenu())
@@ -98,8 +99,9 @@ class Claimer:
                 self.log('没打开 %s' % name)
                 continue
             self.claim(PAGES[name])
+            opened.append(name)
         self.nav.go(World())
-        return todo
+        return opened
 
     def claim(self, page):
         seen = set()
