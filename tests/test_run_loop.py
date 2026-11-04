@@ -228,6 +228,13 @@ class TestRunLoop(unittest.TestCase):
         self.assertEqual(loop.runs_done, 1)
         self.assertEqual([c[1] for c in nav.calls if c[0] == 'go'][:3], ['target', L.World(), 'target'])
 
+    def test_expulsion_missions_hand_their_rounds_to_the_game_like_defence(self):
+        for mode in ('驱离', '驱逐', '避险'):
+            task, nav = FakeTask(), FakeNav(mode)
+            loop = L.RunLoop(task, nav, L.Job('target', rounds=99, runs=1), observer=O.Observer(task, lambda t: O.START))
+            loop.enter()
+            self.assertEqual(nav.calls[-1], ('auto', 98), mode)
+
     def test_the_open_world_hud_is_not_taken_for_a_new_run(self):
         nav = FakeNav('驱离', in_run=False)
         real_go = nav.go
