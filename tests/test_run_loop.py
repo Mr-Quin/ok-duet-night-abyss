@@ -12,6 +12,7 @@ class FakeTask:
         self.mission_status = None
         self.current_round = 0
         self.lost = False
+        self.auto_continues = []
 
     def sleep(self, seconds):
         self.now += seconds
@@ -24,6 +25,9 @@ class FakeTask:
 
     def result_lost(self):
         return self.lost
+
+    def result_auto_continues(self):
+        return self.auto_continues.pop(0) if self.auto_continues else False
 
     def send_key(self, key):
         self.calls.append(('key', key))
@@ -79,10 +83,11 @@ def behaviour(kind_name, rounds, begins=None, ticks=None):
 
 
 def run(script, job, mode='扼守/无尽', begins=None, hold=1, nav=None, behaviours=None, frames=None, ticks=None,
-        between_runs=None, lost=False):
+        between_runs=None, lost=False, auto_continues=()):
     """script 里每个阶段连着看到 hold 拍，frames 给出时按原样一拍一拍看；用完后停在最后一个。"""
     task, nav = FakeTask(), nav or FakeNav(mode)
     task.lost = lost
+    task.auto_continues = list(auto_continues)
     frames = list(frames or [s for s in script for _ in range(hold * O.Observer.SETTLE)])
     look = lambda t: frames.pop(0) if len(frames) > 1 else frames[0]
     defence, expulsion = behaviour('扼守', True, begins, ticks), behaviour('驱离', False, begins)
@@ -183,6 +188,13 @@ class TestRunLoop(unittest.TestCase):
         _, nav, loop, _, _ = run(script, L.Job('target', rounds=1, runs=3), begins=[False, True] * 2)
         self.assertEqual(loop.runs_done, 3)
         self.assertEqual(sum(1 for c in nav.calls if c[0] == 'go'), 1 + 2 + 1)
+
+    def test_a_result_screen_that_auto_continues_counts_a_round_and_waits_for_the_game(self):
+        task, _, loop, _, expulsion = run([O.IN_RUN, O.RESULT, O.IN_RUN, O.RESULT], L.Job('target', rounds=3, runs=1),
+                                          mode='驱离', auto_continues=[True, False])
+        self.assertEqual((loop.runs_done, loop.rounds_seen), (1, 1))
+        self.assertEqual(expulsion.log.count('begin'), 1)
+        self.assertNotIn('start_mission', task.calls)
 
     def test_a_lost_run_stops_the_job_instead_of_counting_as_done(self):
         with self.assertRaisesRegex(L.RunLost, '输了'):
