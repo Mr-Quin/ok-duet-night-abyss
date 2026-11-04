@@ -22,6 +22,7 @@ from src.tasks.config.CommissionConfig import (
     LETTER_REWARD_WAIT_USER,
 )
 from src.tasks.config.CommissionSkillConfig import CommissionSkillConfig
+from src.nav import text_zh as T
 
 # 「自动前进到开战」的最长时间（秒）：走这么久还没进战斗就放弃重开
 AUTO_ADVANCE_TIME_OUT = 20
@@ -288,7 +289,7 @@ class CommissionsTask(BaseDNATask):
     def result_auto_continues(self):
         """自动轮次没打完时，结算界面顶上写着「自动轮次中（0/98）倒计时结束后将自动继续」。"""
         box = self.box_of_screen(0.3, 0.05, 0.7, 0.1, name='result_auto_rounds')
-        return bool(self.ocr(box=box, match=re.compile('自动轮次中')))
+        return bool(self.ocr(box=box, match=T.AUTO_ROUNDS_LINE))
 
     def find_result_again_btn(self, threshold=0):
         """任务结算界面的「再次进行」按钮（金色环形图标），5 张结算界面位置一致。"""
