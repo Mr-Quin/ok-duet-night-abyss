@@ -1,7 +1,7 @@
 """导航层对外的接口：不管游戏现在在哪个界面，把它带到目标界面，然后交还控制。
 
     nav = Nav(OkScriptBackend(task))
-    nav.go(Nightbook(65, row=2, auto_rounds=3))   # 从任意界面出发，包括局内
+    nav.go(Nightbook(65, row=2))   # 从任意界面出发，包括局内
     ...功能从开始界面接手...
 
 路上遇到正在进行的一局时，在不损失奖励的时机离开：轮次弹窗撤离、结算界面退出，
@@ -37,11 +37,10 @@ class Nav:
         return State(screen, info)
 
     def go(self, target, max_steps=40):
-        """从任意界面到达 target 并完成设置；做不到时抛出 NavError。"""
+        """从任意界面到达 target；做不到时抛出 NavError。"""
         nav = Navigator(self.b, target, log=self.log, atlas=self.atlas, cache_path=self.cache_path)
         if not nav.run(max_steps=max_steps):
             raise NavError('没能到达 %s' % (target,))
-        target.setup(self)
 
     def tap(self, x, y):
         before = self.b.thumb()

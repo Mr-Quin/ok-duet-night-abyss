@@ -10,7 +10,7 @@ SPECS = {
         {'刷几次': 0, '每局轮次': 3, '超时时间': 90.0, '来源': '夜航手册'},
         {'来源': {'type': 'drop_down', 'options': ['夜航手册', '委托']}, '每局轮次': {'min': 1, 'max': 10}}),
     'AutoFishTask': TaskSpec('AutoFishTask', '自动钓鱼', {}),
-    'RoutineTask': TaskSpec('RoutineTask', '流程', {}, routine=True),
+    'RoutineTask': TaskSpec('RoutineTask', '流程', {}),
 }
 
 
@@ -53,7 +53,7 @@ class TestParseSteps(unittest.TestCase):
         self.check_error(steps({'task': 'AutoFishTask'}), '自动钓鱼', '不能放进流程')
 
     def test_routine_inside_routine(self):
-        self.check_error(steps({'task': 'AutoDailyClaimTask'}, {'task': 'RoutineTask'}), '第 2 步', '套流程')
+        self.check_error(steps({'task': 'AutoDailyClaimTask'}, {'task': 'RoutineTask'}), '第 2 步', '不能放进流程')
 
     def test_unknown_setting(self):
         self.check_error(steps({'task': 'AutoDailyClaimTask', 'overrides': {'协会X': True}}), '协会X', '没有这项设置')
@@ -88,7 +88,7 @@ class TestSpecOf(unittest.TestCase):
             config_type = None
 
         spec = spec_of(AutoDailyClaimTask())
-        self.assertEqual(spec, TaskSpec('AutoDailyClaimTask', '日常领奖', {'历练': True}, {}, False))
+        self.assertEqual(spec, TaskSpec('AutoDailyClaimTask', '日常领奖', {'历练': True}, {}))
 
 
 if __name__ == '__main__':

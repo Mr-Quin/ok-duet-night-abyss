@@ -48,10 +48,6 @@ class SentInputs:
         self.sent.append(('click', round(x, 3), round(y, 3)))
         self.inner.click(x, y)
 
-    def drag(self, x0, y0, x1, y1):
-        self.sent.append(('drag', round(x0, 3), round(y0, 3), round(x1, 3), round(y1, 3)))
-        self.inner.drag(x0, y0, x1, y1)
-
     def key(self, name):
         self.sent.append(('key', name))
         self.inner.key(name)
