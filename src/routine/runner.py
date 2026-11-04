@@ -7,7 +7,7 @@ from dataclasses import dataclass
 
 from ok.task.exceptions import FinishedException, TaskDisabledException
 
-from src.routine.evidence import checkpoint
+from src.evidence import checkpoint
 
 
 @dataclass

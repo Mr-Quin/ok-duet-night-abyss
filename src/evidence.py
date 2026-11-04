@@ -1,6 +1,6 @@
 """流程每跑一次留一个文件夹：每个检查点一行记录和一张当时的游戏画面，事后能看出到底做了什么。
 
-放在 logs/runs 下（logs 不进 git），只留最新的 KEEP 个。
+放在 logs/runs 下，只留最新的 KEEP 个。
 """
 import os
 import shutil

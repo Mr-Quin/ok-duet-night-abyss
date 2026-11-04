@@ -5,9 +5,9 @@
 from qfluentwidgets import FluentIcon
 
 from src.nav import Nav, NavError
-from src.nav.claims import PAGES, Claimer
+from src.run.claims import PAGES, Claimer
 from src.nav.okscript import CACHE_PATH, OkScriptBackend
-from src.routine.evidence import checkpoint
+from src.evidence import checkpoint
 from src.tasks.BaseDNATask import BaseDNATask
 
 
@@ -29,7 +29,7 @@ class AutoDailyClaimTask(BaseDNATask):
         })
 
     def run(self):
-        # 不开挂机小动作：它的随机按键会在菜单里乱按
+        # 不走 DNAOneTimeTask.run：它会开挂机小动作，随机按键会在菜单里乱按
         if hasattr(self.executor.interaction, 'activate'):
             self.executor.interaction.activate()
         self.sleep(0.5)

@@ -11,7 +11,7 @@ from qfluentwidgets import FluentIcon
 
 from src.nav import Letter, Mission, Nav, NavError, Nightbook, NoLetters, NoSuchEntry, NotOffered
 from src.nav import screens as S
-from src.nav.claims import Claimer
+from src.run.claims import Claimer
 from src.nav import text_zh as T
 from src.nav.okscript import CACHE_PATH, OkScriptBackend
 from src.run.loop import Job, JobStopped, RunLoop, UnsupportedMission
