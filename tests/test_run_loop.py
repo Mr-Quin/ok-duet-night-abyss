@@ -1,6 +1,7 @@
 # 按阶段跑局：数局数、轮次弹窗怎么处理、按关卡类型选打法、卡住时重新导航
 import unittest
 
+from src.nav import NoLetters
 from src.run import loop as L
 from src.run import observe as O
 
@@ -255,6 +256,30 @@ class TestRunLoop(unittest.TestCase):
             loop = L.RunLoop(task, nav, L.Job('target', rounds=99, runs=1), observer=O.Observer(task, lambda t: O.START))
             loop.enter()
             self.assertEqual(nav.calls[-1], ('auto', 98), mode)
+
+    def test_running_out_of_letters_is_not_retried(self):
+        nav = FakeNav('扼守')
+
+        def go(target):
+            nav.calls.append(('go', target))
+            raise NoLetters('角色')
+        nav.go = go
+        with self.assertRaises(NoLetters):
+            run([O.START], L.Job('target', runs=1), nav=nav)
+        self.assertEqual(nav.calls, [('go', 'target')])
+
+    def test_a_different_mission_on_re_entry_gets_its_own_behaviour(self):
+        parent = behaviour('驱离')
+
+        class Child(parent):
+            names = ('探险',)
+        task, nav = FakeTask(), FakeNav('探险')
+        loop = L.RunLoop(task, nav, L.Job('target', runs=1), observer=O.Observer(task, lambda t: O.START),
+                         behaviours=(Child, parent))
+        loop.enter()
+        nav.mode = '驱离'
+        loop.enter()
+        self.assertIs(type(loop.behaviour), parent)
 
     def test_the_open_world_hud_is_not_taken_for_a_new_run(self):
         nav = FakeNav('驱离', in_run=False)

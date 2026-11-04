@@ -9,7 +9,6 @@ import os
 
 from qfluentwidgets import FluentIcon
 
-from ok import TaskDisabledException
 from src.nav import Letter, Mission, Nav, NavError, Nightbook, NoLetters, NoSuchEntry, NotOffered
 from src.nav import screens as S
 from src.nav.claims import Claimer
@@ -25,8 +24,8 @@ SOURCES = ["夜航手册", "委托 扼守", "委托密函"]
 BOOK_LEVELS = S.LEVELS
 COMMISSION_LEVELS = [40, 50, 60, 70, 80]
 MODE = '扼守/无尽'
-# 不含声名：惠赠会交出需求物品，交给日常领奖任务
 ANY_COLUMN = '任意'
+# 不含声名：惠赠会交出需求物品，交给日常领奖任务
 CLAIM_PAGES = ('历练', '协会', '吟游诗集')
 LETTER_MODES = {'任意': T.ENDLESS, '扼守': MODE, '探险': '探险/无尽'}
 
@@ -104,8 +103,6 @@ class AutoNightbookTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
             loop.run()
             if claim:
                 claim()
-        except TaskDisabledException:
-            pass
         except NoSuchEntry as e:
             raise Exception(f"夜航手册 Lv.{e.level} 现在只有 {len(e.names)} 行，选的是第 {job.target.row + 1} 行")
         except NoLetters as e:

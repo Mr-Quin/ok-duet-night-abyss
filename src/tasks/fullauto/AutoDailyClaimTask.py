@@ -4,7 +4,6 @@
 """
 from qfluentwidgets import FluentIcon
 
-from ok import TaskDisabledException
 from src.nav import Nav, NavError
 from src.nav.claims import PAGES, Claimer
 from src.nav.okscript import CACHE_PATH, OkScriptBackend
@@ -39,8 +38,6 @@ class AutoDailyClaimTask(BaseDNATask):
         names = [name for name in PAGES if self.config.get(name, True)]
         try:
             claimed = Claimer(nav, log=self.log_info).run(names)
-        except TaskDisabledException:
-            return
         except NavError as e:
             raise Exception(f"自动导航失败：{e}")
         checkpoint(self, 'claims', f"领完了：{'、'.join(claimed) or '没有可领的'}", notify=True)
