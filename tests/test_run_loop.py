@@ -33,7 +33,12 @@ class FakeTask:
         self.calls.append(('key', key))
 
     def wait_until(self, condition, time_out=0, raise_if_not_found=False, post_action=None):
-        return condition()
+        # 只有结算界面那行字是按顺序给的读数，别的条件每次读都一样，读一次就够
+        for _ in range(1 + int(time_out / 0.5) if condition == self.result_auto_continues else 1):
+            result = condition()
+            if result:
+                return result
+        return result
 
     def __getattr__(self, name):
         if name in ('start_mission', 'quit_mission', 'continue_mission', 'choose_letter', 'choose_letter_reward'):
@@ -195,6 +200,11 @@ class TestRunLoop(unittest.TestCase):
         self.assertEqual((loop.runs_done, loop.rounds_seen), (1, 1))
         self.assertEqual(expulsion.log.count('begin'), 1)
         self.assertNotIn('start_mission', task.calls)
+
+    def test_the_auto_round_line_is_waited_for_because_it_shows_up_after_the_result_panel(self):
+        _, _, loop, _, _ = run([O.IN_RUN, O.RESULT, O.IN_RUN, O.RESULT], L.Job('target', rounds=3, runs=1),
+                               mode='驱离', auto_continues=[False, False, True])
+        self.assertEqual((loop.runs_done, loop.rounds_seen), (1, 1))
 
     def test_a_lost_run_stops_the_job_instead_of_counting_as_done(self):
         with self.assertRaisesRegex(L.RunLost, '输了'):
