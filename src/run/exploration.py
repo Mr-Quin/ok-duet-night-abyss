@@ -38,8 +38,7 @@ class Exploration(Expulsion):
         if self.shows(PROGRESS_BOX, SERUM):
             # 装置已经操作过（比如接手一局打到一半的），直接打怪攒血清
             task.log_info("装置已经打开，接着攒血清")
-            self.since = self.clock()
-            self.progress, self.pending, self.read_at = None, None, 0
+            self.restart_timer()
             return True
         walker = MarkerWalk(task, self.clock)
         seen = walker.wait_for_marker(timeout=10)
@@ -53,8 +52,7 @@ class Exploration(Expulsion):
             task.screenshot("explore_operate_failed")
             task.exit_mission()
             return False
-        self.since = self.clock()
-        self.progress, self.pending, self.read_at = None, None, 0
+        self.restart_timer()
         return True
 
     def operate(self, walker):
