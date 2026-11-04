@@ -13,7 +13,7 @@ PROGRESS_EVERY = 5
 
 class Expulsion:
     names = ('驱离', '驱逐', '避险')
-    uses_rounds = False
+    uses_rounds = True
 
     def __init__(self, task, clock=time.time):
         self.task = task
