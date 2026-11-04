@@ -14,7 +14,6 @@ RESET_WAVE_WAIT = 25
 
 class Defence:
     names = ('扼守',)
-    uses_rounds = True
     result_each_round = False
 
     def __init__(self, task, clock=time.time):

@@ -28,7 +28,6 @@
   {
    "target": "Nightbook",
    "fields": {
-    "auto_rounds": null,
     "level": 65,
     "row": 1,
     "mode": null,
@@ -54,7 +53,6 @@
   {
    "target": "Nightbook",
    "fields": {
-    "auto_rounds": null,
     "level": 65,
     "row": 7,
     "mode": null,
@@ -66,7 +64,6 @@
   {
    "target": "Nightbook",
    "fields": {
-    "auto_rounds": null,
     "level": 30,
     "row": 1,
     "mode": null,
@@ -94,7 +91,6 @@
   {
    "target": "Nightbook",
    "fields": {
-    "auto_rounds": null,
     "level": 30,
     "row": 3,
     "mode": null,
@@ -112,7 +108,6 @@
   {
    "target": "Nightbook",
    "fields": {
-    "auto_rounds": null,
     "level": 30,
     "row": 1,
     "mode": null,
@@ -146,7 +141,6 @@
   {
    "target": "Mission",
    "fields": {
-    "auto_rounds": null,
     "mode": "扼守/无尽",
     "lv": 60
    },
@@ -188,7 +182,6 @@
   {
    "target": "Nightbook",
    "fields": {
-    "auto_rounds": null,
     "level": 30,
     "row": 2,
     "mode": null,
@@ -214,7 +207,6 @@
   {
    "target": "Nightbook",
    "fields": {
-    "auto_rounds": null,
     "level": 65,
     "row": 7,
     "mode": null,
@@ -226,7 +218,6 @@
   {
    "target": "Nightbook",
    "fields": {
-    "auto_rounds": null,
     "level": 30,
     "row": 2,
     "mode": null,
@@ -254,7 +245,6 @@
   {
    "target": "Nightbook",
    "fields": {
-    "auto_rounds": null,
     "level": 65,
     "row": 1,
     "mode": null,
@@ -266,7 +256,6 @@
   {
    "target": "Nightbook",
    "fields": {
-    "auto_rounds": null,
     "level": 65,
     "row": 0,
     "mode": null,
@@ -278,7 +267,6 @@
   {
    "target": "Nightbook",
    "fields": {
-    "auto_rounds": null,
     "level": 30,
     "row": 2,
     "mode": null,
@@ -296,7 +284,6 @@
   {
    "target": "Nightbook",
    "fields": {
-    "auto_rounds": null,
     "level": 30,
     "row": 3,
     "mode": null,
@@ -308,7 +295,6 @@
   {
    "target": "Nightbook",
    "fields": {
-    "auto_rounds": null,
     "level": 30,
     "row": 2,
     "mode": null,
@@ -348,7 +334,6 @@
   {
    "target": "Nightbook",
    "fields": {
-    "auto_rounds": null,
     "level": 30,
     "row": 2,
     "mode": null,
@@ -360,7 +345,6 @@
   {
    "target": "Nightbook",
    "fields": {
-    "auto_rounds": null,
     "level": 65,
     "row": 8,
     "mode": null,
@@ -388,7 +372,6 @@
   {
    "target": "Mission",
    "fields": {
-    "auto_rounds": null,
     "mode": "扼守/无尽",
     "lv": 60
    },
@@ -406,7 +389,6 @@
   {
    "target": "Nightbook",
    "fields": {
-    "auto_rounds": null,
     "level": 30,
     "row": 2,
     "mode": null,
@@ -426,7 +408,6 @@
   {
    "target": "Nightbook",
    "fields": {
-    "auto_rounds": null,
     "level": 30,
     "row": 3,
     "mode": null,
@@ -446,7 +427,6 @@
   {
    "target": "Nightbook",
    "fields": {
-    "auto_rounds": null,
     "level": 30,
     "row": 2,
     "mode": null,
@@ -458,7 +438,6 @@
   {
    "target": "Nightbook",
    "fields": {
-    "auto_rounds": null,
     "level": 65,
     "row": 7,
     "mode": null,
@@ -470,7 +449,6 @@
   {
    "target": "Nightbook",
    "fields": {
-    "auto_rounds": null,
     "level": 65,
     "row": 1,
     "mode": null,
@@ -498,7 +476,6 @@
   {
    "target": "Nightbook",
    "fields": {
-    "auto_rounds": null,
     "level": 30,
     "row": 3,
     "mode": null,
@@ -510,7 +487,6 @@
   {
    "target": "Nightbook",
    "fields": {
-    "auto_rounds": null,
     "level": 30,
     "row": 2,
     "mode": null,
@@ -522,7 +498,6 @@
   {
    "target": "Nightbook",
    "fields": {
-    "auto_rounds": null,
     "level": 65,
     "row": 1,
     "mode": null,
@@ -558,7 +533,6 @@
   {
    "target": "Nightbook",
    "fields": {
-    "auto_rounds": null,
     "level": 30,
     "row": 2,
     "mode": null,

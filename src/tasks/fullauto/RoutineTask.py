@@ -16,7 +16,6 @@ DEFAULT_STEPS = json.dumps(dump_steps([Step('AutoDailyClaimTask')]), ensure_asci
 
 
 class RoutineTask(BaseDNATask):
-    is_routine = True
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

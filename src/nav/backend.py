@@ -83,15 +83,11 @@ class Backend:
         raise NotImplementedError
 
     def key(self, name):
-        """name 为 'esc' 或单个字母。"""
+        """name 为 'esc'、'space' 或单个字母。"""
         raise NotImplementedError
 
     def scroll(self, x, y, notches):
         """notches 为正时向上滚，和鼠标滚轮一致。"""
-        raise NotImplementedError
-
-    def drag(self, x0, y0, x1, y1):
-        """按住左键从 (x0, y0) 拖到 (x1, y1) 再松开。"""
         raise NotImplementedError
 
     def park(self):
