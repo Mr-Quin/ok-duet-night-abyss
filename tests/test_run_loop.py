@@ -193,6 +193,13 @@ class TestRunLoop(unittest.TestCase):
         self.assertEqual(each.log.count('begin'), 1)
         self.assertNotIn('start_mission', task.calls)
 
+    def test_the_popup_before_the_next_auto_round_is_left_for_the_game_to_start(self):
+        each = behaviour('驱离', True, each=True)
+        task, _, loop, _, _ = run([O.IN_RUN, O.RESULT, O.MANUAL, O.IN_RUN, O.RESULT], L.Job('target', rounds=3, runs=1),
+                                  mode='驱离', behaviours=(each,))
+        self.assertEqual([c for c in task.calls if isinstance(c, tuple) and c[0] == 'manual'], [])
+        self.assertEqual(loop.rounds_seen, 2)
+
     def test_a_lost_run_stops_the_job_instead_of_counting_as_done(self):
         with self.assertRaisesRegex(L.RunLost, '输了'):
             run([O.IN_RUN, O.ROUND_DIALOG, O.RESULT], L.Job('target', rounds=1, runs=2), lost=True)

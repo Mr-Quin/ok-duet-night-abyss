@@ -198,6 +198,10 @@ class RunLoop:
         self.acted(now)
 
     def on_manual(self, now):
+        # 自动轮次的下一轮开局前会弹加成选择，自己倒计时开局；这时去点会把开局取消，游戏就停在结算界面不再继续
+        if self.live and self.hands_off and self.behaviour.result_each_round \
+                and now - self.observer.since < HANDS_OFF_DIALOG_WAIT:
+            return
         # 局内轮次之间和开局前的手册弹窗布局不同，choose_drop_rate 按 mission_status 分
         self.task.mission_status = Mission.CONTINUE if self.live else None
         self.task.choose_drop_rate()
