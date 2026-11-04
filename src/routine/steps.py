@@ -19,12 +19,10 @@ class TaskSpec:
     title: str
     defaults: dict
     types: dict = field(default_factory=dict)
-    routine: bool = False
 
 
 def spec_of(task):
-    return TaskSpec(type(task).__name__, task.name, dict(task.default_config),
-                    dict(task.config_type or {}), bool(getattr(task, 'is_routine', False)))
+    return TaskSpec(type(task).__name__, task.name, dict(task.default_config), dict(task.config_type or {}))
 
 
 @dataclass(frozen=True)
@@ -57,8 +55,6 @@ def _parse_step(i, item, specs):
     spec = specs.get(name)
     if spec is None:
         raise StepError(f'第 {i} 步：没有任务 {name}')
-    if spec.routine:
-        raise StepError(f'第 {i} 步：流程里不能再套流程（{spec.title}）')
     if name not in ALLOWED:
         raise StepError(f'第 {i} 步：{spec.title} 还不能放进流程')
     overrides = item.get('overrides')

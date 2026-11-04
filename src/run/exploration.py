@@ -3,7 +3,6 @@
 装置只在开局时操作一次；之后每一轮之间只有轮次弹窗和选密函，开着自动轮次时游戏自己处理。
 """
 import re
-import time
 
 from src.run.expulsion import PROGRESS_BOX, Expulsion
 from src.tasks.fullauto.marker_walk import STEER, MarkerWalk
@@ -30,7 +29,6 @@ FAR_METRES = 4
 
 class Exploration(Expulsion):
     names = ('探险',)
-    uses_rounds = True
     result_each_round = False
 
     def begin(self):

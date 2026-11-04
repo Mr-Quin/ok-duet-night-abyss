@@ -40,9 +40,8 @@ class FakeTask:
 
 
 class FakeNav:
-    def __init__(self, mode, auto_on=False, in_run=True):
+    def __init__(self, mode, in_run=True):
         self.mode = mode
-        self.auto_on = auto_on
         self.in_run = in_run
         self.calls = []
 
@@ -50,17 +49,16 @@ class FakeNav:
         self.calls.append(('go', target))
 
     def where(self):
-        return type('State', (), {'screen': 'start', 'info': {'mode': self.mode, 'auto_on': self.auto_on},
+        return type('State', (), {'screen': 'start', 'info': {'mode': self.mode},
                                   'in_run': self.in_run})()
 
     def set_auto_rounds(self, n):
         self.calls.append(('auto', n))
 
 
-def behaviour(kind_name, rounds, begins=None, ticks=None, each=False):
+def behaviour(kind_name, begins=None, ticks=None, each=False):
     class Fake:
         names = (kind_name,)
-        uses_rounds = rounds
         result_each_round = each
         log = []
         results = list(begins or [])
@@ -86,7 +84,7 @@ def run(script, job, mode='扼守/无尽', begins=None, hold=1, nav=None, behavi
     task.lost = lost
     frames = list(frames or [s for s in script for _ in range(hold * O.Observer.SETTLE)])
     look = lambda t: frames.pop(0) if len(frames) > 1 else frames[0]
-    defence, expulsion = behaviour('扼守', True, begins, ticks), behaviour('驱离', False, begins)
+    defence, expulsion = behaviour('扼守', begins, ticks), behaviour('驱离', begins)
     loop = L.RunLoop(task, nav, job, observer=O.Observer(task, look), clock=lambda: task.now,
                      behaviours=behaviours or (defence, expulsion), between_runs=between_runs)
     loop.run()
@@ -122,16 +120,11 @@ class TestRunLoop(unittest.TestCase):
         task, nav, loop, defence, expulsion = run([O.IN_RUN, O.RESULT], L.Job('target', rounds=3, runs=1),
                                                   mode='驱离')
         self.assertEqual(expulsion.log, ['begin'])
-        self.assertFalse(any(c[0] == 'auto' for c in nav.calls))
-
-    def test_turns_off_the_games_auto_rounds_for_missions_without_rounds(self):
-        _, nav, _, _, _ = run([O.IN_RUN, O.RESULT], L.Job('target', rounds=3, runs=1),
-                              nav=FakeNav('避险', auto_on=True), behaviours=(behaviour('避险', False),))
-        self.assertIn(('auto', 0), nav.calls)
+        self.assertEqual(defence.log, [])
 
     def test_an_unsupported_mission_type_stops_before_doing_anything(self):
         with self.assertRaises(L.UnsupportedMission):
-            run([O.IN_RUN], L.Job('target', runs=1), mode='探险/无尽')
+            run([O.IN_RUN], L.Job('target', runs=1), mode='拆解/无尽')
 
     def test_a_run_that_was_given_up_does_not_count(self):
         task, _, loop, defence, _ = run([O.IN_RUN, O.START, O.IN_RUN, O.ROUND_DIALOG, O.RESULT],
@@ -186,7 +179,7 @@ class TestRunLoop(unittest.TestCase):
         self.assertEqual(sum(1 for c in nav.calls if c[0] == 'go'), 1 + 2 + 1)
 
     def test_missions_that_settle_every_round_wait_on_each_result_for_the_game_to_go_on(self):
-        each = behaviour('驱离', True, each=True)
+        each = behaviour('驱离', each=True)
         task, _, loop, _, _ = run([O.IN_RUN, O.RESULT, O.IN_RUN, O.RESULT], L.Job('target', rounds=3, runs=1),
                                   mode='驱离', behaviours=(each,))
         self.assertEqual((loop.runs_done, loop.rounds_seen), (1, 2))
@@ -194,7 +187,7 @@ class TestRunLoop(unittest.TestCase):
         self.assertNotIn('start_mission', task.calls)
 
     def test_the_popup_before_the_next_auto_round_is_left_for_the_game_to_start(self):
-        each = behaviour('驱离', True, each=True)
+        each = behaviour('驱离', each=True)
         task, _, loop, _, _ = run([O.IN_RUN, O.RESULT, O.MANUAL, O.IN_RUN, O.RESULT], L.Job('target', rounds=3, runs=1),
                                   mode='驱离', behaviours=(each,))
         self.assertEqual([c for c in task.calls if isinstance(c, tuple) and c[0] == 'manual'], [])
@@ -208,7 +201,7 @@ class TestRunLoop(unittest.TestCase):
         class Stop(L.JobStopped):
             pass
 
-        class Stops(behaviour('扼守', True)):
+        class Stops(behaviour('扼守')):
             def begin(self):
                 Stops.log.append('begin')
                 raise Stop('停')
@@ -260,7 +253,7 @@ class TestRunLoop(unittest.TestCase):
             # 第一次进关卡后看到的是大世界，第二次才真的进了局内
             nav.in_run = len([c for c in nav.calls if c == ('go', 'target')]) >= 2
         nav.go = go
-        expulsion = behaviour('驱离', False)
+        expulsion = behaviour('驱离')
         _, _, loop, _, _ = run([O.IN_RUN, O.START, O.IN_RUN, O.RESULT], L.Job('target', runs=1), nav=nav,
                                behaviours=(expulsion,))
         self.assertEqual(expulsion.log, ['begin'])

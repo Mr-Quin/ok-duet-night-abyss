@@ -1,9 +1,8 @@
-"""功能可以请求到达的界面。开始界面类的目标还可以说明到达后要怎么设置。
+"""功能可以请求到达的界面。
 
-目标给导航器三样东西：goal（到达时界面应该是什么样）、route（从大世界到它经过的节点）、
-setup（到达后执行的设置）。新的目标类型继承 Target，按需重写其中几个。
+目标给导航器两样东西：goal（到达时界面应该是什么样）和 route（从大世界到它经过的节点）。
 """
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional, Union
 
 from src.nav import edges
@@ -16,9 +15,6 @@ class Target:
 
     def route(self):
         return edges.route(self.goal())
-
-    def setup(self, nav):
-        pass
 
 
 @dataclass(frozen=True)
@@ -69,21 +65,7 @@ class CommissionTab(Target):
 
 
 @dataclass(frozen=True)
-class StartScreen(Target):
-    """停在某个委托开始界面的目标的基类。
-
-    auto_rounds：离开开始界面前把游戏自带的自动轮次设成什么。None 不动，0 关闭，
-    1~99 打开并设成这个数（打完第一轮后游戏自动再打这么多轮）。
-    """
-    auto_rounds: Optional[int] = field(default=None, kw_only=True)
-
-    def setup(self, nav):
-        if self.auto_rounds is not None:
-            nav.set_auto_rounds(self.auto_rounds)
-
-
-@dataclass(frozen=True)
-class Mission(StartScreen):
+class Mission(Target):
     """委托页的卡片和等级，比如 Mission('扼守/无尽', lv=60)。"""
     mode: str
     lv: Optional[int] = None
@@ -93,7 +75,7 @@ class Mission(StartScreen):
 
 
 @dataclass(frozen=True)
-class Nightbook(StartScreen):
+class Nightbook(Target):
     """夜航手册的一行：等级页加行号（从上往下，0 起）或行名的一部分。
 
     给了 mode / lv 时会在开始界面上核对。
@@ -109,7 +91,7 @@ class Nightbook(StartScreen):
 
 
 @dataclass(frozen=True)
-class Letter(StartScreen):
+class Letter(Target):
     """委托密函里的一个委托，可以限定栏位：'角色'、'武器' 或 '魔之楔'。"""
     mode: str
     column: Optional[str] = None

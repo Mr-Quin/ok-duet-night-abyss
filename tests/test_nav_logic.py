@@ -41,9 +41,6 @@ class FakeBackend(Backend):
     def scroll(self, x, y, notches):
         self.actions.append(('scroll', notches))
 
-    def drag(self, x0, y0, x1, y1):
-        self.actions.append(('drag', round(x0, 3), round(x1, 3)))
-
     def park(self):
         self.actions.append(('park',))
 
@@ -135,7 +132,6 @@ class TestAutoRounds(unittest.TestCase):
         self.assertEqual(backend.rounds, 39)
         self.assertEqual(backend.actions[0], ('click', round(S.auto_slider_x(39), 3), 0.682))
         self.assertEqual(backend.actions.count(('click', S.AUTO_PLUS_X, 0.682)), 2)
-        self.assertFalse(any(a[0] == 'drag' for a in backend.actions))
 
     def test_a_track_that_ignores_the_tap_falls_back_to_the_nearer_end(self):
         backend = SliderBackend(1, track=False)
@@ -148,7 +144,7 @@ class TestAutoRounds(unittest.TestCase):
         backend = SliderBackend(39)
         Nav(backend).set_auto_rounds(41)
         self.assertEqual(backend.rounds, 41)
-        self.assertFalse(any(a[0] == 'drag' for a in backend.actions))
+        self.assertNotIn(('click', round(S.auto_slider_x(41), 3), 0.682), backend.actions)
 
 class TestStartingTheGame(unittest.TestCase):
     VERSION = ('OS_ Windows_ Product_1.6.208.1', 0.11, 0.99)
