@@ -8,7 +8,7 @@ from dataclasses import dataclass
 
 from ok import TaskDisabledException
 from src.nav import NavError, NoLetters, NoSuchEntry, NotOffered, World
-from src.routine.evidence import checkpoint
+from src.evidence import checkpoint
 from src.run import observe as O
 from src.run.defence import Defence
 from src.run.expulsion import Expulsion

@@ -6,7 +6,7 @@ from qfluentwidgets import FluentIcon
 from ok import TaskDisabledException
 from ok.core.events import communicate
 from src.nav.okscript import OkScriptBackend
-from src.routine.evidence import Evidence, checkpoint
+from src.evidence import Evidence, checkpoint
 from src.routine.preflight import ANTI_CHEAT, Blocked, wait_for_game
 from src.routine.runner import StepFailed, run_steps
 from src.routine.steps import Step, StepError, dump_steps, parse_steps, spec_of

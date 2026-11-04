@@ -1,4 +1,5 @@
 # 导航层界面判据测试：真实截图 + 真实 OCR，走 ok-script 后端
+import os
 import unittest
 
 from ok.test.TaskTestCase import TaskTestCase
@@ -17,6 +18,8 @@ IMAGES = 'tests/images/'
 LETTER = 'tests/images/letter/'
 
 
+# 截图是游戏画面，不进公开仓库，只在本地有
+@unittest.skipUnless(os.path.isdir(NAV), '没有 tests/images/nav/ 截图')
 class TestNavScreens(TaskTestCase):
     task_class = AutoDefence
 

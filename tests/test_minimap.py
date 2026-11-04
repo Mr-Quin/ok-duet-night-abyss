@@ -1,4 +1,4 @@
-# 小地图：认出是哪张扼守地图，读出目标菱形的方位
+# 小地图：认出是哪张扼守地图
 import glob
 import os
 import unittest
@@ -7,8 +7,6 @@ import cv2
 import numpy as np
 
 from src.tasks.fullauto import minimap as M
-
-# 每张图出生时目标菱形的方位（度，北为 0），在 30 次出生画面上量的
 
 
 def frame_with(mini, width=2560, height=1440):
