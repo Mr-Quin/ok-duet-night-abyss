@@ -25,6 +25,16 @@ class FakeTask:
         self.gave_up = True
 
 
+class TestExpulsionStart(unittest.TestCase):
+
+    def test_an_afk_setup_that_fails_leaves_the_run(self):
+        task = FakeTask([''])
+        task.sleep = lambda seconds: None
+        task.apply_afk_mode = lambda: False
+        self.assertFalse(E.Expulsion(task).begin())
+        self.assertTrue(task.gave_up)
+
+
 class TestExpulsionTimeout(unittest.TestCase):
 
     def setUp(self):

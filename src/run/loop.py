@@ -7,7 +7,7 @@ import time
 from dataclasses import dataclass
 
 from ok import TaskDisabledException
-from src.nav import NavError, NoSuchEntry, NotOffered, World
+from src.nav import NavError, NoLetters, NoSuchEntry, NotOffered, World
 from src.routine.evidence import checkpoint
 from src.run import observe as O
 from src.run.defence import Defence
@@ -86,7 +86,7 @@ class RunLoop:
         kind = next((b for b in self.behaviours if any(n in self.mode for n in b.names)), None)
         if kind is None:
             raise UnsupportedMission(self.mode)
-        if not isinstance(self.behaviour, kind):
+        if type(self.behaviour) is not kind:
             self.behaviour = kind(self.task)
         self.hands_off = self.job.rounds > 1
         # 游戏的自动轮次 N 表示打完第一轮后再自动打 N 轮，0 就是关掉
@@ -122,7 +122,7 @@ class RunLoop:
         for attempt in range(MAX_FAILURES):
             try:
                 return self.enter()
-            except (NoSuchEntry, NotOffered):
+            except (NoSuchEntry, NoLetters, NotOffered):
                 raise
             except NavError as e:
                 if attempt == MAX_FAILURES - 1:
