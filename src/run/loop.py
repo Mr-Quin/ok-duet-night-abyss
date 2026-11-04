@@ -176,15 +176,18 @@ class RunLoop:
         # nav.where() 是整帧 OCR，连着读会占满一个核，游戏正在加载
         self.task.sleep(0.5)
 
+    def count_round(self):
+        self.counted_dialog = self.observer.since
+        self.rounds_seen += 1
+        # 局内轮次之间的手册弹窗按 current_round 选
+        self.task.current_round = self.rounds_seen
+        self.task.info_set("当前轮次", self.rounds_seen)
+        checkpoint(self.task, f'run{self.runs_done + 1}-round{self.rounds_seen}',
+                   f"第 {self.runs_done + 1} 局第 {self.rounds_seen} 轮打完")
+
     def on_round_dialog(self, now):
         if self.counted_dialog != self.observer.since:
-            self.counted_dialog = self.observer.since
-            self.rounds_seen += 1
-            # 局内轮次之间的手册弹窗按 current_round 选
-            self.task.current_round = self.rounds_seen
-            self.task.info_set("当前轮次", self.rounds_seen)
-            checkpoint(self.task, f'run{self.runs_done + 1}-round{self.rounds_seen}',
-                       f"第 {self.runs_done + 1} 局第 {self.rounds_seen} 轮打完")
+            self.count_round()
         if not self.due(now):
             return
         if self.hands_off and now - self.observer.since < HANDS_OFF_DIALOG_WAIT:
@@ -210,6 +213,13 @@ class RunLoop:
         self.task.choose_letter_reward()
 
     def on_result(self, now):
+        if self.live:
+            if self.counted_dialog == self.observer.since:
+                return
+            # 驱离这类关卡每轮都结算一次，自动轮次没打完时游戏倒计时后自己继续，这时退出就把剩下的轮次丢了
+            if self.task.result_auto_continues():
+                self.count_round()
+                return
         finished = self.live
         if self.live:
             self.live = False
