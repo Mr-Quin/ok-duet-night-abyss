@@ -12,7 +12,6 @@ class FakeTask:
         self.mission_status = None
         self.current_round = 0
         self.lost = False
-        self.auto_continues = []
 
     def sleep(self, seconds):
         self.now += seconds
@@ -26,19 +25,11 @@ class FakeTask:
     def result_lost(self):
         return self.lost
 
-    def result_auto_continues(self):
-        return self.auto_continues.pop(0) if self.auto_continues else False
-
     def send_key(self, key):
         self.calls.append(('key', key))
 
     def wait_until(self, condition, time_out=0, raise_if_not_found=False, post_action=None):
-        # 只有结算界面那行字是按顺序给的读数，别的条件每次读都一样，读一次就够
-        for _ in range(1 + int(time_out / 0.5) if condition == self.result_auto_continues else 1):
-            result = condition()
-            if result:
-                return result
-        return result
+        return condition()
 
     def __getattr__(self, name):
         if name in ('start_mission', 'quit_mission', 'continue_mission', 'choose_letter', 'choose_letter_reward'):
@@ -66,10 +57,11 @@ class FakeNav:
         self.calls.append(('auto', n))
 
 
-def behaviour(kind_name, rounds, begins=None, ticks=None):
+def behaviour(kind_name, rounds, begins=None, ticks=None, each=False):
     class Fake:
         names = (kind_name,)
         uses_rounds = rounds
+        result_each_round = each
         log = []
         results = list(begins or [])
         tick_results = list(ticks or [])
@@ -88,11 +80,10 @@ def behaviour(kind_name, rounds, begins=None, ticks=None):
 
 
 def run(script, job, mode='扼守/无尽', begins=None, hold=1, nav=None, behaviours=None, frames=None, ticks=None,
-        between_runs=None, lost=False, auto_continues=()):
+        between_runs=None, lost=False):
     """script 里每个阶段连着看到 hold 拍，frames 给出时按原样一拍一拍看；用完后停在最后一个。"""
     task, nav = FakeTask(), nav or FakeNav(mode)
     task.lost = lost
-    task.auto_continues = list(auto_continues)
     frames = list(frames or [s for s in script for _ in range(hold * O.Observer.SETTLE)])
     look = lambda t: frames.pop(0) if len(frames) > 1 else frames[0]
     defence, expulsion = behaviour('扼守', True, begins, ticks), behaviour('驱离', False, begins)
@@ -194,17 +185,13 @@ class TestRunLoop(unittest.TestCase):
         self.assertEqual(loop.runs_done, 3)
         self.assertEqual(sum(1 for c in nav.calls if c[0] == 'go'), 1 + 2 + 1)
 
-    def test_a_result_screen_that_auto_continues_counts_a_round_and_waits_for_the_game(self):
-        task, _, loop, _, expulsion = run([O.IN_RUN, O.RESULT, O.IN_RUN, O.RESULT], L.Job('target', rounds=3, runs=1),
-                                          mode='驱离', auto_continues=[True, False])
-        self.assertEqual((loop.runs_done, loop.rounds_seen), (1, 1))
-        self.assertEqual(expulsion.log.count('begin'), 1)
+    def test_missions_that_settle_every_round_wait_on_each_result_for_the_game_to_go_on(self):
+        each = behaviour('驱离', True, each=True)
+        task, _, loop, _, _ = run([O.IN_RUN, O.RESULT, O.IN_RUN, O.RESULT], L.Job('target', rounds=3, runs=1),
+                                  mode='驱离', behaviours=(each,))
+        self.assertEqual((loop.runs_done, loop.rounds_seen), (1, 2))
+        self.assertEqual(each.log.count('begin'), 1)
         self.assertNotIn('start_mission', task.calls)
-
-    def test_the_auto_round_line_is_waited_for_because_it_shows_up_after_the_result_panel(self):
-        _, _, loop, _, _ = run([O.IN_RUN, O.RESULT, O.IN_RUN, O.RESULT], L.Job('target', rounds=3, runs=1),
-                               mode='驱离', auto_continues=[False, False, True])
-        self.assertEqual((loop.runs_done, loop.rounds_seen), (1, 1))
 
     def test_a_lost_run_stops_the_job_instead_of_counting_as_done(self):
         with self.assertRaisesRegex(L.RunLost, '输了'):
