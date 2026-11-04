@@ -4,7 +4,7 @@ import unittest
 import cv2
 import numpy as np
 
-from src.nav import claims as C
+from src.run import claims as C
 from src.nav import text_zh as T
 from src.nav.backend import Screen
 

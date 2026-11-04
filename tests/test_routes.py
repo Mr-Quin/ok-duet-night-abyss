@@ -66,7 +66,6 @@ class TestMarkerWalk(unittest.TestCase):
         task = FakeTask()
         self.assertTrue(ScriptedWalk(task, [(0.3, 40), (0.0, 20), (0.0, 5)]).run((0.3, 40)))
         turns = [a for a in task.actions if a[0] == 'turn']
-        # 标记在右边就往右转
         self.assertTrue(turns and turns[0][1] > 0)
         self.assertEqual(task.actions[-2:], [('up', 'lshift'), ('up', 'w')])
         self.assertEqual(task.actions[:2], [('down', 'w'), ('down', 'lshift')])
