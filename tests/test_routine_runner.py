@@ -1,5 +1,6 @@
 # 流程按顺序跑子任务：临时设置不落盘、子任务吞掉停止也要停、失败后停或继续、失败后按设置关游戏
 import json
+import sys
 import unittest
 from unittest import mock
 
@@ -230,6 +231,24 @@ class TestRoutineTaskRun(unittest.TestCase):
         with self.assertRaises(TaskDisabledException):
             self.run_routine(task)
         task.executor.device_manager.stop_hwnd.assert_not_called()
+
+
+class TestStoppingAStep(unittest.TestCase):
+
+    def test_stopping_the_daily_claims_reaches_the_routine(self):
+        task = mock.MagicMock(config={})
+        with mock.patch.object(sys.modules[AutoDailyClaimTask.__module__], 'Claimer') as claimer:
+            claimer.return_value.run.side_effect = TaskDisabledException()
+            with self.assertRaises(TaskDisabledException):
+                AutoDailyClaimTask.run(task)
+
+    def test_stopping_the_nightbook_reaches_the_routine(self):
+        task = mock.MagicMock(config={})
+        module = sys.modules[AutoNightbookTask.__module__]
+        with mock.patch.object(module, 'RunLoop') as loop, mock.patch.object(module.DNAOneTimeTask, 'run'):
+            loop.return_value.run.side_effect = TaskDisabledException()
+            with self.assertRaises(TaskDisabledException):
+                AutoNightbookTask.run(task)
 
 
 class TestRoutineTaskSteps(TaskTestCase):

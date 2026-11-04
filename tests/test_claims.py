@@ -40,11 +40,18 @@ class FakeBackend:
 
 
 class FakeNav:
-    def __init__(self, screens):
+    def __init__(self, screens, screen_name='main_menu'):
         self.b = FakeBackend(screens)
+        self.screen_name = screen_name
 
     def tap(self, x, y):
         self.b.actions.append(('tap', round(x, 2), round(y, 2)))
+
+    def go(self, target):
+        pass
+
+    def where(self):
+        return type('State', (), {'screen': self.screen_name})()
 
 
 MENU = [('历练', 0.09, 0.58), ('协会', 0.22, 0.70), ('吟游诗集', 0.29, 0.70), ('声名', 0.22, 0.81), ('商店', 0.15, 0.32)]
@@ -64,6 +71,13 @@ class TestRedDots(unittest.TestCase):
     def test_menu_tiles_with_a_dot_at_the_icons_top_right(self):
         scr = screen(MENU, dots=[(0.121, 0.507), (0.313, 0.621)])
         self.assertEqual([n for n in C.PAGES if C.tile_has_dot(scr, n)], ['历练', '吟游诗集'])
+
+    def test_reports_only_the_pages_it_opened(self):
+        dotted = screen(MENU, dots=[(0.121, 0.507), (0.313, 0.621)])
+        # 历练点了没打开，还停在主菜单；吟游诗集的图标这次没读出来
+        without_tile = screen([m for m in MENU if m[0] != '吟游诗集'])
+        nav = FakeNav([dotted, dotted, without_tile])
+        self.assertEqual(C.Claimer(nav).run(['历练', '吟游诗集']), [])
 
 
 class TestClaimingAPage(unittest.TestCase):
