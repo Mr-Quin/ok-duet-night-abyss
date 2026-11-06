@@ -1,4 +1,4 @@
-# 流程按顺序跑子任务：临时设置不落盘、停止交给流程、失败后停或继续、失败后按设置关游戏
+# 流程按顺序跑子任务：临时设置不落盘、停止交给流程、失败后停或继续、失败后按设置关游戏、没密函时按设置跳过
 import json
 import sys
 import unittest
@@ -8,6 +8,7 @@ from ok.task.exceptions import FinishedException, TaskDisabledException
 from ok.test.TaskTestCase import TaskTestCase
 
 from src.config import config
+from src.nav import NoLetters, NotOffered
 from src.routine.preflight import ANTI_CHEAT, LOGIN_REQUIRED, Blocked
 from src.routine.runner import StepFailed, run_steps
 from src.routine.steps import Step
@@ -238,6 +239,29 @@ class TestStoppingAStep(unittest.TestCase):
             loop.return_value.run.side_effect = TaskDisabledException()
             with self.assertRaises(TaskDisabledException):
                 AutoNightbookTask.run(task)
+
+
+class TestNoLetters(unittest.TestCase):
+
+    def run_book(self, config, error):
+        task = mock.MagicMock(config=config, evidence=None)
+        module = sys.modules[AutoNightbookTask.__module__]
+        with mock.patch.object(module, 'RunLoop') as loop, mock.patch.object(module.DNAOneTimeTask, 'run'):
+            loop.return_value.run.side_effect = error
+            AutoNightbookTask.run(task)
+        return task
+
+    def test_no_letters_fails_the_step(self):
+        with self.assertRaisesRegex(Exception, '密函用完了'):
+            self.run_book({}, NoLetters('角色'))
+
+    def test_no_letters_skips_the_step_when_asked(self):
+        task = self.run_book({'没有密函就跳过': True}, NoLetters('角色'))
+        self.assertIn('跳过', task.log_info.call_args[0][0])
+
+    def test_nothing_offered_skips_the_step_when_asked(self):
+        task = self.run_book({'没有密函就跳过': True}, NotOffered(None, '/无尽', {}))
+        self.assertIn('跳过', task.log_info.call_args[0][0])
 
 
 class TestRoutineTaskSteps(TaskTestCase):
