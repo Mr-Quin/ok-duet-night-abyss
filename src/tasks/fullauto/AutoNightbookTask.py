@@ -9,6 +9,7 @@ import os
 
 from qfluentwidgets import FluentIcon
 
+from src.evidence import checkpoint
 from src.nav import Letter, Mission, Nav, NavError, Nightbook, NoLetters, NoSuchEntry, NotOffered
 from src.nav import screens as S
 from src.run.claims import Claimer
@@ -52,6 +53,7 @@ class AutoNightbookTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
             "第几个": 1,
             "密函": T.LETTER_COLUMNS[0],
             "密函委托": "任意",
+            "没有密函就跳过": False,
             "每局轮次": 3,
             "刷几次": 0,
             "打完领奖": True,
@@ -62,6 +64,7 @@ class AutoNightbookTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
             "第几个": "夜航手册这个等级里从上往下第几行",
             "密函": "委托密函的哪一栏；进这一栏里的无尽委托（扼守/无尽、探险/无尽），密函每小时轮换；任意就是还有密函、有这个委托的第一栏",
             "密函委托": "这一栏有好几个无尽委托时进哪个；任意就是排在最上面的",
+            "没有密函就跳过": "委托密函的密函用完了、或者现在没有要找的委托时不算失败，直接结束这个任务，流程接着跑下一步",
             "每局轮次": "扼守每局打几轮后结算。大于 1 时交给游戏自带的自动轮次；为 1 时关掉自动轮次，打完第一轮就撤离",
             "刷几次": "一共进本几次，打完回到大世界；0 为不限",
             "打完领奖": "一局打完（最多半小时一次）和全部打完后，领历练、协会、吟游诗集带红点的奖励",
@@ -105,10 +108,14 @@ class AutoNightbookTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
                 claim()
         except NoSuchEntry as e:
             raise Exception(f"夜航手册 Lv.{e.level} 现在只有 {len(e.names)} 行，选的是第 {job.target.row + 1} 行")
-        except NoLetters as e:
-            raise Exception(f"委托密函 {e.column} 栏的密函用完了")
-        except NotOffered as e:
-            raise Exception(f"委托密函 {e.column or ANY_COLUMN} 栏现在没有{self.letter_name(e.mode)}（有 {e.offered}），密函每小时轮换，过会儿再试")
+        except (NoLetters, NotOffered) as e:
+            if isinstance(e, NoLetters):
+                why = f"委托密函 {e.column} 栏的密函用完了"
+            else:
+                why = f"委托密函 {e.column or ANY_COLUMN} 栏现在没有{self.letter_name(e.mode)}（有 {e.offered}），密函每小时轮换，过会儿再试"
+            if not self.config.get("没有密函就跳过"):
+                raise Exception(why)
+            checkpoint(self, 'letters-skipped', f"{why}，跳过")
         except UnsupportedMission as e:
             raise Exception(f"{self.describe(job.target)}是「{e.mode}」，现在只支持扼守、驱离、驱逐、避险和探险")
         except JobStopped as e:
