@@ -280,7 +280,7 @@ class TestWaitingForLetters(unittest.TestCase):
     def wait(self, hours, *results):
         self.task.config = {'等委托最多几小时': hours}
         self.run = mock.MagicMock(side_effect=list(results))
-        AutoNightbookTask.until_offered(self.task, self.run, clock=lambda: self.now)
+        self.book.until_offered(self.task, self.run, clock=lambda: self.now)
 
     def not_offered(self, offered=OFFERED):
         return NotOffered(None, '/无尽', offered)
