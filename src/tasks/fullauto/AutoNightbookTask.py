@@ -6,11 +6,12 @@
 界面导航读的是简体中文界面上的文字，所以这个任务只支持简体中文客户端。
 """
 import os
+import time
 
 from qfluentwidgets import FluentIcon
 
 from src.evidence import checkpoint
-from src.nav import Letter, Mission, Nav, NavError, Nightbook, NoLetters, NoSuchEntry, NotOffered
+from src.nav import Letter, Mission, Nav, NavError, Nightbook, NoLetters, NoSuchEntry, NotOffered, World
 from src.nav import screens as S
 from src.run.claims import Claimer
 from src.nav import text_zh as T
@@ -29,6 +30,9 @@ ANY_COLUMN = '任意'
 # 不含声名：惠赠会交出需求物品，交给日常领奖任务
 CLAIM_PAGES = ('历练', '协会', '吟游诗集')
 LETTER_MODES = {'任意': T.ENDLESS, '扼守': MODE, '探险': '探险/无尽'}
+# 委托密函整点轮换，多等一分钟免得赶在换好之前
+LETTER_ROTATION = 3600
+ROTATION_GRACE = 60
 
 
 class AutoNightbookTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
@@ -54,6 +58,7 @@ class AutoNightbookTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
             "密函": T.LETTER_COLUMNS[0],
             "密函委托": "任意",
             "没有密函就跳过": False,
+            "等委托最多几小时": 0,
             "每局轮次": 3,
             "刷几次": 0,
             "打完领奖": True,
@@ -65,6 +70,7 @@ class AutoNightbookTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
             "密函": "委托密函的哪一栏；进这一栏里的无尽委托（扼守/无尽、探险/无尽），密函每小时轮换；任意就是还有密函、有这个委托的第一栏",
             "密函委托": "这一栏有好几个无尽委托时进哪个；任意就是排在最上面的",
             "没有密函就跳过": "委托密函的密函用完了、或者现在没有要找的委托时不算失败，直接结束这个任务，流程接着跑下一步",
+            "等委托最多几小时": "委托密函现在没有要找的委托时，回大世界等整点轮换后再看，最多等这么多小时；0 为不等",
             "每局轮次": "扼守每局打几轮后结算。大于 1 时交给游戏自带的自动轮次；为 1 时关掉自动轮次，打完第一轮就撤离",
             "刷几次": "一共进本几次，打完回到大世界；0 为不限",
             "打完领奖": "一局打完（最多半小时一次）和全部打完后，领历练、协会、吟游诗集带红点的奖励",
@@ -103,7 +109,7 @@ class AutoNightbookTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
             loop = RunLoop(self, self.nav, job, observer=observer, between_runs=claim)
             if recorder:
                 recorder.loop = loop
-            loop.run()
+            until_offered(self, loop.run)
             if claim:
                 claim()
         except NoSuchEntry as e:
@@ -154,3 +160,19 @@ class AutoNightbookTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
     @staticmethod
     def letter_name(mode):
         return "无尽委托" if mode == T.ENDLESS else mode
+
+
+def until_offered(task, run, clock=time.time):
+    deadline = clock() + 3600 * int(task.config.get("等委托最多几小时", 0) or 0)
+    while True:
+        try:
+            return run()
+        except NotOffered as e:
+            wait = LETTER_ROTATION - clock() % LETTER_ROTATION + ROTATION_GRACE
+            # 没有一栏还有密函时，轮换了也进不去
+            if not e.offered or clock() + wait > deadline:
+                raise
+            checkpoint(task, 'letters-wait', f"委托密函现在没有{AutoNightbookTask.letter_name(e.mode)}（有 {e.offered}），"
+                                             f"等 {round(wait / 60)} 分钟轮换后再看")
+            task.nav.go(World())
+            task.sleep(wait)
