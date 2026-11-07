@@ -1,4 +1,4 @@
-# 流程按顺序跑子任务：临时设置不落盘、停止交给流程、失败后停或继续、失败后按设置关游戏、没密函时按设置跳过
+# 流程按顺序跑子任务：临时设置不落盘、停止交给流程、失败后停或继续、失败后按设置关游戏、没密函时按设置跳过或等轮换
 import json
 import sys
 import unittest
@@ -262,6 +262,48 @@ class TestNoLetters(unittest.TestCase):
     def test_nothing_offered_skips_the_step_when_asked(self):
         task = self.run_book({'没有密函就跳过': True}, NotOffered(None, '/无尽', {}))
         self.assertIn('跳过', task.log_info.call_args[0][0])
+
+
+class TestWaitingForLetters(unittest.TestCase):
+    OFFERED = {'角色': ['驱逐']}
+
+    def setUp(self):
+        self.book = sys.modules[AutoNightbookTask.__module__]
+        # 整点后 10 分钟
+        self.now = self.book.LETTER_ROTATION * 100 + 600
+        self.task = mock.MagicMock(evidence=None)
+        self.task.sleep.side_effect = self.pass_time
+
+    def pass_time(self, seconds):
+        self.now += seconds
+
+    def wait(self, hours, *results):
+        self.task.config = {'等委托最多几小时': hours}
+        self.run = mock.MagicMock(side_effect=list(results))
+        AutoNightbookTask.until_offered(self.task, self.run, clock=lambda: self.now)
+
+    def not_offered(self, offered=OFFERED):
+        return NotOffered(None, '/无尽', offered)
+
+    def test_does_not_wait_by_default(self):
+        with self.assertRaises(NotOffered):
+            self.wait(0, self.not_offered())
+        self.task.sleep.assert_not_called()
+
+    def test_waits_for_the_next_rotation_and_tries_again(self):
+        self.wait(2, self.not_offered(), None)
+        self.assertEqual(self.run.call_count, 2)
+        self.task.sleep.assert_called_once_with(self.book.LETTER_ROTATION - 600 + self.book.ROTATION_GRACE)
+
+    def test_stops_waiting_at_the_limit(self):
+        with self.assertRaises(NotOffered):
+            self.wait(1, self.not_offered(), self.not_offered(), None)
+        self.assertEqual(self.run.call_count, 2)
+
+    def test_does_not_wait_when_no_column_has_letters(self):
+        with self.assertRaises(NotOffered):
+            self.wait(2, self.not_offered({}))
+        self.task.sleep.assert_not_called()
 
 
 class TestRoutineTaskSteps(TaskTestCase):
