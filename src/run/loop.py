@@ -106,14 +106,14 @@ class RunLoop:
                 try:
                     if getattr(self, 'on_' + state)(now):
                         break
-                    self.failures = 0
                 except (TaskDisabledException, JobStopped):
                     raise
                 except Exception as e:
                     self.failures += 1
+                    checkpoint(self.task, f'run{self.runs_done + 1}-{state}-error', f"{state} 处理出错（{e}）")
                     if self.failures >= MAX_FAILURES:
-                        raise
-                    self.task.log_info(f"{state} 处理出错（{e}），重新导航到关卡")
+                        raise JobStopped(f"{state} 连着出错 {self.failures} 次（{e}），先停下") from e
+                    self.task.log_info("重新导航到关卡")
                     self.enter()
             self.task.sleep(0.1)
         self.nav.go(World())
@@ -142,6 +142,8 @@ class RunLoop:
                 self.enter()
                 return
             self.live = True
+            # 重新导航每次都能走到开始界面，所以只有真的进了局才算出错后缓过来了
+            self.failures = 0
             self.rounds_seen = 0
             checkpoint(self.task, f'run{self.runs_done + 1}-start', f"第 {self.runs_done + 1} 局开始（{self.mode}）")
             if not self.behaviour.begin():
@@ -175,6 +177,7 @@ class RunLoop:
         if self.counted_dialog == self.observer.since:
             return
         self.counted_dialog = self.observer.since
+        self.failures = 0
         self.rounds_seen += 1
         # 局内轮次之间的手册弹窗按 current_round 选
         self.task.current_round = self.rounds_seen
