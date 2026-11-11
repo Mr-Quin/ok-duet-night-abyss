@@ -21,6 +21,8 @@ STALL_SECONDS = 20
 # 开着游戏的自动轮次时，轮次弹窗倒计时约 10 秒后会自己继续；超过这么久还在，就按没开处理
 HANDS_OFF_DIALOG_WAIT = 20
 ESC_MENU_WAIT = 3
+# 认不出的画面停这么久先看看是不是能就地关掉的提示，比如委托密函整点刷新
+POPUP_WAIT = 2
 MAX_FAILURES = 3
 RETRY_SECONDS = 10
 RUN_HUD_WAIT = 8
@@ -270,6 +272,10 @@ class RunLoop:
             self.task.send_key('esc')
 
     def on_other(self, now):
+        if now - self.observer.since >= POPUP_WAIT and self.due(now):
+            self.acted(now)
+            if self.nav.dismiss_popup():
+                return
         if now - max(self.observer.since, self.renavigated_at) >= STALL_SECONDS:
             self.task.log_info(f"停在认不出的画面 {STALL_SECONDS} 秒，重新导航到关卡")
             self.enter()
