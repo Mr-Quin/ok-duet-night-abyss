@@ -147,12 +147,9 @@ def open_mission_card(nav, scr, here, nxt, info):
 @graph.edge('commission', ('start', T.TABS[2]))
 def open_letter(nav, scr, here, nxt, info):
     """打开有目标委托的那一栏密函，具体条目到开始界面再选。"""
-    heads = {i['t']: i for i in scr.items_in((0, 0.37, 1, 0.42), lambda i: i['t'] in T.LETTER_COLUMNS)}
+    heads = letter_heads(scr)
     if not heads:
         return nav.wait(3)
-
-    def entries(head):
-        return scr.items_in((head['x'] - 0.1, 0.55, head['x'] - 0.02, 0.75), lambda i: not re.search(r'\d', i['t']))
     cols = [nav.goal['column']] if nav.goal['column'] else list(heads)
     empty = [c for c in heads if letters_left(scr, heads[c]) == 0]
     if nav.goal['column'] in empty:
@@ -160,13 +157,23 @@ def open_letter(nav, scr, here, nxt, info):
     for col in cols:
         if col not in heads or col in empty:
             continue
-        hit = next((e for e in entries(heads[col]) if nav.goal['mode'] in e['t']), None)
+        hit = next((e for e in letter_entries(scr, heads[col]) if nav.goal['mode'] in e['t']), None)
         if hit:
             nav.log('  打开 %s / %s' % (col, hit['t']))
             nav.click(hit)
             return False
-    offered = {c: [e['t'] for e in entries(h)] for c, h in heads.items() if c not in empty}
+    offered = {c: [e['t'] for e in letter_entries(scr, h)] for c, h in heads.items() if c not in empty}
     raise NotOffered(nav.goal['column'], nav.goal['mode'], offered)
+
+
+def letter_heads(scr):
+    """委托密函页上看得到的栏，{栏名: 栏名那行文字}。"""
+    return {i['t']: i for i in scr.items_in((0, 0.37, 1, 0.42), lambda i: i['t'] in T.LETTER_COLUMNS)}
+
+
+def letter_entries(scr, head):
+    """这一栏现在给的委托，从上到下。"""
+    return scr.items_in((head['x'] - 0.1, 0.55, head['x'] - 0.02, 0.75), lambda i: not re.search(r'\d', i['t']))
 
 
 def letters_left(scr, head):

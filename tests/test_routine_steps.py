@@ -73,7 +73,7 @@ class TestParseSteps(unittest.TestCase):
 
     def test_bad_shape(self):
         self.check_error([], '字典')
-        self.check_error({'version': 2, 'steps': []}, '版本')
+        self.check_error({'version': 3, 'steps': []}, '版本')
         self.check_error({'version': 1, 'steps': {}}, '列表')
         self.check_error(steps('AutoDailyClaimTask'), '第 1 步', 'task')
         self.check_error(steps({'task': 'AutoDailyClaimTask', 'overrides': []}), 'overrides')

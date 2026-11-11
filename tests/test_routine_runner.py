@@ -8,7 +8,7 @@ from ok.task.exceptions import FinishedException, TaskDisabledException
 from ok.test.TaskTestCase import TaskTestCase
 
 from src.config import config
-from src.nav import NoLetters, NotOffered
+from src.nav import Letter, NoLetters, NotOffered
 from src.routine.preflight import ANTI_CHEAT, LOGIN_REQUIRED, Blocked
 from src.routine.runner import StepFailed, run_steps
 from src.routine.steps import Step
@@ -243,8 +243,9 @@ class TestStoppingAStep(unittest.TestCase):
 
 class TestNoLetters(unittest.TestCase):
 
-    def run_book(self, config, error):
-        task = mock.MagicMock(config=config, evidence=None)
+    def run_book(self, config, error, facts=None):
+        task = mock.MagicMock(config=config, evidence=None, routine_facts=facts)
+        task.job.return_value.target = Letter('/无尽')
         module = sys.modules[AutoNightbookTask.__module__]
         with mock.patch.object(module, 'RunLoop') as loop, mock.patch.object(module.DNAOneTimeTask, 'run'):
             loop.return_value.run.side_effect = error
@@ -262,6 +263,22 @@ class TestNoLetters(unittest.TestCase):
     def test_nothing_offered_skips_the_step_when_asked(self):
         task = self.run_book({'没有密函就跳过': True}, NotOffered(None, '/无尽', {}))
         self.assertIn('跳过', task.log_info.call_args[0][0])
+
+    def test_a_skip_tells_the_routine_what_it_saw(self):
+        facts = {}
+        self.run_book({'没有密函就跳过': True}, NotOffered(None, '/无尽', {'武器': ['驱离']}), facts)
+        self.assertEqual(facts, {'上一步结果': '跳过', '有无尽委托': '否', '密函还有': '是'})
+        facts = {}
+        self.run_book({'没有密函就跳过': True}, NotOffered(None, '/无尽', {}), facts)
+        self.assertEqual(facts, {'上一步结果': '跳过', '有无尽委托': '否', '密函还有': '否'})
+        facts = {}
+        self.run_book({'没有密函就跳过': True}, NoLetters('角色'), facts)
+        self.assertEqual(facts, {'上一步结果': '跳过', '密函还有': '否'})
+
+    def test_a_letter_run_tells_the_routine_letters_were_there(self):
+        facts = {}
+        self.run_book({}, None, facts)
+        self.assertEqual(facts, {'有无尽委托': '是', '密函还有': '是'})
 
 
 class TestWaitingForLetters(unittest.TestCase):

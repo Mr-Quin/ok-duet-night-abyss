@@ -5,8 +5,10 @@ from qfluentwidgets import FluentIcon
 
 from ok import TaskDisabledException
 from ok.core.events import communicate
-from src.nav.okscript import OkScriptBackend
+from src.nav import Nav
+from src.nav.okscript import CACHE_PATH, OkScriptBackend
 from src.evidence import Evidence, checkpoint
+from src.routine.game import Game
 from src.routine.preflight import ANTI_CHEAT, Blocked, wait_for_game
 from src.routine.runner import StepFailed, run_steps
 from src.routine.steps import Step, StepError, dump_steps, parse_steps, spec_of
@@ -30,7 +32,7 @@ class RoutineTask(BaseDNATask):
             "失败后继续": False,
         })
         self.config_description.update({
-            "步骤": "增删、排序步骤，改每一步的设置",
+            "步骤": "增删、排序步骤，改每一步的设置；可以加检查委托密函、等待、循环和「如果」",
             "失败后继续": "一步失败后接着跑下一步；关掉时一步失败就停",
         })
         self.config_type["步骤"] = {"type": "button", "text": "编辑步骤", "icon": FluentIcon.EDIT,
@@ -72,10 +74,12 @@ class RoutineTask(BaseDNATask):
                 self.close_if_exit()
             raise Exception(f"启动时停下：{e}")
         checkpoint(self, 'ready', "游戏可以操作了，开始跑步骤")
+        game = Game(lambda: Nav(OkScriptBackend(self), log=self.log_info, cache_path=CACHE_PATH))
         try:
-            results = run_steps(self, steps, tasks, keep_going=self.config.get("失败后继续", False))
+            results = run_steps(self, steps, tasks, keep_going=self.config.get("失败后继续", False), game=game)
         except StepFailed as e:
-            checkpoint(self, 'end', "流程没跑完：" + "；".join(r.line() for r in e.results), notify=True)
+            failed = "；".join(r.line() for r in e.results if not r.ok)
+            checkpoint(self, 'end', f"流程没跑完（跑了 {len(e.results)} 步）：{failed}", notify=True)
             self.close_if_exit()
             raise Exception(str(e))
         except TaskDisabledException:
