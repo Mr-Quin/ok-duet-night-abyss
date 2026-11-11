@@ -1,4 +1,4 @@
-# 按阶段跑局：数局数、轮次弹窗怎么处理、按关卡类型选打法、卡住时重新导航
+# 按阶段跑局：数局数、轮次弹窗怎么处理、按关卡类型选打法、卡住时重新导航、一直出错时停下
 import unittest
 
 from src.nav import NoLetters
@@ -82,9 +82,9 @@ def behaviour(kind_name, begins=None, ticks=None, each=False):
 
 
 def run(script, job, mode='扼守/无尽', begins=None, hold=1, nav=None, behaviours=None, frames=None, ticks=None,
-        between_runs=None, lost=False):
+        between_runs=None, lost=False, task=None):
     """script 里每个阶段连着看到 hold 拍，frames 给出时按原样一拍一拍看；用完后停在最后一个。"""
-    task, nav = FakeTask(), nav or FakeNav(mode)
+    task, nav = task or FakeTask(), nav or FakeNav(mode)
     task.lost = lost
     frames = list(frames or [s for s in script for _ in range(hold * O.Observer.SETTLE)])
     look = lambda t: frames.pop(0) if len(frames) > 1 else frames[0]
@@ -299,6 +299,47 @@ class TestRunLoop(unittest.TestCase):
     def test_an_unrecognised_screen_for_too_long_navigates_back(self):
         task, nav, loop, _, _ = run([O.OTHER, O.IN_RUN, O.RESULT], L.Job('target', runs=1), hold=120)
         self.assertEqual([c for c in nav.calls if c == ('go', 'target')], [('go', 'target')] * 2)
+
+    def test_a_popup_that_never_closes_stops_the_job_even_though_the_level_is_reached_each_time(self):
+        task = StuckManualTask([True] * 100)
+        with self.assertRaisesRegex(L.JobStopped, '连着出错'):
+            run([O.START, O.MANUAL] * 20 + [O.IN_RUN, O.RESULT], L.Job('target', runs=1), task=task)
+        self.assertEqual(len(task.tries), L.MAX_FAILURES)
+
+    def test_each_error_is_recorded_with_the_frame(self):
+        task = StuckManualTask([True] * 100)
+        with self.assertRaises(L.JobStopped):
+            run([O.START, O.MANUAL] * 20, L.Job('target', runs=1), task=task)
+        self.assertEqual(task.evidence.slugs, ['run1-manual-error'] * L.MAX_FAILURES)
+
+    def test_getting_into_the_run_starts_the_error_count_again(self):
+        one_run = [O.START, O.MANUAL] * (L.MAX_FAILURES - 1) + [O.START, O.MANUAL, O.IN_RUN, O.ROUND_DIALOG, O.RESULT]
+        fails = ([True] * (L.MAX_FAILURES - 1) + [False]) * 2
+        _, _, loop, _, _ = run(one_run * 2, L.Job('target', runs=2), task=StuckManualTask(fails))
+        self.assertEqual(loop.runs_done, 2)
+
+
+class Evidence:
+    def __init__(self):
+        self.slugs = []
+
+    def record(self, slug, text, frame):
+        self.slugs.append(slug)
+
+
+class StuckManualTask(FakeTask):
+    """fails 里按顺序给出每次点手册弹窗是不是一直关不掉。"""
+
+    def __init__(self, fails):
+        super().__init__()
+        self.fails = list(fails)
+        self.tries = []
+        self.evidence = Evidence()
+
+    def choose_drop_rate(self):
+        self.tries.append(1)
+        if self.fails and self.fails.pop(0):
+            raise Exception()
 
 
 if __name__ == '__main__':

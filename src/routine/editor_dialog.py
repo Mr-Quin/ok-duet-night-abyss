@@ -41,11 +41,17 @@ class RoutineEditor(MessageBoxBase):
         self.routine = routine
         self.tasks = {type(t).__name__: t for t in routine.executor.onetime_tasks if type(t).__name__ in ALLOWED}
         self.rows = []
+        self.locked = False
         self.error = BodyLabel('', self)
         self.error.setWordWrap(True)
         try:
             steps, _ = routine.steps()
+            if not all(isinstance(s, Step) for s in steps):
+                self.locked = True
+                raise StepError('流程里有检查、等待或循环，这里还改不了，保存不会动它')
             self.rows = [(s.task, StepSettings(self.tasks[s.task], s.overrides)) for s in steps]
+        except StepError as e:
+            self.error.setText(str(e))
         except Exception as e:
             self.error.setText(f'存下来的步骤读不出来，从空的开始：{e}')
 
@@ -172,6 +178,8 @@ class RoutineEditor(MessageBoxBase):
         return json.dumps(raw, ensure_ascii=False, indent=1)
 
     def validate(self):
+        if self.locked:
+            return True
         try:
             text = self.steps_json()
         except StepError as e:
