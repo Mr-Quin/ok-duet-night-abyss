@@ -41,9 +41,10 @@ class FakeTask:
 
 
 class FakeNav:
-    def __init__(self, mode, in_run=True):
+    def __init__(self, mode, in_run=True, popups=0):
         self.mode = mode
         self.in_run = in_run
+        self.popups = popups
         self.calls = []
 
     def go(self, target):
@@ -55,6 +56,11 @@ class FakeNav:
 
     def set_auto_rounds(self, n):
         self.calls.append(('auto', n))
+
+    def dismiss_popup(self):
+        shown, self.popups = self.popups > 0, max(0, self.popups - 1)
+        self.calls.append(('dismiss', shown))
+        return shown
 
 
 def behaviour(kind_name, begins=None, ticks=None, each=False):
@@ -299,6 +305,13 @@ class TestRunLoop(unittest.TestCase):
     def test_an_unrecognised_screen_for_too_long_navigates_back(self):
         task, nav, loop, _, _ = run([O.OTHER, O.IN_RUN, O.RESULT], L.Job('target', runs=1), hold=120)
         self.assertEqual([c for c in nav.calls if c == ('go', 'target')], [('go', 'target')] * 2)
+
+    def test_a_notice_over_the_run_is_closed_without_leaving_the_run(self):
+        frames = [O.IN_RUN] * 4 + [O.OTHER] * 50 + [O.IN_RUN] * 4 + [O.RESULT] * 4
+        _, nav, loop, _, _ = run(None, L.Job('target', runs=1), nav=FakeNav('扼守/无尽', popups=1), frames=frames)
+        self.assertIn(('dismiss', True), nav.calls)
+        self.assertEqual(nav.calls.count(('go', 'target')), 1)
+        self.assertEqual(loop.runs_done, 1)
 
     def test_a_popup_that_never_closes_stops_the_job_even_though_the_level_is_reached_each_time(self):
         task = StuckManualTask([True] * 100)

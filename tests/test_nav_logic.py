@@ -470,3 +470,39 @@ class TestLeavingARun(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+REFRESHED = (('提示', 0.5, 0.4), ('密函委托已刷新', 0.5, 0.475), ('确定', 0.5, 0.58))
+
+
+class PopupBackend(FakeBackend):
+    def __init__(self, shown):
+        super().__init__()
+        self.shown = shown
+
+    def read(self):
+        return screen(*REFRESHED) if self.shown else screen(('探险', 0.02, 0.27))
+
+    def click(self, x, y):
+        super().click(x, y)
+        self.shown = False
+
+
+class TestLettersRefreshed(unittest.TestCase):
+
+    def test_the_hourly_refresh_notice_is_recognised_over_a_run(self):
+        found, _ = S.classify(screen(*REFRESHED, ('探险', 0.02, 0.27), ('当前轮次：1', 0.06, 0.27)), {})
+        self.assertEqual(found, 'letters_refreshed')
+
+    def test_the_notice_is_confirmed_on_the_way_anywhere(self):
+        nav, backend = navigator(World())
+        found, info = S.classify(screen(*REFRESHED), {})
+        self.assertFalse(graph.HANDLERS[found](nav, screen(*REFRESHED), info))
+        self.assertEqual(backend.actions, [('click', 0.5, 0.58)])
+
+    def test_a_run_can_close_the_notice_without_leaving(self):
+        backend = PopupBackend(True)
+        self.assertTrue(Nav(backend).dismiss_popup())
+        self.assertEqual(backend.actions, [('click', 0.5, 0.58)])
+        self.assertFalse(Nav(backend).dismiss_popup())
+        self.assertEqual(len(backend.actions), 1)
