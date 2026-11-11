@@ -112,6 +112,27 @@ def _dump_cond(cond):
     return [[name, value] for name, value in cond]
 
 
+def describe(s):
+    """检查、等待、循环、「如果」的一行说明，编辑框的列表里用。"""
+    if isinstance(s, Check):
+        return f'检查{s.what}'
+    if isinstance(s, Wait):
+        if not s.until:
+            return f'等待 {s.minutes} 分钟'
+        every = f'每 {s.every} 分钟' if s.every else '每次轮换后'
+        return f'等到 {_cond_text(s.until)}（{every}看一次，最多 {s.most} 分钟）'
+    if isinstance(s, Loop):
+        ends = [f'{s.times} 次' if s.times else '', f'{s.hours} 小时' if s.hours else '',
+                f'到 {s.until_time}' if s.until_time else '', _cond_text(s.until)]
+        ends = [e for e in ends if e]
+        return f'循环（{"，或 ".join(ends)}）' if ends else '循环（没有结束条件）'
+    return f'如果 {_cond_text(s.when)} → {s.then}'
+
+
+def _cond_text(cond):
+    return ' 或 '.join(f'{name}={value}' for name, value in cond)
+
+
 def parse_steps(raw, specs):
     """检查并解析存下来的步骤，specs 是 {类名: TaskSpec}。同一个任务可以出现好几次。"""
     if not isinstance(raw, dict):
