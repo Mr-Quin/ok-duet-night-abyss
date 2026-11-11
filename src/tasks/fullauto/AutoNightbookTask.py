@@ -15,6 +15,7 @@ from src.nav import screens as S
 from src.run.claims import Claimer
 from src.nav import text_zh as T
 from src.nav.okscript import CACHE_PATH, OkScriptBackend
+from src.routine.steps import ENDLESS, LETTERS_LEFT, RESULT
 from src.run.loop import Job, JobStopped, RunLoop, UnsupportedMission
 from src.tasks.BaseCombatTask import BaseCombatTask
 from src.tasks.CommissionsTask import CommissionsTask
@@ -98,6 +99,8 @@ class AutoNightbookTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         try:
             claim = self.claim if self.config.get("打完领奖", True) else None
             until_offered(self, lambda: RunLoop(self, self.nav, job, between_runs=claim).run())
+            if isinstance(job.target, Letter):
+                report(self, {ENDLESS: '是', LETTERS_LEFT: '是'})
             if claim:
                 claim()
         except NoSuchEntry as e:
@@ -105,10 +108,16 @@ class AutoNightbookTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         except (NoLetters, NotOffered) as e:
             if isinstance(e, NoLetters):
                 why = f"委托密函 {e.column} 栏的密函用完了"
+                seen = {LETTERS_LEFT: '否'}
             else:
                 why = f"委托密函 {e.column or ANY_COLUMN} 栏现在没有{self.letter_name(e.mode)}（有 {e.offered}），密函每小时轮换，过会儿再试"
+                seen = {LETTERS_LEFT: '是' if e.offered else '否'}
+                if e.mode == T.ENDLESS and e.column is None:
+                    seen[ENDLESS] = '否'
+            report(self, seen)
             if not self.config.get("没有密函就跳过"):
                 raise Exception(why)
+            report(self, {RESULT: '跳过'})
             checkpoint(self, 'letters-skipped', f"{why}，跳过")
         except UnsupportedMission as e:
             raise Exception(f"{self.describe(job.target)}是「{e.mode}」，现在只支持扼守、驱离、驱逐、避险和探险")
@@ -148,6 +157,12 @@ class AutoNightbookTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
     @staticmethod
     def letter_name(mode):
         return "无尽委托" if mode == T.ENDLESS else mode
+
+
+def report(task, facts):
+    """在流程里跑时，把看到的告诉流程。"""
+    if isinstance(getattr(task, 'routine_facts', None), dict):
+        task.routine_facts.update(facts)
 
 
 def until_offered(task, run, clock=time.time):
