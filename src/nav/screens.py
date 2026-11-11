@@ -224,6 +224,12 @@ def detect_blank_close(scr, atlas):
         return 'notice', {}
 
 
+@graph.detector(7)
+def detect_letters_refreshed(scr, atlas):
+    if scr.find(T.LETTERS_REFRESHED):
+        return 'letters_refreshed', {'confirm': scr.first(T.CONFIRM, exact=True)}
+
+
 # 领奖弹窗「点击空白区域关闭」点这里
 BLANK_SPOT = (0.5, 0.89)
 

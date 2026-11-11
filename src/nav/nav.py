@@ -42,6 +42,15 @@ class Nav:
         if not nav.run(max_steps=max_steps):
             raise NavError('没能到达 %s' % (target,))
 
+    def dismiss_popup(self):
+        """关掉盖在画面上、不用离开当前界面就能关的提示；关了返回 True。"""
+        state = self.where()
+        if state.screen != 'letters_refreshed' or not state.info['confirm']:
+            return False
+        self.log('  确认委托密函已刷新的提示')
+        self.tap(state.info['confirm']['x'], state.info['confirm']['y'])
+        return True
+
     def tap(self, x, y):
         before = self.b.thumb()
         self.b.click(x, y)
