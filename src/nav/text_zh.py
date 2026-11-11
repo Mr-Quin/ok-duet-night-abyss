@@ -50,6 +50,8 @@ TO_OBJECTIVE = ('前往目标点', '调查目标')
 RUN_MODES = ('驱离', '驱逐', '避险')
 NO_REWARD = '无奖励'
 CONFIRM = '确定'
+# 委托密函整点轮换时弹出的提示，局内局外都会出现，只有一个「确定」
+LETTERS_REFRESHED = '密函委托已刷新'
 # 「点击空白区域关闭」，OCR 有时漏掉「白」
 CLOSE_ON_BLANK = '区域关闭'
 CLAIM_ALL = '全部领取'

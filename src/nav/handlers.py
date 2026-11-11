@@ -251,3 +251,12 @@ def pick_letter_entry(nav, info):
     nav.log('  选择 %s' % entry['mode'])
     nav.b.click(LETTER_ENTRY_X, entry['y'])
     return False
+
+
+@graph.handler('letters_refreshed')
+def on_letters_refreshed(nav, scr, info):
+    if not info['confirm']:
+        return None
+    nav.log('  确认委托密函已刷新的提示')
+    nav.click(info['confirm'])
+    return False
