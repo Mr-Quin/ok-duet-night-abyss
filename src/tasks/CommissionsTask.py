@@ -29,6 +29,13 @@ AUTO_ADVANCE_TIME_OUT = 20
 AUTO_ADVANCE_EXTRA_TIME = 2
 
 
+def read_wave(texts):
+    for text in texts or ():
+        if m := re.search(r"(\d)/\d", text.name):
+            return int(m.group(1))
+    return None
+
+
 class Mission(Enum):
     START = 1
     CONTINUE = 2
@@ -696,14 +703,10 @@ class CommissionsTask(BaseDNATask):
         if self.wave_future and self.wave_future.done():
             texts = self.wave_future.result()
             self.wave_future = None
-            if texts and len(texts) >= 1:
-                prev_wave = self.current_wave
-                if (m := re.match(r"(\d)/\d", texts[0].name)):
-                    self.current_wave = int(m.group(1))
-                else:
-                    return
-                if prev_wave != self.current_wave:
-                    self.info_set("当前波次", self.current_wave)
+            wave = read_wave(texts)
+            if wave is not None and wave != self.current_wave:
+                self.current_wave = wave
+                self.info_set("当前波次", wave)
             return
         if self.wave_future is None:
             mission_info_box = self.box_of_screen(0.107, 0.343, 0.174, 0.386, name="mission_info", hcenter=True)
